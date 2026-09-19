@@ -51,11 +51,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.wakeupmywall"
+    namespace = "com.xukunz.wakeupmywall"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.wakeupmywall"
+        applicationId = "com.xukunz.wakeupmywall"
         minSdk = 30
         targetSdk = 37
         versionCode = 1
