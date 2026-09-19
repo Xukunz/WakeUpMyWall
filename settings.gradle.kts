@@ -23,5 +23,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Wake Up My Wall"
-include(":app")
+include(":composeApp")
+project(":composeApp").projectDir = file("mobile/composeApp")
+// agent/ 模块在 Phase 4 引入；本阶段只保留移动端
  
