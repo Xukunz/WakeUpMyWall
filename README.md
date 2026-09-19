@@ -61,6 +61,15 @@ imgs/wallpaper/                    # 内置壁纸母版与派生规则
 
 APK 位于 `mobile/composeApp/build/outputs/apk/debug/`。
 
+### 在 Android Studio 中打开
+
+打开项目后**必须先完成一次 Gradle Sync**。同步成功之前 Android Studio 认不出 Android facet，Run 按钮会一直是灰的——这不是项目坏了。如果你刚克隆仓库就点 Run，先做 Sync。
+
+同步失败时优先看两点：
+
+- **Gradle JDK 必须是 25**。`gradle/gradle-daemon-jvm.properties` 把 daemon JVM 钉在 Java 25（`toolchainVersion=25`），而 Android Studio 自带的 JBR 通常是 21，它会通过 foojay 去下载 25；网络受限时会直接失败，表现为同步报错。设置位置：Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK。
+- **Android Studio 版本要能识别 AGP 9.3.3**，过老的版本会直接报 incompatible。
+
 ## 测试
 
 ```bash
@@ -70,6 +79,8 @@ APK 位于 `mobile/composeApp/build/outputs/apk/debug/`。
 ```
 
 `desktopTest` 在无显示环境（`DISPLAY` 未设置）下也能运行，CI 无需 xvfb。
+
+需要在真机或模拟器上验证启动时，环境配方（KVM 权限、AVD 创建、无头启动与截图命令）见 [docs/plans/version-matrix.md](docs/plans/version-matrix.md) §6。
 
 ## 壁纸资源
 
