@@ -1,5 +1,3 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.kotlin.compose) apply false
-}
+// Top-level build file. Plugins are declared per module (see mobile/composeApp/build.gradle.kts)
+// with versions from gradle/libs.versions.toml. Declaring them here as well would put the Kotlin
+// Gradle plugin on the root classpath and break version resolution for the multiplatform plugin.
