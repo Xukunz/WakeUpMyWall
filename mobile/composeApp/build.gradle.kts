@@ -11,6 +11,11 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        // kotlinx-datetime 0.8.0 的 Instant 是 kotlin.time.Instant 的类型别名，需要显式 opt-in。
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
+
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_11) }
     }
