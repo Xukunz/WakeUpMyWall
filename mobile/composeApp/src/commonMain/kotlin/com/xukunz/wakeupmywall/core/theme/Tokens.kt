@@ -21,6 +21,8 @@ fun ThemeAccent.palette(): AccentPalette = when (this) {
 }
 
 object Spacing {
+    /** 分隔线与卡片描边的线宽。写进令牌，`ui/` 里就不允许出现裸 `1.dp`。 */
+    val hairline = 1.dp
     val xs = 4.dp
     val sm = 8.dp
     val md = 16.dp
