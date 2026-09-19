@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+.gradle-user-home/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local SDK configuration
+local.properties
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+
+# Android build output
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin / Java generated output
+*.class
+
+# OS files
+.DS_Store
+Thumbs.db
