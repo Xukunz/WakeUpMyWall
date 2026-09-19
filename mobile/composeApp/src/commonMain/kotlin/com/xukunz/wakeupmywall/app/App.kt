@@ -2,13 +2,21 @@ package com.xukunz.wakeupmywall.app
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.xukunz.wakeupmywall.ui.components.PlaceholderScreen
 
 @Composable
-fun App() {
+fun App(navigator: AppNavigator = remember { AppNavigator() }) {
+    val workspace by navigator.current.collectAsState()
     Surface(modifier = Modifier.fillMaxSize()) {
-        Text("WakeUpMyWall")
+        when (workspace) {
+            Workspace.Dashboard -> PlaceholderScreen("Dashboard")
+            Workspace.Monitor -> PlaceholderScreen("PC Monitor")
+            Workspace.Settings -> PlaceholderScreen("Settings")
+        }
     }
 }
