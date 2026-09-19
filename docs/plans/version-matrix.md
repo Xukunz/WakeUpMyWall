@@ -84,7 +84,25 @@ mobile/androidApp     com.android.application                    （MainActivity
 
 ---
 
-## 3. 环境注意事项
+## 4. Phase 0 收尾实测（2026-09-19）
+
+`./gradlew clean --no-daemon` 之后冷执行三条 CI 命令，全部通过（与 `.github/workflows/ci.yml` 完全一致）：
+
+| 命令 | 结果 |
+| --- | --- |
+| `./gradlew :composeApp:testDebugUnitTest` | 31 个测试通过，0 失败 |
+| `./gradlew :composeApp:desktopTest` | 38 个测试通过，0 失败（含 7 个真实 Compose UI 测试） |
+| `./gradlew :composeApp:assembleDebug` | APK 产出成功（debug 37.1 MB） |
+
+补充实测：
+
+- Compose UI 测试在 `DISPLAY` 未设置的容器内可运行（Skiko 软件渲染），CI 不需要 xvfb。
+- 壁纸打包路径确认为 `assets/composeResources/com.xukunz.wakeupmywall.resources/drawable/`，APK 内可见两张内置壁纸。
+- 壁纸母版派生使用 Pillow 12.1.1（系统 `python3`），属一次性人工操作，不是构建依赖。
+
+---
+
+## 5. 环境注意事项
 
 1. **SDK 平台包命名变更**：`platforms;android-37` 已不存在，必须写 `platforms;android-37.0`（同系列还有 `-37.1`、`-37.2`）。
 2. **`gradlew` 可执行位缺失**：git 中记录为 `100644`，新克隆后执行 `./gradlew` 会得到 `Permission denied`。已修正为 `100755`。

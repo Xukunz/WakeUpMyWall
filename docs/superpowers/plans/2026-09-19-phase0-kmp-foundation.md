@@ -58,7 +58,7 @@
 - Consumes: 无
 - Produces: 可用的 `java`、`ANDROID_SDK_ROOT`、可执行的 `./gradlew`；`docs/plans/version-matrix.md` 记录实测矩阵供后续任务引用
 
-- [ ] **Step 1: 安装 JDK 25（免 root，已实测）**
+- [x] **Step 1: 安装 JDK 25（免 root，已实测）**
 
 本容器是 Ubuntu 26.04 x86_64 且 `sudo` 需要交互密码，`apt-get` 不可用，因此改用 Temurin tarball 装到用户目录：
 
@@ -74,7 +74,7 @@ java -version
 
 Expected: `openjdk version "25.0.4.1" 2026-08-18 LTS`（实测输出）。
 
-- [ ] **Step 2: 安装 Android SDK 命令行工具**
+- [x] **Step 2: 安装 Android SDK 命令行工具**
 
 ```bash
 export ANDROID_SDK_ROOT="$HOME/.local/toolchain/android-sdk"
@@ -88,7 +88,7 @@ mv /tmp/cmdline-extract/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 Expected: `"$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"` 可执行。
 （该 URL 与 `platforms;android-37`、`build-tools;37.0.0` 均已通过 `dl.google.com/android/repository/repository2-3.xml` 核实存在。）
 
-- [ ] **Step 3: 安装平台与构建工具并接受许可**
+- [x] **Step 3: 安装平台与构建工具并接受许可**
 
 ```bash
 export JAVA_HOME="$HOME/.local/toolchain/jdk-25.0.4.1+1"
@@ -103,7 +103,7 @@ Expected: 出现 `platform-tools 37.0.1`、`platforms/android-37.0`、`build-too
 
 > **重要（已实测）：** SDK 平台包已改为小版本命名，`platforms;android-37` 会报 `Package platforms/android-37 not found`，必须用 `platforms;android-37.0`。另外 `sdkmanager` 已标记弃用，新入口是同一目录下的 `android` 二进制（`android sdk`）。
 
-- [ ] **Step 4: 写入 `local.properties` 并验证 Gradle 可启动**
+- [x] **Step 4: 写入 `local.properties` 并验证 Gradle 可启动**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall
@@ -122,7 +122,7 @@ Expected: `Gradle 9.5.0`、`Launcher JVM: 25.0.4.1`、`Daemon JVM: Compatible wi
 
 Expected: `BUILD SUCCESSFUL in 1m 8s`（实测输出，`compileSdk 37` 由 `platforms/android-37.0` 提供）。
 
-- [ ] **Step 5: 记录版本矩阵**
+- [x] **Step 5: 记录版本矩阵**
 
 把实测结果写入 `docs/plans/version-matrix.md`，首版内容：
 
@@ -141,7 +141,7 @@ Expected: `BUILD SUCCESSFUL in 1m 8s`（实测输出，`compileSdk 37` 由 `plat
 
 已实测项（截至 2026-09-19）：JDK `25.0.4.1+1`、Gradle `9.5.0`、`platforms/android-37.0`、`build-tools 37.0.0`、`platform-tools 37.0.1`，原始工程 `:app:assembleDebug` 通过。**Compose Multiplatform 1.10.3 尚未实测**，由 Task 2 首次解析时确认。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/plans/version-matrix.md
@@ -160,7 +160,7 @@ git commit -m "docs: record verified toolchain and version matrix"
 - Consumes: Task 0 的工具链
 - Produces: Gradle 模块路径 `:composeApp`，物理路径 `mobile/composeApp`
 
-- [ ] **Step 1: 用 git mv 迁移模块目录（保留历史）**
+- [x] **Step 1: 用 git mv 迁移模块目录（保留历史）**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall
@@ -168,7 +168,7 @@ mkdir -p mobile
 git mv app mobile/composeApp
 ```
 
-- [ ] **Step 2: 更新 `settings.gradle.kts`**
+- [x] **Step 2: 更新 `settings.gradle.kts`**
 
 把末尾的 `include(":app")` 替换为：
 
@@ -182,7 +182,7 @@ project(":composeApp").projectDir = file("mobile/composeApp")
 
 （文件顶部的 `pluginManagement` 与 `dependencyResolutionManagement` 段保持不变。）
 
-- [ ] **Step 3: 验证模块图与构建**
+- [x] **Step 3: 验证模块图与构建**
 
 ```bash
 ./gradlew projects
@@ -191,7 +191,7 @@ project(":composeApp").projectDir = file("mobile/composeApp")
 
 Expected: `projects` 中只有 `:composeApp`；`assembleDebug` 输出 `BUILD SUCCESSFUL`。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
@@ -211,7 +211,7 @@ git commit -m "refactor: move app module under mobile/ as composeApp"
 - Consumes: `:composeApp`
 - Produces: 源集 `commonMain` / `androidMain` / `commonTest` / `androidUnitTest` / `desktopTest`；可运行任务 `testDebugUnitTest`、`desktopTest`
 
-- [ ] **Step 1: 在版本目录声明插件与库**
+- [x] **Step 1: 在版本目录声明插件与库**
 
 ```toml
 [versions]
@@ -242,7 +242,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 ```
 
-- [ ] **Step 2: 迁移源集目录**
+- [x] **Step 2: 迁移源集目录**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall/mobile/composeApp
@@ -251,7 +251,7 @@ git mv src/test src/androidUnitTest
 git mv src/androidTest src/androidInstrumentedTest
 ```
 
-- [ ] **Step 3: 重写 `mobile/composeApp/build.gradle.kts`**
+- [x] **Step 3: 重写 `mobile/composeApp/build.gradle.kts`**
 
 ```kotlin
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -325,11 +325,11 @@ android {
 
 原文件里的 `androidx.compose.*` 依赖、`buildTypes { optimization { ... } }` 块一并删除（由 `compose.*` 与默认配置取代）。
 
-- [ ] **Step 4: 确认 Android 资源与清单位置**
+- [x] **Step 4: 确认 Android 资源与清单位置**
 
 KMP 的 android target 读取 `src/androidMain/AndroidManifest.xml` 与 `src/androidMain/res/`。用 `ls mobile/composeApp/src/androidMain` 确认二者存在；若缺，用 `git mv` 移动到该位置。
 
-- [ ] **Step 5: 验证构建与测试**
+- [x] **Step 5: 验证构建与测试**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall
@@ -339,7 +339,7 @@ cd /home/xukunz/桌面/WakeUpMyWall
 
 Expected: 两条命令均 `BUILD SUCCESSFUL`。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -359,7 +359,7 @@ git commit -m "build: convert composeApp to Kotlin Multiplatform with Compose Mu
 - Consumes: KMP 源集
 - Produces: `@Composable fun App()`（无参数，位于 `commonMain`）
 
-- [ ] **Step 1: 迁移包目录**
+- [x] **Step 1: 迁移包目录**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall/mobile/composeApp/src/androidMain/kotlin
@@ -368,7 +368,7 @@ git mv com/example/wakeupmywall com/xukunz/wakeupmywall
 rmdir com/example 2>/dev/null || true
 ```
 
-- [ ] **Step 2: 全局替换包名**
+- [x] **Step 2: 全局替换包名**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall
@@ -379,7 +379,7 @@ grep -rn "com\.example" --include='*.kt' --include='*.kts' mobile/ || echo "pack
 
 Expected: 第二条命令输出 `package rename clean`。
 
-- [ ] **Step 3: 创建 `commonMain` 应用根**
+- [x] **Step 3: 创建 `commonMain` 应用根**
 
 ```kotlin
 package com.xukunz.wakeupmywall.app
@@ -398,7 +398,7 @@ fun App() {
 }
 ```
 
-- [ ] **Step 4: Android 入口改为委托 `App()`，删除模板代码**
+- [x] **Step 4: Android 入口改为委托 `App()`，删除模板代码**
 
 ```kotlin
 package com.xukunz.wakeupmywall
@@ -423,7 +423,7 @@ git rm src/androidUnitTest/java/com/xukunz/wakeupmywall/ExampleUnitTest.kt 2>/de
 git rm src/androidInstrumentedTest/java/com/xukunz/wakeupmywall/ExampleInstrumentedTest.kt 2>/dev/null || true
 ```
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 ```bash
 ./gradlew :composeApp:assembleDebug
@@ -453,7 +453,7 @@ git commit -m "refactor: rename package to com.xukunz.wakeupmywall and add commo
   - `value class MacAddress` 与 `MacAddress.parse(input: String): MacAddress?`
   - `data class PcDevice(...)`
 
-- [ ] **Step 1: 写失败测试（状态机）**
+- [x] **Step 1: 写失败测试（状态机）**
 
 文件 `src/commonTest/kotlin/com/xukunz/wakeupmywall/domain/PcStateMachineTest.kt`：
 
@@ -514,7 +514,7 @@ class PcStateMachineTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*PcStateMachineTest*"
@@ -522,7 +522,7 @@ class PcStateMachineTest {
 
 Expected: 编译失败，提示 `Unresolved reference: PcStateMachine` / `PcEvent`。
 
-- [ ] **Step 3: 写失败测试（MAC 校验）**
+- [x] **Step 3: 写失败测试（MAC 校验）**
 
 文件 `src/commonTest/kotlin/com/xukunz/wakeupmywall/domain/MacAddressTest.kt`：
 
@@ -568,7 +568,7 @@ class MacAddressTest {
 }
 ```
 
-- [ ] **Step 4: 实现模型与状态机**
+- [x] **Step 4: 实现模型与状态机**
 
 `MacAddress.kt`：
 
@@ -693,7 +693,7 @@ data class PcDevice(
 )
 ```
 
-- [ ] **Step 5: 运行测试，确认通过**
+- [x] **Step 5: 运行测试，确认通过**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*PcStateMachineTest*" --tests "*MacAddressTest*"
@@ -701,7 +701,7 @@ data class PcDevice(
 
 Expected: `BUILD SUCCESSFUL`，13 个测试全绿。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -727,7 +727,7 @@ git commit -m "feat: add pc state machine, device model and mac validation"
   - `class AgentApi(client: HttpClient) { suspend fun status(baseUrl: String, token: String?): ApiResult<AgentStatus> }`
   - `@Serializable data class AgentStatus(val hostname: String, val agentVersion: String, val uptimeSeconds: Long)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 文件 `src/commonTest/kotlin/com/xukunz/wakeupmywall/core/network/AgentApiTest.kt`：
 
@@ -801,7 +801,7 @@ class AgentApiTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*AgentApiTest*"
@@ -809,7 +809,7 @@ class AgentApiTest {
 
 Expected: 编译失败，`Unresolved reference: AgentApi`。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `ApiResult.kt`：
 
@@ -903,7 +903,7 @@ private fun HttpStatusCode.toFailure(): ApiFailure = when (value) {
 
 注意：`createAgentHttpClient` 刻意不安装 `HttpCallValidator`，因此 4xx/5xx 不抛异常，而是走 `response.status` 分支，保证错误映射稳定。
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*AgentApiTest*"
@@ -911,7 +911,7 @@ private fun HttpStatusCode.toFailure(): ApiFailure = when (value) {
 
 Expected: 4 个测试全绿。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -938,7 +938,7 @@ git commit -m "feat: add ktor based agent api with timeout and error mapping"
 
 **说明：** 真实持久化后端（Room 还是 DataStore）推迟到 Phase 2 与设备管理一起决策，避免在 Phase 0 引入未验证的 alpha 依赖。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 文件 `src/commonTest/kotlin/com/xukunz/wakeupmywall/data/settings/SettingsStorageTest.kt`：
 
@@ -977,7 +977,7 @@ class SettingsStorageTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*SettingsStorageTest*"
@@ -985,7 +985,7 @@ class SettingsStorageTest {
 
 Expected: 编译失败，`Unresolved reference: InMemorySettingsStorage`。
 
-- [ ] **Step 3: 实现接口与序列化器**
+- [x] **Step 3: 实现接口与序列化器**
 
 `SettingsStorage.kt`：
 
@@ -1038,7 +1038,7 @@ object MacAddressSerializer : KSerializer<MacAddress> {
 }
 ```
 
-- [ ] **Step 4: 给 `PcDevice` 加序列化注解**
+- [x] **Step 4: 给 `PcDevice` 加序列化注解**
 
 `PcDevice.kt` 完整内容：
 
@@ -1065,7 +1065,7 @@ data class PcDevice(
 )
 ```
 
-- [ ] **Step 5: 实现内存存储**
+- [x] **Step 5: 实现内存存储**
 
 `InMemorySettingsStorage.kt`：
 
@@ -1088,7 +1088,7 @@ class InMemorySettingsStorage : SettingsStorage {
 }
 ```
 
-- [ ] **Step 6: 运行测试并提交**
+- [x] **Step 6: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*SettingsStorageTest*"
@@ -1119,7 +1119,7 @@ Expected: 3 个测试全绿。
 
 **说明：** 不引入 Navigation 库。三个工作空间的切换在 Phase 1 只是状态与手势，自己实现的 `AppNavigator` 可以被单测覆盖；等出现深链或复杂返回栈再评估引入 `org.jetbrains.androidx.navigation`。
 
-- [ ] **Step 1: 写导航失败测试（纯逻辑）**
+- [x] **Step 1: 写导航失败测试（纯逻辑）**
 
 文件 `src/commonTest/kotlin/com/xukunz/wakeupmywall/app/AppNavigatorTest.kt`：
 
@@ -1163,7 +1163,7 @@ class AppNavigatorTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*AppNavigatorTest*"
@@ -1171,7 +1171,7 @@ class AppNavigatorTest {
 
 Expected: 编译失败，`Unresolved reference: AppNavigator`。
 
-- [ ] **Step 3: 实现导航与占位页**
+- [x] **Step 3: 实现导航与占位页**
 
 `AppNavigator.kt`：
 
@@ -1253,7 +1253,7 @@ fun App(navigator: AppNavigator = remember { AppNavigator() }) {
 }
 ```
 
-- [ ] **Step 4: 写 Compose UI 测试（desktopTest）**
+- [x] **Step 4: 写 Compose UI 测试（desktopTest）**
 
 文件 `src/desktopTest/kotlin/com/xukunz/wakeupmywall/app/AppUiTest.kt`：
 
@@ -1284,7 +1284,7 @@ class AppUiTest {
 }
 ```
 
-- [ ] **Step 5: 运行全部测试**
+- [x] **Step 5: 运行全部测试**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -1292,7 +1292,7 @@ class AppUiTest {
 
 Expected: 两个任务均 `BUILD SUCCESSFUL`，UI 测试在 JVM 上直接运行，无需模拟器。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -1318,7 +1318,7 @@ git commit -m "feat: add workspace navigation with jvm ui test harness"
   - `object DarkSurface { background, card, outline, textPrimary, textSecondary }` 与 `object Spacing`
   - `@Composable fun WakeUpMyWallTheme(accent: ThemeAccent = ThemeAccent.AuroraBlue, content: @Composable () -> Unit)`
 
-- [ ] **Step 1: 写失败测试（对比度与颜色区分）**
+- [x] **Step 1: 写失败测试（对比度与颜色区分）**
 
 文件 `src/commonTest/kotlin/com/xukunz/wakeupmywall/core/theme/ThemeAccentTest.kt`：
 
@@ -1378,7 +1378,7 @@ class ThemeAccentTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*ThemeAccentTest*"
@@ -1386,7 +1386,7 @@ class ThemeAccentTest {
 
 Expected: 编译失败，`Unresolved reference: ThemeAccent`。
 
-- [ ] **Step 3: 实现令牌与主题**
+- [x] **Step 3: 实现令牌与主题**
 
 `Tokens.kt`：
 
@@ -1458,7 +1458,7 @@ fun WakeUpMyWallTheme(
 
 `App.kt` 的 `Surface` 外层包一层 `WakeUpMyWallTheme { ... }`。
 
-- [ ] **Step 4: 运行测试并提交**
+- [x] **Step 4: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -1477,7 +1477,7 @@ git commit -m "feat: add dark theme tokens and six accent palettes"
 - Consumes: 全部前述任务
 - Produces: push / PR 自动执行单测、Compose UI 测试与 assemble
 
-- [ ] **Step 1: 写工作流**
+- [x] **Step 1: 写工作流**
 
 ```yaml
 name: CI
@@ -1505,7 +1505,7 @@ jobs:
         run: ./gradlew :composeApp:assembleDebug --no-daemon
 ```
 
-- [ ] **Step 2: 本地复现同样三条命令**
+- [x] **Step 2: 本地复现同样三条命令**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --no-daemon
@@ -1515,7 +1515,7 @@ jobs:
 
 Expected: 三条均 `BUILD SUCCESSFUL`。GitHub Actions 平台本身无法在本容器验证，需推送后确认。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -1535,7 +1535,7 @@ git commit -m "ci: run unit tests, compose ui tests and debug assemble"
 - Consumes: 全部前述任务
 - Produces: 仓库内无 `com.example` 与 Hello World 残留；README 描述新的 monorepo 结构
 
-- [ ] **Step 1: 确认并删除残留**
+- [x] **Step 1: 确认并删除残留**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall
@@ -1546,7 +1546,7 @@ git rm -r mobile/composeApp/src/androidMain/keepRules 2>/dev/null || true
 
 Expected: 第一条命令输出 `no template leftovers`。
 
-- [ ] **Step 2: 更新 README 的技术栈 / 结构 / 测试三节**
+- [x] **Step 2: 更新 README 的技术栈 / 结构 / 测试三节**
 
 ```markdown
 ## 技术栈
@@ -1570,7 +1570,7 @@ docs/                 # 产品设计、规范与实施计划
 ./gradlew :composeApp:assembleDebug       # 组装 Android Debug 包
 ```
 
-- [ ] **Step 3: 全量验证并提交**
+- [x] **Step 3: 全量验证并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest :composeApp:assembleDebug
@@ -1587,6 +1587,9 @@ git commit -m "docs: refresh readme and remove template leftovers"
 3. Android 真机/模拟器启动后显示 Dashboard 占位页，工作空间可切换。
 4. `docs/plans/version-matrix.md` 记录了实测通过的版本矩阵。
 
+> 执行记录（2026-09-19）：上述四条标准均已满足，证据见 `docs/plans/version-matrix.md` §4（冷构建下 31 个单测 + 38 个桌面测试全绿、APK 产出、无模板残留）。
+> 第 3 条在实现时追加了内置壁纸背景层（见下方偏差表），占位页浮在壁纸上。
+
 ## 已知偏差（需用户知情）
 
 | 偏差 | 原因 |
@@ -1594,3 +1597,4 @@ git commit -m "docs: refresh readme and remove template leftovers"
 | 不声明 iOS target（简报列为 CORE-004 P0） | Apple target 只能在 macOS 编译；简报 §49 已将 iOS 定为 V2；CMP 1.11+ 的原生目标要求 Kotlin 2.3+，与当前 Kotlin 2.2.10 冲突 |
 | 引入 `jvm("desktop")` target | 让 Compose UI 测试与设计预览无需 Android 模拟器即可运行，是本阶段唯一的自动化 UI 验证手段 |
 | 暂不引入 Navigation 库与 Room/DataStore | 三者都会带来版本兼容风险；先用可测的自有实现与内存存储把架构跑通，Phase 2 再按真实需求选型 |
+| 追加「内置壁纸」实现（计划外的 Task 8.5） | 用户在 Task 9 之前提供了两张 4K 壁纸母版，要求"用作默认和测试"；默认背景因此固定为 Aurora，并新增资源级 Compose UI 测试。母版与派生规则见 `imgs/wallpaper/README.md` |
