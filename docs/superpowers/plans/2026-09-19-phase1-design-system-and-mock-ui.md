@@ -131,7 +131,7 @@ Device Setup 内容：Wake-on-LAN Configuration（PC Name / MAC Address / Broadc
   - `object AppShapes { val card, button, badge: RoundedCornerShape }`
   - `WakeUpMyWallTheme` 接入 `typography` 与 `shapes`
 
-- [ ] **Step 1: 实现排版令牌**
+- [x] **Step 1: 实现排版令牌**
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.theme
@@ -150,7 +150,7 @@ object AppTypography {
 }
 ```
 
-- [ ] **Step 2: 实现形状令牌**
+- [x] **Step 2: 实现形状令牌**
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.theme
@@ -165,7 +165,7 @@ object AppShapes {
 }
 ```
 
-- [ ] **Step 3: 接入主题**
+- [x] **Step 3: 接入主题**
 
 在 `AppTheme.kt` 的 `MaterialTheme(...)` 中补两个参数：
 
@@ -183,7 +183,7 @@ object AppShapes {
         ),
 ```
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -208,7 +208,7 @@ git commit -m "feat: add typography and shape design tokens"
   - `@Composable fun WidgetSurface(style: WidgetStyle, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit)`
   - `@Composable fun SectionHeader(title: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 文件 `src/desktopTest/kotlin/com/xukunz/wakeupmywall/ui/components/WidgetSurfaceTest.kt`：
 
@@ -253,7 +253,7 @@ class WidgetSurfaceTest {
 
 （`testTagOrNothing` 属于多余包装，直接写 `Modifier.testTag("widget:body")` 并 `import androidx.compose.ui.platform.testTag`。）
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*WidgetSurfaceTest*"
@@ -261,7 +261,7 @@ class WidgetSurfaceTest {
 
 Expected: 编译失败，`Unresolved reference: WidgetSurface`。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `WidgetStyle.kt`：
 
@@ -347,7 +347,7 @@ fun SectionHeader(
 }
 ```
 
-- [ ] **Step 4: 运行测试并提交**
+- [x] **Step 4: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*WidgetSurfaceTest*"
@@ -372,7 +372,7 @@ git commit -m "feat: add widget surface with glass solid and minimal styles"
   - `object DashboardLayout { val default: List<DashboardWidget>; fun visible(widgets: List<DashboardWidget>): List<DashboardWidget>; fun toggle(widgets: List<DashboardWidget>, id: String): List<DashboardWidget> }`
   - `object MockData { val devices: List<PcDevice>; val weather: WeatherSnapshot; val calendarEvents: List<CalendarEvent>; val todos: List<TodoItem>; val metrics: MetricsSnapshot }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.domain
@@ -412,7 +412,7 @@ class DashboardWidgetTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*DashboardWidgetTest*"
@@ -420,7 +420,7 @@ class DashboardWidgetTest {
 
 Expected: 编译失败，`Unresolved reference: DashboardLayout`。
 
-- [ ] **Step 3: 实现 Widget 抽象**
+- [x] **Step 3: 实现 Widget 抽象**
 
 `DashboardWidget.kt`：
 
@@ -455,7 +455,7 @@ object DashboardLayout {
 }
 ```
 
-- [ ] **Step 4: 实现 Mock 数据**
+- [x] **Step 4: 实现 Mock 数据**
 
 `MockData.kt` 需覆盖概念图上的所有数字，且数值集中在文件顶部常量，便于后续替换真实数据源：
 
@@ -525,7 +525,7 @@ object MockData {
 
 同时新建 `domain/model/Snapshots.kt`，定义 `WeatherSnapshot`、`CalendarEvent`、`TodoItem`、`MetricsSnapshot` 四个纯数据类（字段与上面 Mock 调用一致）。
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*DashboardWidgetTest*"
@@ -2081,3 +2081,22 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 | 类型一致性 | `PowerRailModel` 由 Phase 0 的 `PcState.capabilities` 派生，Task 4b/5/6/9/12/13 复用同一模型；`HomeMode` 在 Task 9 定义、Task 13 扩为三态，无重复定义 |
 | 占位符扫描 | 无 TBD；刻意留到后续阶段的项（第三方图标、Recent Activity 真实数据）已标注归属 |
 | 已知取舍 | 不引入图标库与 Navigation 库；`⏻` 与动作图标为过渡占位；第三方商标图标一律不内置；视觉校准集中在 Task 15 |
+
+---
+
+## 执行记录：Task 1–3（2026-09-19）
+
+已完成 Task 1、Task 2、Task 3（复选框已勾）。交这一批时的证据：`./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` 全绿（44 个单测 + 55 个桌面测试，其中 8 个是真实 Compose UI 测试）。
+
+### 与本计划正文的偏差（均已按"全局约束/权威规格优先"处理）
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| Task 2 的 `WidgetSurface` | 描边写 `1.dp` | 新增 `Spacing.hairline` 令牌 | 全局约束禁止 `ui/` 出现裸 dp |
+| Task 3 的 `MockData` 天气 | `location = "Home"`、`21/12`、`nextHoursC = listOf(18,19,20,18)` | `Riverside, CA`、`22/14`、四个带标签的逐时（10PM 17° / 1AM 16° / 4AM 15° / 7AM 16°） | 「概念图还原规格」是权威来源，且 B2 要求逐时带时刻标签，故 `WeatherSnapshot.nextHours` 用 `HourlyForecast(label, temperatureC)` |
+| Task 3 的 `MockData` 指标 | 简化版字段（如 `cpuTempC = 54`） | 字段覆盖 C1/C2 全部显示项（含主板/SSD 温度、三组风扇、`recentActivity`） | 计划要求 MockData"覆盖概念图上的所有数字"；型号小字统一收进 `HardwareIdentity`，避免同一事实两处存储 |
+| Task 3 的 `DashboardWidgetTest` | 断言 `visible.size == widgets.size` | 该测试先启用全部 widget 再验保序，另加一条测试断言默认布局会过滤掉 disabled 的 `decorative` | 原断言与 `visible = 过滤 disabled` 的契约自相矛盾（默认布局里 `decorative` 本就是关闭的），属计划缺陷 |
+
+### 新增的执行器（计划外，但服务于全局约束）
+
+`desktopTest/.../DesignTokenDisciplineTest.kt`：扫描 `ui/` 全部 Kotlin 源码，禁止字面量 `Color(0x…)`、裸 `dp`、裸 `sp`。它把"颜色/间距/圆角/字号只能取自 core/theme"从口头约定变成可执行规则，并用红-绿验证过（临时插入违规文件时确实失败，并精确报出文件:行号）。
