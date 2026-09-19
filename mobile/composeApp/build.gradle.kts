@@ -29,6 +29,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            implementation(compose.components.resources)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
@@ -53,6 +54,11 @@ kotlin {
             }
         }
     }
+}
+
+// 固定的资源包名，避免生成类跟着模块名漂移；资源母版与派生规则见 imgs/wallpaper/README.md。
+compose.resources {
+    packageOfResClass = "com.xukunz.wakeupmywall.resources"
 }
 
 android {

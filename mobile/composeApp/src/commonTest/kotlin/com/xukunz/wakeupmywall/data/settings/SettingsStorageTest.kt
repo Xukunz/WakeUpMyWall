@@ -1,5 +1,6 @@
 package com.xukunz.wakeupmywall.data.settings
 
+import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
 import com.xukunz.wakeupmywall.domain.model.MacAddress
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import kotlinx.coroutines.test.runTest
@@ -13,6 +14,7 @@ class SettingsStorageTest {
         val appearance = InMemorySettingsStorage().readAppearance()
         assertEquals("AuroraBlue", appearance.accent)
         assertEquals("Glass", appearance.widgetStyle)
+        assertEquals(BuiltInWallpapers.DefaultId, appearance.wallpaperId)
     }
 
     @Test

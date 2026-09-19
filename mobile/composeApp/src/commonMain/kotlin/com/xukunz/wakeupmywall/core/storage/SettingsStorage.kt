@@ -1,5 +1,6 @@
 package com.xukunz.wakeupmywall.core.storage
 
+import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import kotlinx.serialization.Serializable
 
@@ -7,7 +8,7 @@ import kotlinx.serialization.Serializable
 data class AppearanceSettings(
     val accent: String = "AuroraBlue",
     val widgetStyle: String = "Glass",
-    val wallpaperId: String = "dusk-lake",
+    val wallpaperId: String = BuiltInWallpapers.DefaultId,
 )
 
 /**
