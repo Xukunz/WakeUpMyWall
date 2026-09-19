@@ -27,19 +27,32 @@
 
 ---
 
-## 2. 三个工作空间 + 固定 Power Rail
+## 2. 工作空间与固定 Power Rail
 
 ```
-Home Dashboard ──┬── Dashboard Mode（StandBy 信息）
-                 └── PC Monitor（硬件监控）
+Home ──┬── Dashboard Mode（信息卡主页）
+       ├── PC Monitor（硬件监控）
+       └── StandBy Mode（时钟浮层，兼 Idle 展示形态）
 
 Settings Workspace ── Device Setup / Integrations / Display & Behavior /
-                      Appearance / Notifications / About
+                      Notifications / Appearance（Wallpaper & Personalization）/
+                      Backup & Sync / About
 ```
 
-除全屏沉浸类界面外，所有页面采用 **72 / 28 双栏**：左侧主内容，右侧固定 **PC Power Rail**。
+除 StandBy 模式与全屏沉浸类界面外，所有页面采用 **72 / 28 双栏**：左侧主内容，右侧固定 **Power Rail**。
 
-Power Rail 是整个 App 的常驻组件，展示 `PC Name / PC State / 主电源按钮 / Sleep / Shutdown / Restart / Network-Agent 状态 / Settings 入口`。
+**Power Rail 精确构成**（依据概念图，术语按 §3 修正）：
+
+1. 标题区：`My PC` + 副标 `POWER CONTROL`（Settings 页副标为 `DESKTOP COMPANION`）+ 右上齿轮（进入 Settings）
+2. 状态行：状态色点 + 状态文案（`Ready to wake` / `Online` / `Waking PC…` 等）
+3. 主电源：直径约 220dp 的环形按钮，状态色描边 + 外发光 + 中央电源字符；下方主标签（`Power On` 等）+ 全大写副标（`WAKE YOUR PC`）
+4. 次级动作：三枚并排按钮，每枚 = 图标 + 标签 + 全大写副标：`Sleep` / `SNAP MODE`、`Shut Down` / `POWER OFF`、`Restart` / `FRESH START`
+5. 连接条：通栏圆角条，图标 + 通道文案 + 箭头。文案随状态机切换（`Wake-on-LAN Ready` ↔ `Agent connected over LAN`），**不得**出现 `Connected via Wake-on-LAN`
+6. 可选装饰卡：引用卡（`Better Tools A Calmer Mind` + `SAME PROGRESS A BRIGHTER TOMORROW`），可在 Appearance 中关闭
+
+**StandBy 模式**为第三形态：去掉 Power Rail，改为右侧玻璃浮层卡（标题 + 电源环 + `Power On` + `Night Mode` / `Auto-Dim` 两个开关），底部通栏条显示 PC 在线状态。
+
+**响应式要求：** 概念图按宽屏渲染。主区可用宽度 ≥ 1000dp 用概念图列数；600–1000dp 降为 3 列；< 600dp 用 2 列并允许纵向滚动。禁止在窄屏上强行保持 5 列。
 
 ---
 
@@ -151,18 +164,51 @@ Token 不放进该模型明文序列化路径，单独存入平台安全存储�
 
 ## 7. 页面清单与默认布局
 
-### 7.1 Dashboard Mode（左 72%）
-Greeting + Clock + Weather + Calendar + Todo + PC Status Summary + 可选装饰 Widget。
+权威依据：概念图审阅报告 [docs/design/2026-09-19-concept-review.md](../../design/2026-09-19-concept-review.md)。
 
-### 7.2 PC Monitor（左 72%）
-头部：PC 名 / 硬件摘要（如 `Ryzen 7 7700X`、`RTX 4070 Ti`）+ Quick Actions。
-主体卡片：CPU / GPU / RAM / Storage → Network / Temps & Fans → Uptime / Recent Activity。
+### 7.1 Dashboard Mode（左 72%，三行）
 
-### 7.3 切换方式
-点击 PC Summary Widget 或左右滑动，在 Dashboard ↔ PC Monitor 之间切换；Power Rail 固定不动。
+| 行 | 内容 |
+| --- | --- |
+| 1 | 问候语 `Good Evening`（强调词用 accent 色）+ 副标题 `A CALMER DESKTOP. A BRIGHTER YOU.`；右上装饰文案 `SAME ROOM / DIFFERENT / PERSPECTIVE` |
+| 2 | Weather 卡（18° / Partly Cloudy / ↑22° ↓14° / Riverside, CA / 四列逐时）· Calendar 卡（`Tue, Apr 22` + `This Week` + 周条 + 三条带色点事件 + `+`）· My Tasks 卡（`3 of 5` + 五行任务 + `+ Add a task`） |
+| 3 | My PC 摘要卡（绿点 Online、`Last seen 1 min ago`、缩略图、CPU/Temp/RAM/Network 四项含彩色细条、`>` 进入 Monitor）· 引用装饰卡 |
+| 底部 | 品牌条 `A MORE FOCUSED TOMORROW` + 细分割线 |
 
-### 7.4 Settings Workspace
-左导航：Device Setup、Integrations、Display & Behavior、Appearance、Notifications、Backup & Sync、About；底部 `Reset to Default`。右侧仍保留 Power Rail。
+### 7.2 PC Monitor（左 72%，三行）
+
+| 行 | 内容 |
+| --- | --- |
+| 1 | My PC 身份卡（`DESKTOP-ALPHA` / Windows 11 Pro / Ryzen 7 7700X / RTX 4070 Ti）· Quick Actions（Open Browser / Open Discord / Launch Steam / Open Spotify） |
+| 2 | CPU / GPU / RAM / Storage 四张指标卡（环形进度 + 中心百分数 + sparkline + 两行数值）· System Temps 卡（CPU/GPU/Motherboard/SSD + Fans 段） |
+| 3 | Network（↓124.3 ↑31.7 Mbps）· Uptime（`3d 6h 24m` / `Since Apr 18, 2025`）· Recent Activity（四行应用 + 相对时间）· 引用装饰卡 |
+
+### 7.3 StandBy 模式
+
+超大时钟（`9:41`，分钟用 accent 色）+ 长日期；Weather 卡 + Next Event 卡；右侧 PC 浮层卡；底部通栏 PC 状态条。既可由滑动进入，也是 Idle 长时间无操作后的展示形态。
+
+### 7.4 切换方式
+点击 PC Summary Widget 进入 Monitor，左右滑动在 Dashboard ↔ Monitor ↔ StandBy 之间切换；Power Rail 在三个模式间保持不动。
+
+### 7.5 Settings Workspace
+
+左导航（方案 A 为基础）：`Device Setup`、`Integrations`、`Display & Behavior`、`Notifications`、`Appearance`、`Backup & Sync`、`About`，底部 `Reset to Default`；右栏保留完整 Power Rail + 引用装饰卡。
+
+> 概念图方案 A（`image-gen-3(1)`）的导航只有 6 项，没有 `Display & Behavior`；该组设置只出现在方案 B（`4f74989a`）的卡片里。因为简报 §14 要求 Keep Screen On / Auto Dim / Idle Timeout / 亮度 / Pixel Shift 等设置必须有明确入口，这里把 `Display & Behavior` 保留为第 3 项导航。**这是相对概念图的刻意增加**，需用户知悉。
+
+- **Device Setup**：Wake-on-LAN Configuration（PC Name / MAC / Broadcast IP / Port 步进器 + `Test Connection` + `WOL Ready` 状态块）· Saved Computers（多设备列表 + `Default` 徽标 + `Add Device`）· Integrated Services（Weather / Calendar / To-Do 三个来源与开关）
+- **Appearance**：即 `Wallpaper & Personalization`，见 §7.6
+
+Agent 相关字段（Agent Host / Agent Port / Token）在 Phase 4 以 `Advanced / Agent` 区补入 Device Setup；数据模型从第一天保留这些字段。
+
+### 7.6 Wallpaper & Personalization
+
+左导航（Wallpaper / Themes & Colors / Widgets / Layout / Appearance + `Reset to Default`）+ 中部 `Live Preview — Your Home Screen` + 右侧 Power Rail + 底部控制条：
+
+- Wallpaper：`Dusk Lake`（默认，带对勾）、Mountains、Forest、City Night、Cozy Room、Minimal、Abstract、`+` More
+- Theme & Accent：6 个色点（首个 `Aurora Blue`）
+- Widget Style：Glass（默认）/ Solid / Minimal
+- Appearance：Card Transparency（默认 70%）、Font Scale（默认 100%）、Layout Preset（Default / Compact / Minimal）
 
 ---
 
@@ -250,7 +296,7 @@ docs/       ← 设计、规范、计划
 
 ## 12. V1.0 范围（锁定）
 
-**做：** 横屏 Dashboard（时钟/天气/日历/Todo/PC 摘要）、Power Rail 五种电源操作、WOL 开机与在线检测、PC Monitor（CPU/GPU/RAM/存储/温度/风扇/网络/Uptime + 60 秒曲线）、壁纸/主题色/Widget 显隐、横屏与全屏、Keep Screen On、Auto Dim、Pixel Shift、多 PC 与默认 PC、Agent 配对与 Token 鉴权、Local Todo、Android Calendar Provider、天气。
+**做：** 横屏 Dashboard（问候语/时钟/天气/日历/Todo/PC 摘要/引用装饰卡/品牌条）、**StandBy 时钟模式（含 Night Mode 与 Auto-Dim 开关）**、Power Rail 五种电源操作（环形主按钮 + 三枚次级动作 + 连接条）、WOL 开机与在线检测、PC Monitor（CPU/GPU/RAM/存储环形进度 + 60 秒曲线 + System Temps/Fans + Network/Uptime/Recent Activity + Quick Actions 静态 UI）、7 张内置壁纸（默认 Dusk Lake）/6 个强调色/3 种 Widget 风格/透明度/字号/3 种布局预设、Widget 显隐（含装饰层开关）、横屏与全屏、Keep Screen On、Auto Dim、Pixel Shift、多 PC 与默认 PC、Agent 配对与 Token 鉴权、Local Todo、Android Calendar Provider、天气。
 
 **明确不做（V1）：** 云账号体系、公网远程控制、端口转发、远程桌面、文件传输、完整 Google OAuth、PC 投屏、Android 桌面小组件、Apple Watch / WearOS、用户插件、任意命令执行、指标历史数据库。
 
@@ -268,6 +314,12 @@ docs/       ← 设计、规范、计划
 | D4 | `commonMain` 不引入 DI 框架，Phase 0 用手写组合根 | YAGNI；接口已足够隔离，后续需要时再引入 |
 | D5 | V1 图表只做内存 Ring Buffer（60 秒窗口） | 避免过早引入数据库与存储设计 |
 | D6 | 应用包名改为 `com.xukunz.wakeupmywall` | 开源项目不应保留 `com.example`；发布后改包名代价高，现在改几乎零成本 |
+| D7 | Settings 采用「左导航 + 保留 Power Rail」（概念图 `image-gen-3(1)` 方案） | 与简报 §10 一致，且符合 Power Rail 常驻的全局原则；`4f74989a` 的卡片式布局留待后续做 Settings 概览页 |
+| D8 | 主页升级为三种模式：Dashboard / Monitor / StandBy | 概念图 `image-gen-5` 提供了简报没有的时钟形态，且天然适合承担 Idle 展示 |
+| D9 | 默认壁纸为 `Dusk Lake` | 概念图两张 Personalization 图中 `Dusk Lake` 均为选中态 |
+| D10 | 装饰文案层（`SAME ROOM DIFFERENT PERSPECTIVE`、`A MORE FOCUSED TOMORROW`、引用卡）做成可关闭的 Widget | 概念图中它跨屏常驻；做成开关即可同时满足还原度与 OLED 保护 |
+| D11 | Device Setup 的可见字段与概念图对齐（4 个），Agent 字段延后到 Phase 4 | 避免在 Agent 未落地时暴露无意义的端口/主机输入 |
+| D12 | 概念图中的 `9:41`、信号、电量视为手机系统状态栏，`v1.0` 角标不实现 | 避免把 Mockup 装饰误实现为产品 UI |
 
 ---
 
@@ -276,7 +328,30 @@ docs/       ← 设计、规范、计划
 | # | 问题 | 选项 | 建议 |
 | --- | --- | --- | --- |
 | Q1 | PC Agent 技术栈 | (a) C# / .NET Minimal API + LibreHardwareMonitor；(b) Kotlin/JVM + Ktor + OSHI | **(a)**：V1 要求 CPU/GPU 风扇转速与温度，OSHI 在 Windows 上拿不到风扇转速 |
-| Q2 | 开发与验证方式 | (a) 在本机（Android Studio）编译验证，我只产出代码与计划；(b) 由我在容器内安装 JDK 25 + Android SDK 并自建验证 | 取决于你是否希望我这边能独立跑通构建 |
+| Q2 | 开发与验证方式 | 已裁决：由我在容器内自建工具链并自主验证 | 已完成，见 §16 |
+
+---
+
+## 16. 概念图审阅结论（2026-09-19）
+
+完整审阅报告：[docs/design/2026-09-19-concept-review.md](../../design/2026-09-19-concept-review.md)
+
+- `imgs/concept` 共 10 张图，去重后为 **5 个屏幕**：Home Dashboard、PC Monitor、StandBy、Settings（Device Setup）、Wallpaper & Personalization。
+- 最重要的新增信息是 **StandBy 时钟模式**（`image-gen-5.png`），它是简报未覆盖的第三块主页形态，含 `Night Mode` 与 `Auto-Dim` 两个快捷开关。
+- 最重要的冲突是 **Settings 存在两套互不兼容的布局**（`image-gen-3(1)` 左导航式 vs `4f74989a` 卡片式），以及 **Power Rail 同时显示 `Ready to wake` / `Power On` / `Connected via Wake-on-LAN`**。前者按 D7 处理，后者按 §3 状态机与术语规则处理。
+- 概念图按宽屏渲染，主区 5 列在真机上过窄，因此引入 §2 的响应式断点要求。
+- 审阅未改动 §3 状态机、§5 API 契约、§6 数据模型与安全红线的任何结论。
+
+### 环境验证结果（本次实测）
+
+| 项 | 结果 |
+| --- | --- |
+| JDK | Eclipse Temurin 25.0.4.1+1（安装于 `~/.local/toolchain`，容器无 sudo 权限，故不用 apt） |
+| Gradle | 9.5.0（Wrapper 自动下载） |
+| Android SDK | cmdline-tools 16111833；`platforms;android-37.0`、`build-tools;37.0.0`、`platform-tools 37.0.1` |
+| 基线构建 | 原始工程 `./gradlew :app:assembleDebug` → **BUILD SUCCESSFUL in 1m 8s** |
+| 命名变更 | SDK 平台包已改为小版本命名（`platforms;android-37.0`），旧写法 `platforms;android-37` 会报 `Package not found` |
+| 仓库缺陷 | `gradlew` 在 git 中的模式为 `100644`（不可执行），新克隆后 `./gradlew` 会因权限被拒；已修正为 `100755` |
 
 ---
 

@@ -9,6 +9,8 @@
 **Tech Stack:** Compose Multiplatform 1.10.3（`commonMain` 全部 UI）、kotlin-test、`compose.uiTest`（desktopTest 中运行）、Phase 0 的 domain / core 骨架。
 
 **Spec:** [docs/superpowers/specs/2026-09-19-desktop-companion-design.md](../specs/2026-09-19-desktop-companion-design.md)
+**概念图审阅（本计划的还原依据）：** [docs/design/2026-09-19-concept-review.md](../../design/2026-09-19-concept-review.md)
+**原始图片：** `imgs/concept/`（10 张，去重后 5 个屏幕）
 
 **前置：** Phase 0 全部任务完成，`./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` 全绿。
 
@@ -21,6 +23,65 @@
 - 每个 UI 元素必须有 `testTag`，命名规则 `区域:元素`（如 `powerrail:primary`、`dashboard:weather`）。
 - 每笔提交前 `./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` 必须全绿。
 - 本阶段不引入图标库与字体资源；用文字与几何图形完成布局验证，图标在视觉打磨阶段统一替换。
+- **响应式断点**：主区可用宽度 ≥ 1000dp 用概念图列数；600–1000dp 降为 3 列；< 600dp 用 2 列并允许纵向滚动。窄屏禁止强排 5 列。
+- **不实现 Mockup 装饰**：概念图中的 `9:41`、信号、电量属于手机系统状态栏；右下角 `v1.0` 是图片水印。二者都不得写进 UI。
+- **品牌资源**：Quick Actions 中的 Discord / Steam / Spotify 图标属于第三方商标，不得内置；用通用几何字形 + 文字标签代替。
+- **装饰层可关闭**：`SAME ROOM / DIFFERENT / PERSPECTIVE`、`A MORE FOCUSED TOMORROW`、引用卡属于可开关的装饰层（规范 D10），默认开启，开关接入 Appearance。
+- **主页三形态**：Dashboard / Monitor / StandBy 共用同一个 Power Rail（StandBy 除外，它用浮层卡）；StandBy 由 Task 13 实现。
+
+---
+
+## 概念图还原规格（权威）
+
+**若后续任务描述与本节冲突，以本节为准。** 每一项都来自 `imgs/concept` 的实际像素内容。
+
+### A. Power Rail（28%）
+
+| 序号 | 元素 | 规格 |
+| --- | --- | --- |
+| A1 | 标题区 | `My PC`（约 24sp）+ 副标 `POWER CONTROL`（全大写、字距加宽、次要色）；右上齿轮进入 Settings |
+| A2 | 状态行 | 状态色点 + 文案，取 `PcCapabilities.statusText` 的短形态（`Ready to wake` / `Online` / `Waking PC…`） |
+| A3 | 主电源环 | 直径约 220dp 圆形按钮；环粗约 3dp，用状态色；外部柔和发光；中央为电源字形；下方 `Power On` + `WAKE YOUR PC` |
+| A4 | 次级动作 | 三枚等宽按钮并排：`Sleep`/`SNAP MODE`、`Shut Down`/`POWER OFF`、`Restart`/`FRESH START`，每枚含图标位 |
+| A5 | 连接条 | 通栏圆角条 + 图标 + 通道文案 + 箭头；文案随状态为 `Wake-on-LAN Ready` 或 `Agent connected over LAN` |
+| A6 | 装饰卡 | 引用卡，可在 Appearance 关闭（仅部分屏幕显示，如 Device Setup） |
+
+### B. Dashboard Mode
+
+| 行 | 槽位 | 内容 |
+| --- | --- | --- |
+| 1 | 左 | `Good Evening`（`Evening` 用 accent 色）+ `A CALMER DESKTOP. A BRIGHTER YOU.` |
+| 1 | 右 | `SAME ROOM / DIFFERENT / PERSPECTIVE`（三行、右对齐、低透明度） |
+| 2 | 1 | Weather：图标、`18°`、`Partly Cloudy`、`↑22° ↓14°`、`📍Riverside, CA`、四列逐时（10PM 17° / 1AM 16° / 4AM 15° / 7AM 16°） |
+| 2 | 2 | Calendar：`Tue, Apr 22` + `This Week` + `+`；周条 `S M T W T F S` 日期 `20–26`，选中日实心圆；事件三条（青/琥珀/红圆点 + 时间 + 标题） |
+| 2 | 3 | My Tasks：`My Tasks` + `3 of 5`；五行任务（完成项实心勾 + 删除线，未完成项空心圈）；`+ Add a task` |
+| 3 | 1 | My PC 摘要（宽）：绿点 + `My PC` + `Online` + `Last seen 1 min ago`；缩略图；`CPU 12%`/`Temp 42°C`/`RAM 38%`/`Network ↓12.4 Mbps ↑3.1 Mbps` 各带彩色细条；`>` 进入 Monitor |
+| 3 | 2 | 引用装饰卡：衬线两行 + 分割线 + `SAME PROGRESS A BRIGHTER TOMORROW` |
+| 底 | 通栏 | `A MORE FOCUSED TOMORROW` + 细分割线 |
+
+### C. PC Monitor
+
+| 行 | 内容 |
+| --- | --- |
+| 1 | My PC 身份卡（缩略图 + `DESKTOP-ALPHA` + `Windows 11 Pro` + `AMD Ryzen 7 7700X` + `NVIDIA GeForce RTX 4070 Ti` + `>`）· Quick Actions（`+` + 四个动作块：Open Browser / Open Discord / Launch Steam / Open Spotify） |
+| 2 | CPU `28%`（Ryzen 7 7700X；`4.9 GHz`、`8 cores 16 threads`）· GPU `62%`（RTX 4070 Ti；`67 °C`、`8.1 / 12 GB VRAM`）· RAM `38%`（32 GB DDR5；`12.1 / 32 GB`）· Storage `54%`（2 TB NVMe SSD；`1.1 / 2.0 TB`、`554 GB free`）· System Temps（CPU 68°C / GPU 67°C / Motherboard 42°C / SSD 38°C + Fans：CPU Fan 1,240 RPM / GPU Fan 1,560 RPM / Case Fans 820 RPM） |
+| 3 | Network（`↓124.3 Mbps`、`↑31.7 Mbps` + 曲线）· Uptime（`3d 6h 24m` / `Since Apr 18, 2025`）· Recent Activity（Edge 5 min ago / Steam 12 min ago / VS Code 28 min ago / Spotify 1 hr ago）· 引用装饰卡 |
+
+指标卡统一结构：图标 + 名称 + 型号小字 → **环形进度（中心百分数）** → sparkline → 两行数值。
+
+### D. StandBy（Task 13）
+
+超大时钟（`9:41`，分钟用 accent 色）+ `PM`；下一行长日期 `Tuesday, April 22`；Weather 卡（含 `Clearer skies later tonight.`）+ Next Event 卡（`In 1 hr 19 min`、`Team sync`、`11:00 PM – 12:00 AM`、`Microsoft Teams`）；右侧 PC 浮层卡（标题 + 环 + `Power On` + `Night Mode`/`ON` + `Auto-Dim`/`ACTIVE`）；底部通栏 PC 状态条。
+
+### E. Settings（左导航，方案 A）
+
+左导航条目固定为：`Device Setup`、`Integrations`、`Notifications`、`Appearance`、`Backup & Sync`、`About`，底部 `Reset to Default`。
+
+Device Setup 内容：Wake-on-LAN Configuration（PC Name / MAC Address / Broadcast IP / Port 步进器 + `Test Connection` + `WOL Ready` / `Last tested 2 min ago`）· Saved Computers（4 台设备：My PC `00:1A:2B:3C:4D:5E` Default、Living Room PC `00:1B:44:11:3A:9C`、Workstation `00:25:96:AF:12:BC`、Media Server `00:16:3E:70:9F:21` + `Add Device`）· Integrated Services（Weather Provider `OpenWeatherMap` + Location `Riverside, CA`；Calendar Source `Android Calendar`；Task Source `Local`；各带 `Show on home screen` 开关）。
+
+### F. Wallpaper & Personalization（Task 12）
+
+底部控制条四段：Wallpaper（`Dusk Lake` 默认带对勾 + Mountains / Forest / City Night / Cozy Room / Minimal / Abstract + `+` More）· Theme & Accent（6 色点，首个 `Aurora Blue`）· Widget Style（Glass 默认 / Solid / Minimal，各带小卡预览）· Appearance（Card Transparency 70%、Font Scale 100%、Layout Preset Default / Compact / Minimal）。
 
 ---
 
@@ -33,13 +94,19 @@
 | `ui/components/WidgetSurface.kt` | Glass / Solid / Minimal 三种卡片承载 |
 | `ui/components/WidgetStyle.kt` | `enum class WidgetStyle` 与透明度量表 |
 | `ui/components/SectionHeader.kt` | 卡片标题行（标题 + 右侧动作） |
-| `ui/powerrail/PowerRail.kt` | 常驻 PC 控制栏 |
+| `ui/components/BrandStrip.kt` | 品牌条 `A MORE FOCUSED TOMORROW` + 装饰文案块 |
+| `ui/components/QuoteCard.kt` | 引用装饰卡（可开关） |
+| `ui/components/Breakpoints.kt` | 响应式断点（列数决策，纯逻辑可测） |
+| `ui/powerrail/PowerRail.kt` | 常驻 PC 控制栏（A1–A6 构成） |
+| `ui/powerrail/PowerRingButton.kt` | 环形电源主按钮（含发光与状态色） |
 | `ui/powerrail/PowerRailState.kt` | Rail 的展示模型（由 `PcState` 映射而来） |
 | `ui/dashboard/DashboardShell.kt` | 72/28 外壳 |
 | `ui/dashboard/DashboardMode.kt` | StandBy 信息模式 |
 | `ui/dashboard/widgets/*.kt` | Greeting / Clock / Weather / Calendar / Todo / PcSummary / Decorative |
+| `ui/standby/StandByMode.kt` | 时钟浮层模式 |
 | `ui/monitor/MonitorMode.kt` | 硬件监控模式 |
 | `ui/monitor/MetricCard.kt`、`MetricSparkline.kt` | 指标卡片与 60 秒曲线 |
+| `ui/monitor/ProgressRing.kt`、`QuickActionsCard.kt` | 环形进度与快捷动作 |
 | `ui/settings/SettingsWorkspace.kt` | Settings 左导航 + 内容区 |
 | `ui/settings/DeviceSetupScreen.kt` | 设备配置表单 |
 | `ui/settings/AppearanceScreen.kt` | 壁纸 / 强调色 / Widget 风格 / 布局 + Live Preview |
@@ -587,9 +654,9 @@ fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
 }
 ```
 
-- [ ] **Step 4: 实现 Power Rail UI**
+- [ ] **Step 4: 实现 Power Rail 骨架**
 
-结构：`Column`（PC 名 + 状态徽标 + 主按钮 + 三个次级按钮 + 状态行 + Settings 入口），每个可交互元素带 `testTag("powerrail:...")`；主按钮用 `Button`，次级按钮用 `OutlinedButton`，`enabled` 一律绑定模型字段；`Spacing` 只取令牌。
+先按可用性规则搭结构：`Column`（标题区 + 状态行 + 主按钮 + 三个次级按钮 + 连接条 + Settings 入口），每个可交互元素带 `testTag("powerrail:...")`；`enabled` 一律绑定模型字段；`Spacing` 只取令牌。**Step 4b 会把它升级为概念图的最终构成。**
 
 ```kotlin
 @Composable
@@ -622,6 +689,82 @@ fun PowerRail(
 }
 ```
 
+- [ ] **Step 4b: 升级为概念图构成（A1–A6）**
+
+替换 Step 4 的布局，得到标题区 + 状态行 + 环形主按钮 + 三枚双行次级按钮 + 连接条。为此新增模型字段与环形组件。
+
+`PowerRailModel` 增加四个字段（`PowerRailState.kt`）：
+
+```kotlin
+data class PowerRailModel(
+    val pcName: String,
+    val subtitle: String,          // "POWER CONTROL" / "DESKTOP COMPANION"
+    val stateLabel: String,        // "Ready to wake" / "Online" / "Waking PC…"
+    val primaryLabel: String,      // "Power On" / "Waking…" / "Setup PC"
+    val primaryCaption: String,    // "WAKE YOUR PC" / "WAITING FOR AGENT"
+    val primaryEnabled: Boolean,
+    val canSleep: Boolean,
+    val canShutdown: Boolean,
+    val canRestart: Boolean,
+    val connectionLabel: String,   // "Wake-on-LAN Ready" / "Agent connected over LAN"
+    val statusLine: String,
+)
+```
+
+`powerRailModel` 里把 `stateLabel` 映射为状态短句、`primaryCaption` 映射为全大写副标、`connectionLabel` 按 `ONLINE` / 其他状态二选一。**这是唯一允许决定连接条文案的地方。**
+
+`PowerRingButton.kt`：
+
+```kotlin
+@Composable
+fun PowerRingButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    diameter: Dp = 220.dp,
+) {
+    val ringColor = if (enabled) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+    Box(
+        modifier = modifier
+            .size(diameter)
+            .clip(CircleShape)
+            .drawBehind {
+                val stroke = 3.dp.toPx()
+                drawCircle(color = ringColor.copy(alpha = 0.18f), radius = size.minDimension / 2 - stroke, style = Stroke(stroke * 4))
+                drawCircle(color = ringColor, radius = size.minDimension / 2 - stroke, style = Stroke(stroke))
+            }
+            .clickable(enabled = enabled, onClick = onClick)
+            .testTag("powerrail:primary"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("⏻", style = MaterialTheme.typography.displayLarge, color = ringColor)
+    }
+}
+```
+
+（`⏻` 只是过渡期的字形占位，视觉打磨阶段换成矢量路径；不要为它引入图标库。）
+
+最终 `PowerRail` 结构：
+
+```kotlin
+Column(modifier = modifier.fillMaxHeight().padding(Spacing.lg).testTag("powerrail"), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+    // A1 标题区 + 齿轮
+    // A2 状态行：状态色点 + model.stateLabel
+    PowerRingButton(enabled = model.primaryEnabled, onClick = onPrimary)
+    // 主标签 model.primaryLabel + 副标 model.primaryCaption
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        RailAction("Sleep", "SNAP MODE", model.canSleep, onSleep, "powerrail:sleep")
+        RailAction("Shut Down", "POWER OFF", model.canShutdown, onShutdown, "powerrail:shutdown")
+        RailAction("Restart", "FRESH START", model.canRestart, onRestart, "powerrail:restart")
+    }
+    // A5 连接条：model.connectionLabel + 箭头
+    // A6 可选引用卡（由参数 quoteCard: Boolean 控制，默认 false）
+}
+```
+
+`RailAction(label, caption, enabled, onClick, tag)` 是一个私有 Composable：`OutlinedButton` + 上下两行文字（标签 + 全大写副标）。
+
 - [ ] **Step 5: 写 UI 测试（逐状态断言）**
 
 ```kotlin
@@ -650,8 +793,22 @@ class PowerRailUiTest {
         onNodeWithTag("powerrail:shutdown").assertIsNotEnabled()
         onNodeWithTag("powerrail:restart").assertIsNotEnabled()
     }
+
+    @Test
+    fun `connection label follows the state machine terminology`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { PowerRail(model = powerRailModel(PcState.WOL_READY, device), {}, {}, {}, {}, {}) } }
+        onNodeWithTag("powerrail:connection").assertTextEquals("Wake-on-LAN Ready")
+    }
+
+    @Test
+    fun `online connection label never mentions wake on lan`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { PowerRail(model = powerRailModel(PcState.ONLINE, device), {}, {}, {}, {}, {}) } }
+        onNodeWithTag("powerrail:connection").assertTextEquals("Agent connected over LAN")
+    }
 }
 ```
+
+> `powerrail:connection` 的文案由 `PowerRailModel.connectionLabel` 唯一决定；任何 `Connected via Wake-on-LAN` 文案都视为回归缺陷（规范 §3 术语规则）。
 
 - [ ] **Step 6: 运行测试并提交**
 
@@ -806,10 +963,18 @@ class DashboardModeTest {
     )
 
     @Test
-    fun `renders greeting clock weather calendar and todo`() = runComposeUiTest {
+    fun `renders greeting weather calendar todo and pc summary`() = runComposeUiTest {
         setContent { WakeUpMyWallTheme { DashboardMode(data, WidgetStyle.Glass, {}) } }
-        listOf("dashboard:greeting", "dashboard:clock", "dashboard:weather", "dashboard:calendar", "dashboard:todo")
+        listOf("dashboard:greeting", "dashboard:weather", "dashboard:calendar", "dashboard:todo", "dashboard:pc-summary")
             .forEach { onNodeWithTag(it).assertIsDisplayed() }
+    }
+
+    @Test
+    fun `quote card brand strip and perspective mark are rendered`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { DashboardMode(data, WidgetStyle.Glass, {}) } }
+        onNodeWithTag("dashboard:quote").assertIsDisplayed()
+        onNodeWithTag("dashboard:brand").assertIsDisplayed()
+        onNodeWithTag("dashboard:perspective").assertIsDisplayed()
     }
 
     @Test
@@ -841,15 +1006,19 @@ Expected: 编译失败，`Unresolved reference: DashboardMode`。
 
 每张卡片都是 `WidgetSurface` 内的独立 Composable，`testTag` 固定：
 
-| 卡片 | testTag | 内容 |
+| 卡片 | testTag | 内容（严格按权威规格 B 表） |
 | --- | --- | --- |
-| Greeting | `dashboard:greeting` | `Good Evening` |
-| Clock | `dashboard:clock` | `21:04` + `Tue, Apr 22` |
-| Weather | `dashboard:weather` | 18° / Partly cloudy / H 21 L 12 / Home / 未来 4 小时 |
-| Calendar | `dashboard:calendar` | 三条事件（时间 + 标题） |
-| Todo | `dashboard:todo` | 未完成在前，完成后带删除线 |
-| PC Summary | `dashboard:pc-summary` | 名称、状态、硬件摘要、CPU/GPU/RAM/NET 四个数值 |
-| Decorative | `dashboard:decorative` | 纯几何装饰图形 |
+| Greeting | `dashboard:greeting` | `Good Evening`（`Evening` 用 accent 色）+ `A CALMER DESKTOP. A BRIGHTER YOU.` |
+| Weather | `dashboard:weather` | 图标、`18°`、`Partly Cloudy`、`↑22° ↓14°`、`📍Riverside, CA`、四列逐时（10PM 17° / 1AM 16° / 4AM 15° / 7AM 16°） |
+| Calendar | `dashboard:calendar` | `Tue, Apr 22` + `This Week` + `+`；周条 `S M T W T F S` / `20–26`，选中日 `22` 实心圆；三条事件（青/琥珀/红圆点 + `10:00 Team sync` / `1:00 Lunch break` / `4:00 Plan next week`） |
+| Todo | `dashboard:todo` | `My Tasks` + `3 of 5`；五行任务（完成项实心勾 + 删除线，未完成项空心圈）；`+ Add a task` |
+| PC Summary | `dashboard:pc-summary` | 绿点 + `My PC` + `Online` + `Last seen 1 min ago`；缩略图；`CPU 12%` / `Temp 42°C` / `RAM 38%` / `Network ↓12.4 Mbps ↑3.1 Mbps` 各带彩色细条；`>` |
+| Quote | `dashboard:quote` | 引用装饰卡：衬线两行 + 分割线 + `SAME PROGRESS A BRIGHTER TOMORROW` |
+| Perspective | `dashboard:perspective` | 右上三行 `SAME ROOM / DIFFERENT / PERSPECTIVE` |
+| Brand Strip | `dashboard:brand` | 底部 `A MORE FOCUSED TOMORROW` + 细分割线 |
+| Decorative | `dashboard:decorative` | 纯几何装饰（默认关闭） |
+
+> **与简报的差异：** 概念图首页**没有独立时钟卡**（时钟只在 StandBy 出现），因此 `WidgetType.Clock` 默认 `enabled = false`，不出现在默认布局；需要时可在 Appearance 中打开。
 
 - [ ] **Step 4: 实现 DashboardMode 布局**
 
@@ -1030,10 +1199,30 @@ class MonitorModeTest {
     )
 
     @Test
-    fun `renders the eight v1 metric cards`() = runComposeUiTest {
+    fun `renders every monitor block from the concept`() = runComposeUiTest {
         setContent { WakeUpMyWallTheme { MonitorMode(MockData.metrics, history, WidgetStyle.Glass) } }
-        listOf("metric:cpu", "metric:gpu", "metric:ram", "metric:storage", "metric:temps", "metric:fans", "metric:network", "metric:uptime")
-            .forEach { onNodeWithTag(it).assertExists() }
+        listOf(
+            "monitor:identity", "monitor:quick-actions",
+            "metric:cpu", "metric:gpu", "metric:ram", "metric:storage",
+            "metric:temps", "metric:fans", "metric:network", "metric:uptime",
+            "monitor:activity", "monitor:quote",
+        ).forEach { onNodeWithTag(it).assertExists() }
+    }
+
+    @Test
+    fun `quick actions expose the four concept entries`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { MonitorMode(MockData.metrics, history, WidgetStyle.Glass) } }
+        listOf("Browser", "Discord", "Steam", "Spotify").forEach { action ->
+            onNodeWithTag("action:$action").assertExists()
+        }
+    }
+
+    @Test
+    fun `metric card shows ring percent and footer values`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { MonitorMode(MockData.metrics, history, WidgetStyle.Glass) } }
+        onNodeWithTag("metric:cpu-ring").assertTextEquals("28%")
+        onNodeWithTag("metric:cpu-footer-primary").assertTextEquals("4.9 GHz")
+        onNodeWithTag("metric:cpu-footer-secondary").assertTextEquals("8 cores 16 threads")
     }
 
     @Test
@@ -1088,7 +1277,16 @@ fun MetricSparkline(values: List<Float>, modifier: Modifier = Modifier) {
 
 - [ ] **Step 4: 实现 Monitor Mode 布局**
 
-结构：顶部 `PC 名 + 硬件摘要 + Quick Actions 占位`；四张百分比卡（CPU / GPU / RAM / Storage）各含 `MetricCard` + `MetricSparkline`；下排 `Network / Temps & Fans`；底排 `Uptime / Recent Activity（P2 占位）`。标签与 `testTag` 严格用上表。
+严格按权威规格 C 表构建：
+
+1. 第 1 行左：My PC 身份卡（`monitor:identity`）：缩略图 + `DESKTOP-ALPHA` + `Windows 11 Pro` + `AMD Ryzen 7 7700X` + `NVIDIA GeForce RTX 4070 Ti` + `>`。
+2. 第 1 行右：`QuickActionsCard`（`monitor:quick-actions`）：右上 `+`，四个动作块，每个 `testTag("action:<Name>")`，**不使用第三方商标图标**。
+3. 第 2 行：四张 `MetricCard`（`metric:cpu|gpu|ram|storage`），每张 = 图标 + 名称 + 型号小字 + `ProgressRing`（`metric:<key>-ring`，中心显示百分数）+ `MetricSparkline` + 两行页脚（`metric:<key>-footer-primary` / `-secondary`）。
+4. 第 2 行末：`metric:temps` 卡（CPU 68°C / GPU 67°C / Motherboard 42°C / SSD 38°C，每行彩色点 + 进度条 + 数值）与 `metric:fans` 段（CPU Fan 1,240 RPM / GPU Fan 1,560 RPM / Case Fans 820 RPM）。
+5. 第 3 行：`metric:network`（↓124.3 Mbps / ↑31.7 Mbps + 曲线）、`metric:uptime`（`3d 6h 24m` + `Since Apr 18, 2025`）、`monitor:activity`（四行应用 + 相对时间）、`monitor:quote`（引用装饰卡）。
+6. 列数按 `Breakpoints` 决策：可用宽度 ≥ 1000dp 用 5 列（概念图），600–1000dp 用 3 列，< 600dp 用 2 列并允许纵向滚动。
+
+`ProgressRing` 用 `Canvas` 画背景环 + 前景弧（`drawArc`，`useCenter = false`，`Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)`），中心叠 `Text` 显示百分数；颜色按指标取 `AccentPalette` 对应色。
 
 - [ ] **Step 5: 运行测试并提交**
 
@@ -1100,7 +1298,9 @@ git commit -m "feat: add monitor mode with metric cards and sparklines"
 
 ---
 
-### Task 9: Dashboard ↔ Monitor 双模式切换
+### Task 9: 主页模式切换（Task 13 会扩为三态）
+
+> 本任务先实现 Dashboard ↔ Monitor 两态；Task 13 会把 `HomeMode` 扩为 `Dashboard / Monitor / StandBy` 三态并补上边界测试。本任务的测试写两态断言即可，Task 13 同步升级。
 
 **Files:**
 - Create: `src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/dashboard/HomeSurface.kt`
@@ -1250,6 +1450,8 @@ git commit -m "feat: add dashboard monitor mode switching"
   - `enum class SettingsSection(val title: String) { DeviceSetup("Device Setup"), Integrations("Integrations"), Display("Display & Behavior"), Appearance("Appearance"), Notifications("Notifications"), Backup("Backup & Sync"), About("About") }`
   - `@Composable fun SettingsWorkspace(section: SettingsSection, onSectionChange: (SettingsSection) -> Unit, content: @Composable BoxScope.(SettingsSection) -> Unit, modifier: Modifier = Modifier)`
   - `@Composable fun ResetToDefaultRow(onReset: () -> Unit, modifier: Modifier = Modifier)`
+
+**与概念图的差异（需知悉）：** 概念图方案 A（`image-gen-3(1)`）的左导航只有 6 项，没有 `Display & Behavior`；本任务保留 7 项，因为简报 §14 的显示/省电设置必须有入口。`Appearance` 条目即概念图的 `Wallpaper & Personalization`（Task 12）。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -1516,7 +1718,7 @@ git commit -m "feat: add device setup form with validation"
 - Produces:
   - `data class AppearanceState(val accent: ThemeAccent, val widgetStyle: WidgetStyle, val wallpaperId: String, val transparency: Float, val fontScale: Float, val widgets: List<DashboardWidget>)`
   - `object AppearanceReducer { fun toggleWidget(state: AppearanceState, id: String): AppearanceState; fun setAccent(state: AppearanceState, accent: ThemeAccent): AppearanceState; fun setWidgetStyle(state: AppearanceState, style: WidgetStyle): AppearanceState; fun setWallpaper(state: AppearanceState, id: String): AppearanceState }`
-  - `object BuiltInWallpapers { val ids: List<String> }`（`mountain` / `forest` / `city-night` / `cozy-room` / `minimal` / `abstract`）
+  - `object BuiltInWallpapers { val ids: List<String> }`（顺序固定：`dusk-lake` / `mountains` / `forest` / `city-night` / `cozy-room` / `minimal` / `abstract`；`dusk-lake` 为默认）
   - `@Composable fun AppearanceScreen(state: AppearanceState, onStateChange: (AppearanceState) -> Unit, preview: @Composable (AppearanceState) -> Unit, modifier: Modifier = Modifier)`
 
 - [ ] **Step 1: 写失败测试**
@@ -1527,7 +1729,7 @@ class AppearanceStateTest {
     private val state = AppearanceState(
         accent = ThemeAccent.AuroraBlue,
         widgetStyle = WidgetStyle.Glass,
-        wallpaperId = "mountain",
+        wallpaperId = "dusk-lake",
         transparency = 0.35f,
         fontScale = 1f,
         widgets = DashboardLayout.default,
@@ -1549,15 +1751,22 @@ class AppearanceStateTest {
     @Test
     fun `set wallpaper validates against built in list`() {
         assertEquals("forest", AppearanceReducer.setWallpaper(state, "forest").wallpaperId)
-        assertEquals("mountain", AppearanceReducer.setWallpaper(state, "unknown").wallpaperId)
+        assertEquals("dusk-lake", AppearanceReducer.setWallpaper(state, "unknown").wallpaperId)
     }
 
     @Test
-    fun `built in wallpapers match spec list`() {
+    fun `built in wallpapers match the concept order`() {
         assertEquals(
-            listOf("mountain", "forest", "city-night", "cozy-room", "minimal", "abstract"),
+            listOf("dusk-lake", "mountains", "forest", "city-night", "cozy-room", "minimal", "abstract"),
             BuiltInWallpapers.ids,
         )
+    }
+
+    @Test
+    fun `default appearance uses dusk lake glass and aurora blue`() {
+        assertEquals("dusk-lake", state.wallpaperId)
+        assertEquals(WidgetStyle.Glass, state.widgetStyle)
+        assertEquals(ThemeAccent.AuroraBlue, state.accent)
     }
 }
 ```
@@ -1576,7 +1785,18 @@ Expected: 编译失败，`Unresolved reference: AppearanceState`。
 
 - [ ] **Step 4: 实现 UI（含 Live Preview）**
 
-布局：左侧控件列（Wallpaper 网格 6 项、Accent 6 个色点、Widget Style 三选一、Transparency 滑杆、Font Scale 滑杆、Widget 显隐开关列表），中间 `Live Preview` 区域直接渲染 `DashboardMode`（用 `WidgetStyle` 与 `accent` 参数驱动，`testTag("appearance:preview")`），底部 `Reset to Default` 复用 `ResetToDefaultRow`。
+严格按权威规格 F 表构建：
+
+1. 左侧导航（`appearance:nav:<name>`）：Wallpaper（默认选中）、Themes & Colors、Widgets、Layout、Appearance；分割线后 `Reset to Default`。
+2. 中部 `Live Preview — Your Home Screen` 面板（`appearance:preview`）：内嵌 `DashboardMode` 渲染，随 `WidgetStyle` / `accent` / 壁纸实时变化。
+3. 右侧保留 Power Rail（由外层 `AppShell` 提供）。
+4. 底部控制条四段：
+   - **Wallpaper**：7 张缩略图（`appearance:wallpaper:<id>`），选中项带对勾角标（`appearance:wallpaper-selected`），末尾 `appearance:wallpaper-more` 打开系统图片选择器
+   - **Theme & Accent**：6 个色点（`appearance:accent:<AccentName>`），首个标注 `Aurora Blue`
+   - **Widget Style**：Glass / Solid / Minimal（`appearance:style:<Name>`），每项带小卡预览并标记当前选中
+   - **Appearance**：Card Transparency 滑杆（`appearance:transparency`，默认 70%）、Font Scale 滑杆（`appearance:font-scale`，默认 100%）、Layout Preset 三选一（`appearance:layout:<Name>`，默认 Default）
+
+滑杆取值写入 `AppearanceState.transparency` 与 `fontScale`；`fontScale` 通过 `LocalDensity` 的 `fontScale` 覆盖应用到 Live Preview 内的预览子树。
 
 - [ ] **Step 5: 写 UI 测试**
 
@@ -1616,18 +1836,248 @@ git commit -m "feat: add appearance screen with live preview"
 
 ---
 
+### Task 13: StandBy 模式（概念图 image-gen-5）
+
+**Files:**
+- Create: `src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/standby/StandByMode.kt`
+- Create: `src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/standby/StandByClock.kt`
+- Modify: `src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/dashboard/HomeSurface.kt`
+- Modify: `src/commonMain/kotlin/com/xukunz/wakeupmywall/app/AppNavigator.kt`（`HomeMode` 增加第三态）
+- Test: `src/desktopTest/kotlin/com/xukunz/wakeupmywall/ui/standby/StandByModeTest.kt`
+
+**Interfaces:**
+- Consumes: `DashboardData`、`PowerRailModel`
+- Produces:
+  - `enum class HomeMode { Dashboard, Monitor, StandBy }`（替换 Task 9 的两态定义）
+  - `@Composable fun StandByMode(data: DashboardData, rail: PowerRailModel, onRailEvent: (RailEvent) -> Unit, onOpenMonitor: () -> Unit, modifier: Modifier = Modifier)`
+  - `@Composable fun StandByClock(time: String, meridiem: String, date: String, modifier: Modifier = Modifier)`
+
+- [ ] **Step 1: 写失败测试**
+
+```kotlin
+@OptIn(ExperimentalTestApi::class)
+class StandByModeTest {
+
+    @Test
+    fun `renders clock weather next event and pc card`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { StandByMode(standByData, railModel, {}, {}) } }
+        listOf("standby:clock", "standby:weather", "standby:next-event", "standby:pc-card", "standby:status-bar")
+            .forEach { onNodeWithTag(it).assertIsDisplayed() }
+    }
+
+    @Test
+    fun `clock shows minute in accent color`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { StandByClock("9:41", "PM", "Tuesday, April 22") } }
+        onNodeWithTag("standby:clock-hour").assertTextEquals("9:")
+        onNodeWithTag("standby:clock-minute").assertTextEquals("41")
+    }
+
+    @Test
+    fun `pc card exposes night mode and auto dim instead of power actions`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { StandByMode(standByData, railModel, {}, {}) } }
+        onNodeWithTag("standby:night-mode").assertExists()
+        onNodeWithTag("standby:auto-dim").assertExists()
+        onNodeWithTag("powerrail:sleep").assertDoesNotExist()
+    }
+
+    @Test
+    fun `swipe left from standby opens monitor`() {
+        val controller = HomeModeController()
+        controller.onSwipeLeft()
+        controller.onSwipeLeft()
+        assertEquals(HomeMode.StandBy, controller.current.value)
+    }
+}
+```
+
+- [ ] **Step 2: 运行测试，确认失败**
+
+```bash
+./gradlew :composeApp:desktopTest --tests "*StandByModeTest*"
+```
+
+Expected: 编译失败，`Unresolved reference: StandByMode`。
+
+- [ ] **Step 3: 实现 StandByClock**
+
+```kotlin
+@Composable
+fun StandByClock(time: String, meridiem: String, date: String, modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    val hour = time.substringBefore(':') + ":"
+    val minute = time.substringAfter(':')
+    Column(modifier = modifier.testTag("standby:clock")) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(hour, style = AppTypography.hugeClock, modifier = Modifier.testTag("standby:clock-hour"))
+            Text(minute, style = AppTypography.hugeClock, color = accent, modifier = Modifier.testTag("standby:clock-minute"))
+            Text(meridiem, style = AppTypography.metricUnit, modifier = Modifier.padding(start = Spacing.sm).testTag("standby:clock-meridiem"))
+        }
+        Text(date, style = AppTypography.title, modifier = Modifier.testTag("standby:clock-date"))
+    }
+}
+```
+
+同时在 `core/theme/Typography.kt` 增加 `val hugeClock = TextStyle(fontSize = 120.sp, fontWeight = FontWeight.Light)`。
+
+- [ ] **Step 4: 实现 StandByMode**
+
+按权威规格 D 表：全屏壁纸 + 左上品牌条 + 右上 `SAME ROOM / DIFFERENT / PERSPECTIVE`；主区左 `StandByClock`、中排 Weather 卡（含 `Clearer skies later tonight.`）与 Next Event 卡（`In 1 hr 19 min` / `Team sync` / `11:00 PM – 12:00 AM` / `Microsoft Teams`）；右侧 PC 浮层卡（`standby:pc-card`）：标题 + `PowerRingButton` + `Power On` + `WAKE YOUR PC` + 两个开关按钮 `standby:night-mode`（`Night Mode` / `ON`）与 `standby:auto-dim`（`Auto-Dim` / `ACTIVE`）；底部通栏条 `standby:status-bar`（显示器图标 + 绿点 + `My PC` + `Online` + `Last seen 1 min ago` + `>`）。
+
+**注意：** StandBy 不渲染 `PowerRail`，因此不得出现 `powerrail:*` 标签；这一点由 Step 1 的第三个测试守住。
+
+- [ ] **Step 5: 接入三态切换**
+
+`HomeModeController` 由两态扩为三态：`Dashboard -(+1)-> Monitor -(+1)-> StandBy`，`onSwipeLeft()` 前进一态、`onSwipeRight()` 后退一态，到边界停住。Task 9 的两态测试需同步改为三态断言。
+
+- [ ] **Step 6: 运行测试并提交**
+
+```bash
+./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
+git add -A
+git commit -m "feat: add standby clock mode with compact pc card"
+```
+
+---
+
+### Task 14: 响应式断点
+
+**Files:**
+- Create: `src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/components/Breakpoints.kt`
+- Test: `src/commonTest/kotlin/com/xukunz/wakeupmywall/ui/components/BreakpointsTest.kt`
+
+**Interfaces:**
+- Consumes: 无
+- Produces:
+  - `enum class LayoutWidth { Compact, Medium, Expanded }`
+  - `object Breakpoints { fun widthFor(availableDp: Int): LayoutWidth; fun columnsFor(availableDp: Int): Int }`
+
+- [ ] **Step 1: 写失败测试**
+
+```kotlin
+class BreakpointsTest {
+
+    @Test
+    fun `below six hundred dp is compact with two columns`() {
+        assertEquals(LayoutWidth.Compact, Breakpoints.widthFor(560))
+        assertEquals(2, Breakpoints.columnsFor(560))
+    }
+
+    @Test
+    fun `between six hundred and one thousand dp is medium with three columns`() {
+        assertEquals(LayoutWidth.Medium, Breakpoints.widthFor(600))
+        assertEquals(LayoutWidth.Medium, Breakpoints.widthFor(999))
+        assertEquals(3, Breakpoints.columnsFor(800))
+    }
+
+    @Test
+    fun `one thousand dp and above is expanded with concept columns`() {
+        assertEquals(LayoutWidth.Expanded, Breakpoints.widthFor(1000))
+        assertEquals(5, Breakpoints.columnsFor(1200))
+    }
+
+    @Test
+    fun `boundary values are inclusive on the lower edge`() {
+        assertEquals(LayoutWidth.Compact, Breakpoints.widthFor(599))
+        assertEquals(LayoutWidth.Medium, Breakpoints.widthFor(600))
+        assertEquals(LayoutWidth.Expanded, Breakpoints.widthFor(1000))
+    }
+}
+```
+
+- [ ] **Step 2: 运行测试，确认失败**
+
+```bash
+./gradlew :composeApp:testDebugUnitTest --tests "*BreakpointsTest*"
+```
+
+Expected: 编译失败，`Unresolved reference: Breakpoints`。
+
+- [ ] **Step 3: 实现**
+
+```kotlin
+package com.xukunz.wakeupmywall.ui.components
+
+enum class LayoutWidth { Compact, Medium, Expanded }
+
+object Breakpoints {
+    const val CompactMax = 599
+    const val MediumMax = 999
+
+    fun widthFor(availableDp: Int): LayoutWidth = when {
+        availableDp <= CompactMax -> LayoutWidth.Compact
+        availableDp <= MediumMax -> LayoutWidth.Medium
+        else -> LayoutWidth.Expanded
+    }
+
+    fun columnsFor(availableDp: Int): Int = when (widthFor(availableDp)) {
+        LayoutWidth.Compact -> 2
+        LayoutWidth.Medium -> 3
+        LayoutWidth.Expanded -> 5
+    }
+}
+```
+
+- [ ] **Step 4: 接入 Dashboard 与 Monitor**
+
+在 `DashboardMode` 与 `MonitorMode` 内用 `BoxWithConstraints` 取 `maxWidth`，按 `Breakpoints.columnsFor(maxWidth.value.toInt())` 决定每行卡片数量；`Compact` 时整屏改为 `Column` + `verticalScroll`。禁止用固定 `1f` 权重的 Row 强排。
+
+- [ ] **Step 5: 运行测试并提交**
+
+```bash
+./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
+git add -A
+git commit -m "feat: add responsive breakpoints for dashboard and monitor grids"
+```
+
+---
+
+### Task 15: 视觉还原复核
+
+**Files:**
+- Create: `docs/plans/phase1-visual-review.md`
+- Modify: `src/commonMain/kotlin/com/xukunz/wakeupmywall/core/theme/Tokens.kt`（取色校准结果）
+
+**Interfaces:**
+- Consumes: Task 1–14 的全部 UI
+- Produces: 逐屏「已还原 / 有偏差」清单 + 校准后的主题色值
+
+- [ ] **Step 1: 用 desktop target 渲染五个屏幕并截图**
+
+为每个屏幕写一个 `@Preview` 或 desktop `main` 入口渲染，把截图保存到 `docs/plans/screenshots/`；文件名与概念图屏幕名对应（`dashboard.png`、`monitor.png`、`standby.png`、`device-setup.png`、`personalization.png`）。
+
+- [ ] **Step 2: 逐屏比对并记录偏差**
+
+`docs/plans/phase1-visual-review.md` 必须逐屏列出：布局顺序、卡片数量、文案、数值、颜色、圆角与间距的差异，以及每项差异的处理结论（立即修 / 留到哪个 Phase）。**不允许写"基本一致"这类无法验证的结论。**
+
+- [ ] **Step 3: 取色校准写入令牌**
+
+从概念图取色后更新 `Tokens.kt` 的 `DarkSurface` 与 `AccentPalette`，并保持 Task 1 的对比度测试（`ThemeAccentTest`）全绿；若某色值导致对比度不达标，必须调整并在复核文档里记录原因。
+
+- [ ] **Step 4: 运行全量测试并提交**
+
+```bash
+./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
+git add -A
+git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
+```
+
+---
+
 ## Phase 1 完成标准
 
-1. `./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` 全绿，且新增测试覆盖：Power Rail 五种状态、Dashboard 卡片显隐、Ring Buffer 边界、设备表单校验、外观状态归约。
-2. 五个核心界面（Dashboard Mode、PC Monitor、Settings、Appearance、Power Rail）在 desktop 预览与 Android 真机上均能渲染，横向 72/28 布局不溢出。
-3. 概念图比对结论记录到 `docs/plans/phase1-visual-review.md`：逐页列出"已还原 / 有偏差"，偏差项写明是留到哪个 Phase。
-4. 全部数值来自 `data/mock/MockData.kt`；`grep -rn "0x[0-9A-Fa-f]\{8\}" mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/ui` 只应命中令牌文件。
+1. `./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` 全绿，且测试覆盖：Power Rail 五种状态与连接条术语、Dashboard 卡片显隐、Ring Buffer 边界、设备表单校验、外观状态归约、StandBy 组件构成、响应式断点边界。
+2. **五个屏幕**（Home Dashboard、PC Monitor、StandBy、Settings/Device Setup、Wallpaper & Personalization）在 desktop 渲染与 Android 真机上均正常，72/28 布局不溢出。
+3. 概念图逐屏比对结论记录到 `docs/plans/phase1-visual-review.md`，偏差项写明归属 Phase。
+4. 全部数值来自 `data/mock/MockData.kt`；UI 包内不出现字面量色值（只允许命中 `core/theme`）。
+5. 术语红线成立：代码库中不存在 `Connected via Wake-on-LAN` 字符串（除规范与审阅文档中的引用）。
+6. 概念图中的手机状态栏与 `v1.0` 水印没有被实现。
 
 ## 自检结果（写作时执行）
 
 | 检查项 | 结果 |
 | --- | --- |
 | 规范覆盖 | 规范 §2 三工作空间 → Task 5/9/10；§3 状态机 → Task 4；§7 页面清单 → Task 6/8；§8 指标与 60 秒曲线 → Task 7/8；§9 显示默认值中的亮度/像素位移 → Phase 8；§10 架构约束 → Phase 0 |
-| 类型一致性 | `PowerRailModel` 由 Phase 0 的 `PcState.capabilities` 派生，Task 5/6/9/12 复用同一模型，无重复定义 |
-| 占位符扫描 | 无 TBD；两处刻意留到后续阶段的项（`DecorativeWidget` 造型打磨、Recent Activity）已标注 P2 并归入 Phase 8 |
-| 已知取舍 | 不引入图标库与 Navigation 库；文案与图形用文字/几何占位，视觉打磨放在 Phase 1 末尾的视觉复核 |
+| 概念图覆盖 | 审阅报告 §3–§7 的五个屏幕 → Task 6/8/10/12/13；权威规格 A–F 表分别对应 Task 4b/6/8/13/10/12 |
+| 类型一致性 | `PowerRailModel` 由 Phase 0 的 `PcState.capabilities` 派生，Task 4b/5/6/9/12/13 复用同一模型；`HomeMode` 在 Task 9 定义、Task 13 扩为三态，无重复定义 |
+| 占位符扫描 | 无 TBD；刻意留到后续阶段的项（第三方图标、Recent Activity 真实数据）已标注归属 |
+| 已知取舍 | 不引入图标库与 Navigation 库；`⏻` 与动作图标为过渡占位；第三方商标图标一律不内置；视觉校准集中在 Task 15 |

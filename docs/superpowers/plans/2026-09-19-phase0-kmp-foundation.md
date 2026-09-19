@@ -58,26 +58,31 @@
 - Consumes: 无
 - Produces: 可用的 `java`、`ANDROID_SDK_ROOT`、可执行的 `./gradlew`；`docs/plans/version-matrix.md` 记录实测矩阵供后续任务引用
 
-- [ ] **Step 1: 安装 JDK（Ubuntu 26.04 x86_64）**
+- [ ] **Step 1: 安装 JDK 25（免 root，已实测）**
+
+本容器是 Ubuntu 26.04 x86_64 且 `sudo` 需要交互密码，`apt-get` 不可用，因此改用 Temurin tarball 装到用户目录：
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y openjdk-25-jdk
+mkdir -p ~/.local/toolchain && cd ~/.local/toolchain
+curl -fL --retry 3 -o jdk25.tar.gz \
+  "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_linux_hotspot_25.0.4.1_1.tar.gz"
+tar xzf jdk25.tar.gz
+export JAVA_HOME="$HOME/.local/toolchain/jdk-25.0.4.1+1"
+export PATH="$JAVA_HOME/bin:$PATH"
 java -version
-readlink -f "$(which java)"
 ```
 
-Expected: 输出 `openjdk version "25...`。若仓库无 `openjdk-25-jdk`，改装 `openjdk-21-jdk` 并在矩阵文档中记录：Gradle 会依 `gradle/gradle-daemon-jvm.properties`（`toolchainVersion=25`）经 foojay 自动下载 Daemon 用 JDK 25。
+Expected: `openjdk version "25.0.4.1" 2026-08-18 LTS`（实测输出）。
 
 - [ ] **Step 2: 安装 Android SDK 命令行工具**
 
 ```bash
-export ANDROID_SDK_ROOT=/opt/android-sdk
-sudo mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+export ANDROID_SDK_ROOT="$HOME/.local/toolchain/android-sdk"
+mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
 curl -fL -o /tmp/cmdline-tools.zip \
   https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip
-sudo unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools-extract
-sudo mv /tmp/cmdline-tools-extract/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+unzip -q -o /tmp/cmdline-tools.zip -d /tmp/cmdline-extract
+mv /tmp/cmdline-extract/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 ```
 
 Expected: `"$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"` 可执行。
@@ -86,24 +91,36 @@ Expected: `"$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"` 可执行。
 - [ ] **Step 3: 安装平台与构建工具并接受许可**
 
 ```bash
-export ANDROID_SDK_ROOT=/opt/android-sdk
-export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-yes | sdkmanager --licenses
-sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0"
-sdkmanager --list_installed
+export JAVA_HOME="$HOME/.local/toolchain/jdk-25.0.4.1+1"
+export ANDROID_SDK_ROOT="$HOME/.local/toolchain/android-sdk"
+export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses
+sdkmanager --sdk_root="$ANDROID_SDK_ROOT" "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
+sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --list_installed
 ```
 
-Expected: `--list_installed` 中出现 `platforms;android-37` 与 `build-tools;37.0.0`。
+Expected: 出现 `platform-tools 37.0.1`、`platforms/android-37.0`、`build-tools/37.0.0`。
+
+> **重要（已实测）：** SDK 平台包已改为小版本命名，`platforms;android-37` 会报 `Package platforms/android-37 not found`，必须用 `platforms;android-37.0`。另外 `sdkmanager` 已标记弃用，新入口是同一目录下的 `android` 二进制（`android sdk`）。
 
 - [ ] **Step 4: 写入 `local.properties` 并验证 Gradle 可启动**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall
-printf 'sdk.dir=/opt/android-sdk\n' > local.properties
+printf 'sdk.dir=%s\n' "$HOME/.local/toolchain/android-sdk" > local.properties
+chmod +x gradlew          # 仓库里 gradlew 模式是 100644，新克隆后无法执行
 ./gradlew --version
 ```
 
-Expected: 输出 `Gradle 9.5.0` 与 `Daemon JVM: 25`。
+Expected: `Gradle 9.5.0`、`Launcher JVM: 25.0.4.1`、`Daemon JVM: Compatible with Java 25`（实测输出）。
+
+然后用**未改动的原始工程**建立基线：
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+Expected: `BUILD SUCCESSFUL in 1m 8s`（实测输出，`compileSdk 37` 由 `platforms/android-37.0` 提供）。
 
 - [ ] **Step 5: 记录版本矩阵**
 
@@ -121,6 +138,8 @@ Expected: 输出 `Gradle 9.5.0` 与 `Daemon JVM: 25`。
 ```
 
 若 `1.10.3` 在 Task 2 解析失败，回退顺序为 `1.9.0` → 升 Kotlin 至 `2.2.20`；每次回退都要更新本文件并注明原因。
+
+已实测项（截至 2026-09-19）：JDK `25.0.4.1+1`、Gradle `9.5.0`、`platforms/android-37.0`、`build-tools 37.0.0`、`platform-tools 37.0.1`，原始工程 `:app:assembleDebug` 通过。**Compose Multiplatform 1.10.3 尚未实测**，由 Task 2 首次解析时确认。
 
 - [ ] **Step 6: Commit**
 
@@ -980,7 +999,7 @@ import kotlinx.serialization.Serializable
 data class AppearanceSettings(
     val accent: String = "AuroraBlue",
     val widgetStyle: String = "Glass",
-    val wallpaperId: String = "mountain",
+    val wallpaperId: String = "dusk-lake",
 )
 
 interface SettingsStorage {
