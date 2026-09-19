@@ -107,3 +107,67 @@ mobile/androidApp     com.android.application                    （MainActivity
 1. **SDK 平台包命名变更**：`platforms;android-37` 已不存在，必须写 `platforms;android-37.0`（同系列还有 `-37.1`、`-37.2`）。
 2. **`gradlew` 可执行位缺失**：git 中记录为 `100644`，新克隆后执行 `./gradlew` 会得到 `Permission denied`。已修正为 `100755`。
 3. **沙箱限制**：容器内无 JDK/SDK 且沙箱 DNS 不通，所有下载与构建都需要在沙箱外执行；`local.properties` 已被 `.gitignore` 忽略，不会误提交机器相关路径。
+
+---
+
+## 6. 本机 Android 模拟器验证环境（2026-09-19 实测）
+
+用于把"能在真机/模拟器上启动"这条验收标准变成可复现的操作，不依赖图形界面。
+
+### 前置：KVM 权限
+
+模拟器必须拿到 `/dev/kvm`，否则只能退化成纯软件模拟（x86_64 镜像基本不可用）。本机 `/dev/kvm` 的 ACL 是 `user::rw-` + `user:gdm-greeter:rw-` + `group:kvm:rw-`，普通用户需要进 `kvm` 组：
+
+```bash
+sudo usermod -aG kvm "$USER"     # 永久；组变更只对之后新启动的进程生效
+sudo setfacl -m u:$USER:rw /dev/kvm   # 立即生效、不需要重登，重启后失效
+```
+
+**注意**：`usermod` 之后必须重新登录（或重启 Android Studio / 终端会话），否则旧进程的组列表里没有 `kvm`，`emulator -accel-check` 会报 `ProbeKVM: This user doesn't have permissions to use KVM`，`accel: 11`。本机也没装 `sg` / `newgrp`，无法在当前会话里临时提权。
+
+验证：
+
+```bash
+"$ANDROID_SDK_ROOT/emulator/emulator" -accel-check   # 期望 accel: 0 + "KVM (version 12) is installed and usable"
+```
+
+### 安装与建 AVD
+
+```bash
+SDKM="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin"
+yes | "$SDKM/sdkmanager" "emulator" "system-images;android-37.0;google_apis;x86_64"
+# android-37.0 只有 google_apis，没有更小的 aosp_atd；api 36 有 aosp_atd 可省约 1 GB
+echo no | "$SDKM/avdmanager" create avd -n wall \
+  -k "system-images;android-37.0;google_apis;x86_64" -d "Nexus 10" --force
+```
+
+`Nexus 10` 是 2560×1600 @320dpi 的横屏平板档，贴近"墙面屏"的产品形态。
+
+### 无头启动与验证
+
+```bash
+EMU="$ANDROID_SDK_ROOT/emulator/emulator"; ADB="$ANDROID_SDK_ROOT/platform-tools/adb"
+setsid nohup "$EMU" -avd wall -no-window -no-audio -no-snapshot -no-boot-anim \
+  -gpu swiftshader_indirect > /tmp/emulator_wall.log 2>&1 < /dev/null &
+"$ADB" wait-for-device
+until [ "$("$ADB" shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 5; done
+
+./gradlew :composeApp:installDebug
+"$ADB" logcat -c
+"$ADB" shell am start -n com.xukunz.wakeupmywall/.MainActivity
+"$ADB" shell dumpsys activity activities | grep topResumedActivity   # 应指向 MainActivity
+"$ADB" logcat -d | grep -E "FATAL|AndroidRuntime"                     # 应为空
+"$ADB" exec-out screencap -p > /tmp/app.png                           # 取真实帧
+adb emu kill                                                          # 收工
+```
+
+### 实测结果
+
+- 冷启动到 `sys.boot_completed=1`：约 20 秒；`ro.build.version.sdk = 37`。
+- App 安装后 `topResumedActivity` 为 `com.xukunz.wakeupmywall/.MainActivity`，logcat 无 `FATAL`。
+- 屏幕取到的真实帧与桌面渲染一致（Aurora 壁纸 + Dashboard 占位页）。
+
+### 已知限制（不是 App 缺陷，但会影响后续阶段）
+
+1. **无头模拟器转不到横屏**：`settings put system user_rotation 1`、`cmd window user-rotation lock 1`、`adb emu rotate` 都试过，`mCurrentOrientation=1` 但显示设备始终 `rotation 0`——Android 12L+ 的大屏设备默认忽略旋转请求。截图因此是 1600×2560 竖屏。
+2. **App 目前没有声明屏幕方向**：`AndroidManifest.xml` 里没有 `android:screenOrientation`。Phase 1 全局约束要求"横屏锁定 72/28"，所以 Task 5/8 落地 AppShell 时需要决定是写入清单还是走运行时策略（Phase 8 的 Display & Reliability 也会碰这块）。
