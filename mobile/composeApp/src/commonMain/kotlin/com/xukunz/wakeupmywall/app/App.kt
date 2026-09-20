@@ -13,16 +13,25 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import com.xukunz.wakeupmywall.core.connectivity.ConnectionReport
+import com.xukunz.wakeupmywall.core.connectivity.ConnectivityTester
+import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
+import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
+import com.xukunz.wakeupmywall.core.network.AgentApi
+import com.xukunz.wakeupmywall.core.network.createAgentHttpClient
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.theme.ThemeAccent
 import com.xukunz.wakeupmywall.core.storage.SettingsStorage
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
+import com.xukunz.wakeupmywall.data.device.DeviceRepository
 import com.xukunz.wakeupmywall.data.settings.InMemorySettingsStorage
 import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.DashboardLayout
+import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.model.PcEvent
 import com.xukunz.wakeupmywall.domain.model.PcState
 import com.xukunz.wakeupmywall.domain.usecase.PcStateMachine
@@ -45,6 +54,7 @@ import com.xukunz.wakeupmywall.ui.dashboard.HomeModeController
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
 import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun App(
@@ -53,6 +63,8 @@ fun App(
     initialPcState: PcState = PcState.ONLINE,
     // 平台实现在 MainActivity 注入（DataStore）；测试与桌面预览默认走内存实现。
     storage: SettingsStorage = remember { InMemorySettingsStorage() },
+    // 平台实现在 MainActivity 注入（java.net.Socket）；桌面没有 TCP 探测能力，如实报不可用。
+    probe: TcpProbe = UnsupportedTcpProbe,
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
@@ -61,7 +73,23 @@ fun App(
     val homeModeController = remember { HomeModeController() }
     val homeMode by homeModeController.current
     var settingsSection by remember { mutableStateOf(SettingsSection.DeviceSetup) }
-    val device = MockData.defaultDevice
+    // 设备列表的唯一来源。`seed` 只在存储里从来没写过设备时用一次（Phase 3 会移除播种）。
+    val repository = remember(storage) { DeviceRepository(storage, seed = MockData.devices) }
+    val devices by repository.devices.collectAsState()
+    // 这里**必须**在首帧就真的读一次 `devices`：`collectAsState` 的订阅登记在"读取发生的
+    // 那个重组作用域"上。只在 Settings 分支里读，Dashboard 首帧就不会因为它变化而重组，
+    // 侧栏会一直停在兜底设备上（实测过）。
+    val device = remember(devices) { repository.active }
+    // 空列表兜底：Phase 2 的界面还没有"一台设备都没有"的形态（Phase 3 补空状态）。
+        ?: MockData.defaultDevice
+    val scope = rememberCoroutineScope()
+    // HTTP 客户端**留到真正要测连接时再建**：`createAgentHttpClient()` 需要一个平台引擎，
+    // 桌面 target（只用于 UI 测试与设计预览）没有装引擎，提前建会让每一屏都起不来。
+    val connectivity by remember(probe) {
+        lazy { ConnectivityTester(probe, AgentApi(createAgentHttpClient())) }
+    }
+    var connectionReport by remember { mutableStateOf<ConnectionReport?>(null) }
+    var isTestingConnection by remember { mutableStateOf(false) }
     // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
     var appearance by remember {
         mutableStateOf(
@@ -76,19 +104,13 @@ fun App(
         )
     }
     var deviceInput by remember {
-        mutableStateOf(
-            DeviceSetupInput(
-                name = device.name,
-                mac = device.macAddress?.normalized.orEmpty(),
-                ip = device.ipAddress.orEmpty(),
-                broadcast = device.broadcastAddress,
-                wolPort = device.wolPort.toString(),
-                agentPort = device.agentPort.toString(),
-                agentHost = device.agentHost.orEmpty(),
-            ),
-        )
+        mutableStateOf(device.toSetupInput())
     }
     val railModel = powerRailModel(pcState, device)
+
+    LaunchedEffect(repository) { repository.load() }
+    // 激活设备换人时把表单切到新设备（否则表单还停在上一次的输入上）。
+    LaunchedEffect(device.id) { deviceInput = device.toSetupInput() }
 
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
     LaunchedEffect(workspace) {
@@ -173,17 +195,37 @@ fun App(
                                 SettingsSection.DeviceSetup -> DeviceSetupScreen(
                                     input = deviceInput,
                                     result = DeviceSetupValidator.validate(deviceInput),
-                                    devices = MockData.devices,
-                                    // Task 7 之前这里还没有真实仓库与探测器：先如实传"没测过"，
-                                    // 不假装测过了。
-                                    report = null,
-                                    isTesting = false,
+                                    devices = devices,
+                                    report = connectionReport,
+                                    isTesting = isTestingConnection,
                                     onInputChange = { deviceInput = it },
-                                    onSave = {},
-                                    onTestConnection = {},
-                                    onSelectDevice = {},
-                                    onDeleteDevice = {},
-                                    onAddDevice = {},
+                                    onSave = {
+                                        DeviceSetupValidator.validate(deviceInput).device?.let { edited ->
+                                            scope.launch {
+                                                repository.update(device.id, edited.copy(isDefault = device.isDefault))
+                                            }
+                                        }
+                                    },
+                                    onTestConnection = {
+                                        scope.launch {
+                                            isTestingConnection = true
+                                            connectionReport = connectivity.test(device)
+                                            isTestingConnection = false
+                                        }
+                                    },
+                                    onSelectDevice = { id -> scope.launch { repository.setDefault(id) } },
+                                    onDeleteDevice = { id -> scope.launch { repository.delete(id) } },
+                                    onAddDevice = {
+                                        scope.launch {
+                                            repository.add(
+                                                PcDevice(
+                                                    id = "new-pc-${devices.size + 1}",
+                                                    name = "New PC",
+                                                    macAddress = null,
+                                                ),
+                                            )
+                                        }
+                                    },
                                 )
                                 SettingsSection.Appearance -> AppearanceScreen(
                                     state = appearance,
@@ -215,3 +257,16 @@ fun App(
         }
     }
 }
+
+/**
+ * `PcDevice` → 表单输入。放在 App 层，避免 `ui/settings` 的组件知道领域模型到表单的映射细节。
+ */
+private fun PcDevice.toSetupInput() = DeviceSetupInput(
+    name = name,
+    mac = macAddress?.normalized.orEmpty(),
+    ip = ipAddress.orEmpty(),
+    broadcast = broadcastAddress,
+    wolPort = wolPort.toString(),
+    agentPort = agentPort.toString(),
+    agentHost = agentHost.orEmpty(),
+)
