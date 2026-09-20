@@ -4,6 +4,15 @@ using WakeUpMyWall.Agent.Actions;
 using WakeUpMyWall.Agent.Power;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 端口默认就是 9876（spec §5 的 Agent 端口）；ASPNETCORE_URLS / --urls / Agent:Urls 都能覆盖。
+// 显式写在这里，是因为只靠命令行参数时容易被 launchSettings 之外的默认值抢走（实测过）。
+builder.WebHost.UseUrls(
+    builder.Configuration["urls"]
+    ?? builder.Configuration["ASPNETCORE_URLS"]
+    ?? builder.Configuration["Agent:Urls"]
+    ?? "http://0.0.0.0:9876");
+
 builder.Services.AddSingleton(TimeProvider.System);
 // Token 落盘位置可由配置覆盖（测试用临时文件，生产用 AgentPaths.DefaultTokenFile）。
 builder.Services.AddSingleton<ITokenStore>(services => new FileTokenStore(

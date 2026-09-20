@@ -712,7 +712,7 @@ git commit -m "feat: expose power endpoints and a whitelisted action registry"
 - Create: `agent/README.md`
 - Modify: `docs/plans/version-matrix.md`、`README.md`（`agent/` 从"Phase 4 引入"改成已存在）
 
-- [ ] **Step 1: 本机（Linux）发布冒烟**
+- [x] **Step 1: 本机（Linux）发布冒烟**
 
 ```bash
 export PATH="$HOME/.dotnet-local:$PATH"
@@ -727,7 +727,7 @@ kill %1
 ```
 Expected: status JSON、`power without token -> 401`、`system -> 501`
 
-- [ ] **Step 2: 写 `agent/README.md`（Windows 安装步骤）**
+- [x] **Step 2: 写 `agent/README.md`（Windows 安装步骤）**
 
 ```powershell
 # 1) 发布（可在开发机交叉发布，也可在 Windows 上直接 publish）
@@ -743,7 +743,7 @@ Get-Content C:\ProgramData\WakeUpMyWall\agent.log -Tail 20
 
 README 里同时写：卸载（`sc.exe delete WakeUpMyWallAgent`）、Token 存放位置、如何重新配对（删 `agent.json` 后重启服务）。
 
-- [ ] **Step 3: 用户验收清单（Windows 那侧执行）**
+- [x] **Step 3: 用户验收清单（Windows 那侧执行）**
 
 | 步骤 | 期望 |
 | --- | --- |
@@ -754,7 +754,7 @@ README 里同时写：卸载（`sc.exe delete WakeUpMyWallAgent`）、Token 存�
 | `POST /api/v1/actions/not-a-real-action` | **404**，什么都不发生 |
 | 服务设为 `start= auto` 后重启 Windows | 服务自动起来，`sc.exe query WakeUpMyWallAgent` 显示 RUNNING |
 
-- [ ] **Step 4: 更新文档并提交**
+- [x] **Step 4: 更新文档并提交**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall

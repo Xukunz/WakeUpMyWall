@@ -2,7 +2,7 @@
 
 Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒、电源控制、指标监控与桌搭外观都在一块屏上完成。
 
-仓库是 monorepo：移动端、PC Agent（Phase 4 引入）与设计/计划文档放在一起。
+仓库是 monorepo：移动端（`mobile/`）、PC Agent（`agent/`，C# / .NET 10）与设计/计划文档放在一起。
 
 ## 项目状态
 
