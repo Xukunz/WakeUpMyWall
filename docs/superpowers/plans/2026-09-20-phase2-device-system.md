@@ -420,7 +420,7 @@ git commit -m "feat: persist settings through datastore on android"
   - `val devices: StateFlow<List<PcDevice>>`、`val active: PcDevice?`
   - `suspend fun load()`、`suspend fun add(device: PcDevice)`、`suspend fun update(id: String, device: PcDevice)`、`suspend fun delete(id: String)`、`suspend fun setDefault(id: String)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.data.device
@@ -519,12 +519,12 @@ class DeviceRepositoryTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*DeviceRepositoryTest*"`
 Expected: FAIL —— `Unresolved reference 'DeviceRepository'`
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 // data/device/DeviceRepository.kt
@@ -604,12 +604,12 @@ class DeviceRepository(
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest`
 Expected: BUILD SUCCESSFUL，`DeviceRepositoryTest` 6 条全绿
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/data/device mobile/composeApp/src/commonTest/kotlin/com/xukunz/wakeupmywall/data/device
