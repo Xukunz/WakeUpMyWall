@@ -39,6 +39,9 @@ enum class AppIconKind {
     /** 新增（加号）。 */
     Plus,
 
+    /** 删除（叉号）。Saved Computers 每行的删除按钮。 */
+    Close,
+
     /** 待办已完成的对勾。 */
     Check,
 
@@ -100,6 +103,10 @@ fun AppIcon(
             AppIconKind.Plus -> {
                 drawPolyline(tint, stroke, 12f to 5f, 12f to 19f)
                 drawPolyline(tint, stroke, 5f to 12f, 19f to 12f)
+            }
+            AppIconKind.Close -> {
+                drawPolyline(tint, stroke, 6.8f to 6.8f, 17.2f to 17.2f)
+                drawPolyline(tint, stroke, 17.2f to 6.8f, 6.8f to 17.2f)
             }
             AppIconKind.Check -> drawPolyline(tint, stroke, 5.5f to 12.5f, 10f to 17f, 18.5f to 7f)
             AppIconKind.LocationPin -> drawLocationPin(tint, u, stroke)

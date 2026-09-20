@@ -1,5 +1,6 @@
 package com.xukunz.wakeupmywall.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -28,6 +30,8 @@ import com.xukunz.wakeupmywall.core.theme.Spacing
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupInput
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupResult
+import com.xukunz.wakeupmywall.ui.icons.AppIcon
+import com.xukunz.wakeupmywall.ui.icons.AppIconKind
 import com.xukunz.wakeupmywall.ui.components.SectionHeader
 import com.xukunz.wakeupmywall.ui.components.Breakpoints
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
@@ -204,8 +208,12 @@ private fun SavedComputers(
         SectionHeader(title = "Saved Computers")
         devices.forEach { device ->
             Row(
-                modifier = Modifier.fillMaxWidth().testTag("device:saved:${device.id}"),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                // 整行可点 = 把这台机器设为当前设备（默认设备的不变量由 DeviceRepository 维护）。
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelectDevice(device.id) }
+                    .testTag("device:row:${device.id}"),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -221,12 +229,22 @@ private fun SavedComputers(
                         text = "Default",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.testTag("device:default:${device.id}"),
                     )
+                }
+                IconButton(
+                    onClick = { onDeleteDevice(device.id) },
+                    modifier = Modifier.testTag("device:delete:${device.id}"),
+                ) {
+                    AppIcon(kind = AppIconKind.Close, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        OutlinedButton(onClick = {}, modifier = Modifier.testTag("device:add")) {
-            Text("Add Device")
+        OutlinedButton(
+            onClick = onAddDevice,
+            modifier = Modifier.fillMaxWidth().testTag("device:add"),
+        ) {
+            Text("+ Add Device")
         }
     }
 }

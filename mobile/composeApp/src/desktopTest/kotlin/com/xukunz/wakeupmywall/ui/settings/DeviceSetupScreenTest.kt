@@ -123,7 +123,7 @@ class DeviceSetupScreenTest {
         }
 
         onNodeWithTag("device:saved").assertExists()
-        onNodeWithTag("device:saved:desktop-alpha", useUnmergedTree = true).assertExists()
+        onNodeWithTag("device:row:desktop-alpha", useUnmergedTree = true).assertExists()
         onNodeWithTag("device:services").assertExists()
         onNodeWithTag("device:services:weather", useUnmergedTree = true)
             .assertTextEquals("OpenWeatherMap · Riverside, CA")
