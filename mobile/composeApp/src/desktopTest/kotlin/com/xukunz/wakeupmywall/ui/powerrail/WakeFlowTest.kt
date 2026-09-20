@@ -143,12 +143,12 @@ class WakeFlowTest {
         }
 
     @Test
-    fun `the energy actions explain that they need the agent`() = runComposeUiTest {
+    fun `an unpaired energy action explains that pairing comes first`() = runComposeUiTest {
         setContent { App() }
 
         onNodeWithTag("powerrail:sleep").performClick()
 
         onNodeWithTag("powerrail:wake-note", useUnmergedTree = true)
-            .assertTextEquals("Sleep needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today")
+            .assertTextEquals("Pair the phone in Device Setup first (Agent section)")
     }
 }

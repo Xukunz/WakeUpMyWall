@@ -123,11 +123,11 @@ fun `pairing failure surfaces the reason instead of throwing`() = runTest {
 **Interfaces:**
 - 行为：`RailEvent.Sleep/Shutdown/Restart` → 已配对且 Agent 可达时 `POST /api/v1/power/*` → 成功即进瞬态（`SLEEPING`/`SHUTTING_DOWN`/`RESTARTING`）；未配对 → note `Pair the phone in Device Setup first`；请求失败 → note 带上原因（`The Agent rejected the token` / `Nothing is listening on …`）。
 
-- [ ] **Step 1: 写失败测试**（已配对 → POST 发出 + 状态进 `Sleeping…`；未配对 → 不发请求 + 出现配对提示；401 → 提示 token 问题）
-- [ ] **Step 2: 跑测试确认失败**
-- [ ] **Step 3: 实现**（把 Phase 3 的"needs the PC Agent"占位 note 换成真实调用；失败原因沿用 `ConnectionFailure` 文案）
-- [ ] **Step 4: 跑全量测试 + `assembleDebug`**
-- [ ] **Step 5: 提交** `feat: run sleep, shutdown and restart through the agent`
+- [x] **Step 1: 写失败测试**（已配对 → POST 发出 + 状态进 `Sleeping…`；未配对 → 不发请求 + 出现配对提示；401 → 提示 token 问题）
+- [x] **Step 2: 跑测试确认失败**
+- [x] **Step 3: 实现**（把 Phase 3 的"needs the PC Agent"占位 note 换成真实调用；失败原因沿用 `ConnectionFailure` 文案）
+- [x] **Step 4: 跑全量测试 + `assembleDebug`**
+- [x] **Step 5: 提交** `feat: run sleep, shutdown and restart through the agent`
 
 ### Task B5: 端到端验收（模拟器 + 本机 Agent）与文档
 

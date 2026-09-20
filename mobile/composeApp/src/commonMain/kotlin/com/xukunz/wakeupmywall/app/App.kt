@@ -169,6 +169,33 @@ fun App(
     }
 
     /**
+     * 电源命令：先确认真有可用的 Agent 与 Token，再发请求；成功后只把状态推进到瞬态
+     * （`SLEEPING` / `SHUTTING_DOWN` / `RESTARTING`），**不假装 PC 已经睡着了** ——
+     * 之后由存在性轮询按 Agent 在不在来收口。失败一律给出一句可读的原因。
+     */
+    fun runPowerAction(action: PowerAction, event: PcEvent) {
+        val target = device
+        scope.launch {
+            wakeNote = null
+            if (target == null) {
+                wakeNote = "Add a device first"
+                return@launch
+            }
+            val token = agentToken
+            if (token == null) {
+                wakeNote = "Pair the phone in Device Setup first (Agent section)"
+                return@launch
+            }
+
+            when (val result = runCatching { agentApi.power(baseUrl(target), token, action) }.getOrNull()) {
+                null -> wakeNote = "Could not reach the Agent"
+                is ApiResult.Success -> pcState = PcStateMachine.reduce(pcState, event, target)
+                is ApiResult.Failure -> wakeNote = result.message
+            }
+        }
+    }
+
+    /**
      * 启动/换设备时自己探测一次：**这是唤醒能不能用的关键**。以前必须手动点一次
      * `Test Connection` 才能从 Mock 的 `ONLINE` 走到 `WOL_READY`，用户按不动电源环就会
      * 以为 WOL 没生效。桌面没有 TCP 能力（`PROBE_UNAVAILABLE`）时保持初始状态不动，
@@ -277,11 +304,11 @@ fun App(
                                         scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
                                     }
                                 }
-                                // 睡眠/关机/重启要由 PC 上的 Agent 执行（Phase 4）。本阶段点它们
-                                // 只能给一句实话，不能假装 PC 已经在睡眠。
-                                RailEvent.Sleep -> wakeNote = AGENT_NEEDED_SLEEP
-                                RailEvent.Shutdown -> wakeNote = AGENT_NEEDED_SHUTDOWN
-                                RailEvent.Restart -> wakeNote = AGENT_NEEDED_RESTART
+                                // 睡眠/关机/重启由 PC 上的 Agent 执行；成功后只进瞬态，
+                                // 真正的结果交给存在性轮询（Agent 掉线 = 真的关机/睡眠了）。
+                                RailEvent.Sleep -> runPowerAction(PowerAction.SLEEP, PcEvent.SleepRequested)
+                                RailEvent.Shutdown -> runPowerAction(PowerAction.SHUTDOWN, PcEvent.ShutdownRequested)
+                                RailEvent.Restart -> runPowerAction(PowerAction.RESTART, PcEvent.RestartRequested)
                             }
                         },
                     ) {
@@ -318,9 +345,9 @@ fun App(
                                         scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
                                     }
                                 }
-                                RailEvent.Sleep -> wakeNote = AGENT_NEEDED_SLEEP
-                                RailEvent.Shutdown -> wakeNote = AGENT_NEEDED_SHUTDOWN
-                                RailEvent.Restart -> wakeNote = AGENT_NEEDED_RESTART
+                                RailEvent.Sleep -> runPowerAction(PowerAction.SLEEP, PcEvent.SleepRequested)
+                                RailEvent.Shutdown -> runPowerAction(PowerAction.SHUTDOWN, PcEvent.ShutdownRequested)
+                                RailEvent.Restart -> runPowerAction(PowerAction.RESTART, PcEvent.RestartRequested)
                             }
                         },
                     ) {
@@ -481,10 +508,6 @@ private fun emptySetupInput() = DeviceSetupInput(
     agentPort = "9876",
     agentHost = "",
 )
-
-private const val AGENT_NEEDED_SLEEP = "Sleep needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
-private const val AGENT_NEEDED_SHUTDOWN = "Shut down needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
-private const val AGENT_NEEDED_RESTART = "Restart needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
 
 /** 主机答了、但答话的不是我们的 Agent（或它拒绝了 Token）：算 `AGENT_UNAVAILABLE` 而不是"关机"。 */
 private val unavailableReasons = setOf(
