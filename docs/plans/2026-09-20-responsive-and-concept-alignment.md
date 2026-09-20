@@ -139,7 +139,7 @@ StandBy 的 Android 帧依然缺。恢复路径见 [version-matrix.md](version-m
 Device Setup 段，屏幕内容与 `settings.png` 重合。留着等于重演 `android-standby.png` 那次的错误
 （一张没人维护的图被当成当轮证据），故删除；git 历史里仍可取回。
 
-### 8.4 本轮新发现（待裁决，本批未改）
+### 8.4 本轮新发现：连接条两行同文案（**已裁决 → §9**）
 
 **连接条有两行同文案**：规格 A5 的连接条是"图标 + 通道文案 + 箭头"一行；实现额外加了
 第二行 `statusLine = PcCapabilities.statusText`，而 ONLINE 的 `statusText` 恰好也是
@@ -150,6 +150,7 @@ Device Setup 段，屏幕内容与 `settings.png` 重合。留着等于重演 `a
 两个方向都只改渲染，不改模型：(a) 第二行与第一行相同时不渲染（贴合概念图的单行）；
 (b) 保留双行，但把第二行换成补充信息（如 `Last seen 1 min ago`）。
 这会动到 `PowerRailUiTest` 里"每个元素都有 testTag"那条断言（`powerrail:status`），故留给你裁决。
+**用户 2026-09-20 选 (a)**，落地记录见 §9。
 
 ### 8.5 本批验证
 
@@ -160,3 +161,36 @@ env JAVA_HOME=<jdk-25> ./gradlew :composeApp:testDebugUnitTest :composeApp:deskt
 
 截图由同一次 `desktopTest` 产出并断言尺寸；其余 13 张帧的 MD5 与本批重跑完全一致
 （渲染可复现），只有两张新帧是新文件。
+
+## 9. 第四批：连接条去重（2026-09-20，按裁决 a）
+
+**决定：** 第二行与通道文案相同时**不渲染**（贴合概念图/规格 A5 的单行通道条），
+内容不同时照旧保留——OFFLINE 的 `Wake-on-LAN requires MAC`、WAKING 的 `Waiting for Agent`
+都是有效信息，不能一起砍掉。
+
+**实现（生产代码两处条件渲染 + 一处派生属性）：**
+
+| 位置 | 改动 |
+| --- | --- |
+| `ui/powerrail/PowerRailState.kt` | 新增 `PowerRailModel.showsStatusLine = statusLine != connectionLabel`，把"是否重复"的判断收在一处 |
+| `ui/powerrail/PowerRail.kt` | 通道条第二行按 `showsStatusLine` 条件渲染 |
+| `ui/powerrail/PowerRailCompact.kt` | 底栏最底行按同一属性条件渲染（顶行已经就是通道文案） |
+
+判断没有散落在两个 Composable 里：模型层给属性、视图层只读它，和 `agentReachable` 的做法一致。
+
+**TDD 记录（先失败后实现）：**
+
+- RED：`PowerRailUiTest` 新增 3 条"不再重复"用例，跑 `--tests "*PowerRailUiTest*"` 得到
+  `10 tests completed, 3 failed`，失败原因是 `powerrail:status` 节点**仍然存在**（不是编译错误、不是拼写错误）；
+- GREEN：实现上面三处后同一套件全绿；第 4 条新用例（OFFLINE 保留第二行）是既有行为的回归守卫，
+  它一开始就是绿的，写在这里是为了挡住"一刀切砍掉第二行"的过度修复；
+- "每个元素都有 testTag"那条断言的清单里去掉 `powerrail:status`（该状态下它按 A5 不渲染），
+  改由 OFFLINE 用例覆盖该 tag。
+
+**证据（13 张含栏的帧已重出）：** `dashboard.png` / `monitor.png` / `settings.png` /
+`dashboard-compact.png` / `dashboard-minimal.png` / `phone-*.png` / `fold-*.png` 全部更新；
+`monitor.png` 右栏通道条现在是单行 `Agent connected over LAN`、`phone-monitor.png` 底栏不再重复，
+与概念图 `cb576a75-….png` 的通道条一致。不含常驻栏的 `standby.png` / `personalization.png` 未变（MD5 相同）。
+
+**验证：** `./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` →
+`testDebugUnitTest 101 / desktopTest 190`（+4），0 failures。

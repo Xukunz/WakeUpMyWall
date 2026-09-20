@@ -39,6 +39,11 @@ JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*AppScreenshotTest*
 
 尺寸由 `AppScreenshotTest` 里的 `FrameWidth`/`FrameHeight` 显式指定，并用断言守住：产出的 PNG 尺寸与声明的渲染条件不一致时测试直接失败。
 
+> 2026-09-20 第四批（连接条去重，见[对齐文档](../2026-09-20-responsive-and-concept-alignment.md) §9）重出了
+> 13 张**含常驻栏**的帧：`dashboard.png` / `monitor.png` / `settings.png` / `dashboard-compact.png` /
+> `dashboard-minimal.png` / `phone-*.png` / `fold-*.png`。不含常驻栏的 `standby.png` 与 `personalization.png`
+> 的 MD5 与上一批完全相同——这也是一道旁证：改动只落在栏上，没有波及其他屏幕。
+
 > 这条守卫是补上的：2026-09-19 那批截图用的是默认的 1024×768 测试窗口，`Modifier.size(1280.dp, 720.dp)` 被入参约束压回 1024 宽，于是"按 1280dp 设计"的布局实际是在 737dp 主区里渲染的，而复核文档当时写的渲染条件是 1280×720 —— 图和文档对不上。2026-09-20 已按 1280×720 重出并加断言。
 
 ## 与概念图的对应关系

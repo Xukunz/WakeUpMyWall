@@ -148,12 +148,15 @@ fun PowerRailCompact(
             CompactAction(AppIconKind.Restart, "Restart", "FRESH START", model.canRestart, onRestart, "powerrail:restart", Modifier.weight(1f))
         }
 
-        Text(
-            text = model.statusLine,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("powerrail:status"),
-        )
+        // 顶行已经写着通道文案，相同时再排一行就是同一句话重复（见 PowerRailModel.showsStatusLine）。
+        if (model.showsStatusLine) {
+            Text(
+                text = model.statusLine,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("powerrail:status"),
+            )
+        }
     }
 }
 

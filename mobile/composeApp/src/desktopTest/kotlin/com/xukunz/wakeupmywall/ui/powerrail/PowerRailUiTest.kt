@@ -74,6 +74,41 @@ class PowerRailUiTest {
         onNodeWithTag("powerrail:connection").assertTextEquals("Agent connected over LAN")
     }
 
+    /**
+     * 规格 A5 的连接条是一行"图标 + 通道文案 + 箭头"。第二行是能力描述，只在它与通道文案
+     * **不同**时才有信息量；ONLINE 的 `statusText` 与 `connectionLabel` 逐字相同，
+     * 渲染出来就是同一句话在一张卡里出现两次（2026-09-20 从 `monitor.png` 右栏发现）。
+     */
+    @Test
+    fun `online connection bar drops the repeated status line`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { PowerRail(rail(PcState.ONLINE), {}, {}, {}, {}, {}) } }
+
+        onNodeWithTag("powerrail:status").assertDoesNotExist()
+    }
+
+    @Test
+    fun `wol ready connection bar drops the repeated status line`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { PowerRail(rail(PcState.WOL_READY), {}, {}, {}, {}, {}) } }
+
+        onNodeWithTag("powerrail:status").assertDoesNotExist()
+    }
+
+    @Test
+    fun `offline connection bar keeps the status line that adds information`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { PowerRail(rail(PcState.OFFLINE), {}, {}, {}, {}, {}) } }
+
+        onNodeWithTag("powerrail:connection").assertTextEquals("Wake-on-LAN Ready")
+        onNodeWithTag("powerrail:status").assertTextEquals("Wake-on-LAN requires MAC")
+    }
+
+    @Test
+    fun `compact rail drops the repeated status line too`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { PowerRailCompact(rail(PcState.ONLINE), {}, {}, {}, {}, {}) } }
+
+        onNodeWithTag("powerrail:connection").assertTextEquals("Agent connected over LAN")
+        onNodeWithTag("powerrail:status").assertDoesNotExist()
+    }
+
     @Test
     fun `every rail element is tagged`() = runComposeUiTest {
         setContent { WakeUpMyWallTheme { PowerRail(rail(PcState.WOL_READY), {}, {}, {}, {}, {}) } }
@@ -82,7 +117,8 @@ class PowerRailUiTest {
             "powerrail", "powerrail:name", "powerrail:subtitle", "powerrail:state",
             "powerrail:primary", "powerrail:primary-label", "powerrail:primary-caption",
             "powerrail:sleep", "powerrail:shutdown", "powerrail:restart",
-            "powerrail:connection", "powerrail:status", "powerrail:settings",
+            // `powerrail:status` 不在这个状态里出现：它的文案与通道文案相同，按 A5 不渲染（见上面三条）。
+            "powerrail:connection", "powerrail:settings",
         ).forEach { tag -> onNodeWithTag(tag).assertExists() }
     }
 }

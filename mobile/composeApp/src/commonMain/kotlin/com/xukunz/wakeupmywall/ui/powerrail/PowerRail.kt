@@ -178,12 +178,15 @@ fun PowerRail(
                     size = AppSizes.iconMedium,
                 )
             }
-            Text(
-                text = model.statusLine,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag("powerrail:status"),
-            )
+            // 与通道文案相同时不渲染：规格 A5 的通道条只有一行（见 PowerRailModel.showsStatusLine）。
+            if (model.showsStatusLine) {
+                Text(
+                    text = model.statusLine,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("powerrail:status"),
+                )
+            }
         }
 
         // A6 引用卡（可开关的装饰层，默认关闭）

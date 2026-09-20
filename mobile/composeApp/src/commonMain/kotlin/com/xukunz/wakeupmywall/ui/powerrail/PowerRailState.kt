@@ -27,6 +27,17 @@ data class PowerRailModel(
 /** Agent 可达（= 次级电源动作可用）。状态点用它决定是否用"在线色"。 */
 val PowerRailModel.agentReachable: Boolean get() = canSleep
 
+/**
+ * 通道条 / 底栏的第二行（能力描述 [PowerRailModel.statusLine]）只在它与通道文案
+ * [PowerRailModel.connectionLabel] **不同**时才渲染。
+ *
+ * 规格 A5 的通道条是"图标 + 通道文案 + 箭头"一行；加了第二行以后，ONLINE 的
+ * `statusText`（`Agent connected over LAN`）与 WOL_READY 的（`Wake-on-LAN Ready`）恰好与
+ * 通道文案逐字相同，同一张卡里同一句话就出现两次。其余状态（OFFLINE 的
+ * `Wake-on-LAN requires MAC`、WAKING 的 `Waiting for Agent`）两行内容不同，是有用的信息，照旧保留。
+ */
+val PowerRailModel.showsStatusLine: Boolean get() = statusLine != connectionLabel
+
 fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
     val capabilities = state.capabilities(device)
     return PowerRailModel(
