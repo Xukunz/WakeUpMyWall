@@ -26,6 +26,8 @@ import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
+import com.xukunz.wakeupmywall.ui.monitor.MonitorMode
+import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 
 @Composable
@@ -82,7 +84,13 @@ fun App(
                                 style = WidgetStyle.Glass,
                                 onPcSummaryClick = { navigator.goTo(Workspace.Monitor) },
                             )
-                            else -> PlaceholderScreen("PC Monitor")
+                            else -> MonitorMode(
+                                metrics = MockData.metrics,
+                                history = mockMetricHistory(MockData.metrics),
+                                style = WidgetStyle.Glass,
+                                identity = MockData.hardware,
+                                onOpenDevice = { navigator.goTo(Workspace.Dashboard) },
+                            )
                         }
                     }
                     Workspace.Settings -> PlaceholderScreen("Settings")

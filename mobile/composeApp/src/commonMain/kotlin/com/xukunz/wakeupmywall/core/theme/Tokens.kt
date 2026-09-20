@@ -36,6 +36,13 @@ object AppSizes {
     val ringStroke = 3.dp
     val statusDot = 8.dp
     val barHeight = 6.dp
+    val sparklineStroke = 2.dp
+    val ringArcStroke = 6.dp
+    val progressRing = 84.dp
+    val thumbnail = 48.dp
+    /** 响应式断点阈值（风险 R7）。放在令牌里，`ui/` 不允许出现裸断点数值。 */
+    val fiveColumnMinWidth = 1000.dp
+    val threeColumnMinWidth = 600.dp
 }
 
 object DarkSurface {

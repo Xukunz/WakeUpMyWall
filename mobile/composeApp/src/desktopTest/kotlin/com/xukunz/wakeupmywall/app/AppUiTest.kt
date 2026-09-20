@@ -26,7 +26,8 @@ class AppUiTest {
     fun `switching workspace renders monitor`() = runComposeUiTest {
         val navigator = AppNavigator().apply { goTo(Workspace.Monitor) }
         setContent { App(navigator) }
-        onNodeWithTag("screen:PC Monitor").assertIsDisplayed()
+        // Monitor 也是真实形态（Task 8），不再是占位页。
+        onNodeWithTag("monitor:identity").assertIsDisplayed()
     }
 
     @Test

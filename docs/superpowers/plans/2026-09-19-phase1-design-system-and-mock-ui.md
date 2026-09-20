@@ -1186,7 +1186,7 @@ git commit -m "feat: add 60 second metric ring buffer"
   - `@Composable fun MonitorMode(metrics: MetricsSnapshot, history: Map<String, List<Float>>, style: WidgetStyle, modifier: Modifier = Modifier)`
   - `object MetricKeys { const val Cpu = "cpu"; const val Gpu = "gpu"; const val Ram = "ram"; const val Storage = "storage"; const val Network = "network" }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -1239,7 +1239,7 @@ class MonitorModeTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*MonitorModeTest*"
@@ -1247,7 +1247,7 @@ class MonitorModeTest {
 
 Expected: 编译失败，`Unresolved reference: MonitorMode`。
 
-- [ ] **Step 3: 实现曲线**
+- [x] **Step 3: 实现曲线**
 
 `MetricSparkline` 用 `Canvas` 画折线；空列表时画一条水平基准线，不得抛异常（对应上面第三个测试）：
 
@@ -1275,7 +1275,7 @@ fun MetricSparkline(values: List<Float>, modifier: Modifier = Modifier) {
 }
 ```
 
-- [ ] **Step 4: 实现 Monitor Mode 布局**
+- [x] **Step 4: 实现 Monitor Mode 布局**
 
 严格按权威规格 C 表构建：
 
@@ -1288,7 +1288,7 @@ fun MetricSparkline(values: List<Float>, modifier: Modifier = Modifier) {
 
 `ProgressRing` 用 `Canvas` 画背景环 + 前景弧（`drawArc`，`useCenter = false`，`Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)`），中心叠 `Text` 显示百分数；颜色按指标取 `AccentPalette` 对应色。
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*MonitorModeTest*"
@@ -2148,3 +2148,26 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 ### 已知视觉缺陷（交给 Task 14 / Task 15）
 
 天气卡的四列逐时在 1280dp 下被挤成 `10PM 17°1AM 16°…`（列间无呼吸空间）；任务卡标题行与首行任务贴得偏紧。二者都需要在断点任务里按可用宽度调整列数与间距。
+
+---
+
+## 执行记录：Task 7–8（2026-09-19）
+
+已完成 Task 7、Task 8（复选框已勾）。证据：`testDebugUnitTest` 62 + `desktopTest` 99 全绿；PC Monitor 真实成帧见 `build/screenshots/monitor-aurora.png`。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| `MetricCard` 签名 | `(label, value, unit, values, style, modifier)` | 改为 `(key, label, percent, modelLine, values, footerPrimary, footerSecondary, style, modifier, onOpen)` | 权威规格 C 的卡片要显示"名称 + 型号小字 + 环心百分数 + 两行页脚"，原签名缺型号与页脚，且 `key` 是 `metric:<key>-*` 标签的来源 |
+| `metric:<key>-value` 断言 | 断言另有一个大号数值节点 | 删掉重复的大号数值，测试改断言环心 `metric:<key>-ring` | 规格写明百分数只在环心；实测 32sp 数值在 120dp 宽的卡里被挤成竖排 `2/8/%` |
+| `Breakpoints` | Task 14 才创建 | 本任务先落地（列数 + 是否需要滚动），阈值放进 `AppSizes` | Task 8 Step 4.6 要求按断点决定列数；阈值属设计令牌，不能裸写在 `ui/`（会被 `DesignTokenDisciplineTest` 拦下） |
+| 滚动条件 | "< 600dp 用 2 列并允许纵向滚动" | 改为"只要不是 5 列就必须允许滚动" | 实测 3 列时卡片换行堆叠、内容变高，固定高度下第三行被裁掉 |
+| Mock 曲线 | 未指定来源 | `ui/monitor/mockMetricHistory()` 生成确定性 60 点曲线 | 曲线卡需要数据；Phase 5 接真实轮询后删除该函数即可 |
+| 最近活动两列 | 未处理 | 应用名单行省略号截断 | 实测两列文字在窄卡里重叠 |
+| 引用卡 tag | `monitor:quote` | 复用 Dashboard 的 `QuoteCard`，由调用方传入带 tag 的 modifier | 组件复用；`WidgetSurface` 已改成外层 Box 承载调用方 modifier |
+
+### 断点实测结论（供 Task 14）
+
+- 1280dp 宽的整屏下主区约 921dp → 落进 3 列区间，内容需要滚动；概念图的 5 列排布要求主区 ≥ 1000dp，即整屏约 1400dp 以上。
+- 这说明"72/28 + 5 列"是宽屏形态；Task 14 需要决定在 1000–1400dp 区间是放宽 Rail 还是改指标卡密度。
