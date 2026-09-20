@@ -5,4 +5,4 @@ sealed interface ApiResult<out T> {
     data class Failure(val reason: ApiFailure, val message: String) : ApiResult<Nothing>
 }
 
-enum class ApiFailure { TIMEOUT, UNAUTHORIZED, NOT_FOUND, SERVER, NETWORK, DECODING }
+enum class ApiFailure { TIMEOUT, UNAUTHORIZED, NOT_FOUND, CONFLICT, SERVER, NETWORK, DECODING }

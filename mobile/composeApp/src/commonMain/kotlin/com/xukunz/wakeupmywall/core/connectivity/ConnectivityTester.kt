@@ -69,6 +69,11 @@ class ConnectivityTester(
                     ConnectionFailure.UNAUTHORIZED,
                     "The Agent rejected the token — pair the device again after Phase 4 lands",
                 )
+                // 409 只在配对端点上出现：说明这台 PC 已经配对过（Phase 4B 会用这条提示引导重新配对）。
+                ApiFailure.CONFLICT -> failed(
+                    ConnectionFailure.AGENT_ERROR,
+                    "The Agent is already paired with another phone — unpair on the PC first",
+                )
                 ApiFailure.SERVER -> failed(
                     ConnectionFailure.AGENT_ERROR,
                     "The Agent answered with a server error (${result.message})",

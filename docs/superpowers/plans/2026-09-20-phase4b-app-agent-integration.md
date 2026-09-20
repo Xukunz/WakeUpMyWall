@@ -61,7 +61,7 @@
   - `suspend fun actions(baseUrl: String, token: String?): ApiResult<List<ActionEntry>>`（`ActionEntry(id, name)`）
   - `suspend fun power(baseUrl: String, token: String?, action: PowerAction): ApiResult<PowerResponse>`（`PowerResponse(action, accepted)`）
 
-- [ ] **Step 1: 写失败测试**（MockEngine：配对成功 / 403 错误码 / 电源 200 / 电源 404 未知动作 / actions 解析）
+- [x] **Step 1: 写失败测试**（MockEngine：配对成功 / 403 错误码 / 电源 200 / 电源 404 未知动作 / actions 解析）
 
 ```kotlin
 @Test
@@ -76,10 +76,10 @@ fun `pairing failure surfaces the reason instead of throwing`() = runTest {
 }
 ```
 
-- [ ] **Step 2: 跑测试确认失败** → `./gradlew :composeApp:desktopTest --tests "*AgentApiAgentTest*"`
-- [ ] **Step 3: 实现**（沿用 `status()` 的 try/catch 结构：CancellationException 重抛、超时→TIMEOUT、4xx→UNAUTHORIZED/NOT_FOUND、5xx→SERVER、解析失败→DECODING）
-- [ ] **Step 4: 跑全量测试确认通过**
-- [ ] **Step 5: 提交** `feat: talk to the agent for pairing, actions and power`
+- [x] **Step 2: 跑测试确认失败** → `./gradlew :composeApp:desktopTest --tests "*AgentApiAgentTest*"`
+- [x] **Step 3: 实现**（沿用 `status()` 的 try/catch 结构：CancellationException 重抛、超时→TIMEOUT、4xx→UNAUTHORIZED/NOT_FOUND、5xx→SERVER、解析失败→DECODING）
+- [x] **Step 4: 跑全量测试确认通过**
+- [x] **Step 5: 提交** `feat: talk to the agent for pairing, actions and power`
 
 ### Task B2: Token 存储（Keystore）与 Device Setup 的 Agent 区
 
