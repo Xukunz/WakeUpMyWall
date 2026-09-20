@@ -85,6 +85,16 @@ fun PowerRailCompact(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.testTag("powerrail:state"),
             )
+            // 手机档位同样要能读到失败原因（这里没有第二行可借，直接接在状态行后面）。
+            model.wakeNote?.let { note ->
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.testTag("powerrail:wake-note"),
+                )
+            }
             Text(
                 text = model.connectionLabel,
                 style = MaterialTheme.typography.labelSmall,

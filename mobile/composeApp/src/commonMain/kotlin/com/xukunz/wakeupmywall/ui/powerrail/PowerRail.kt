@@ -98,6 +98,16 @@ fun PowerRail(
             )
         }
 
+        // 只有唤醒失败/超时才多这一行：成功时上面的状态行已经说明一切。
+        model.wakeNote?.let { note ->
+            Text(
+                text = note,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("powerrail:wake-note"),
+            )
+        }
+
         // A3 主电源环 + 标签 + 副标
         PowerRingButton(enabled = model.primaryEnabled, onClick = onPrimary, diameter = AppSizes.ringDiameter)
         Text(

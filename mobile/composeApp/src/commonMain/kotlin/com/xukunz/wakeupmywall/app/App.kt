@@ -22,10 +22,15 @@ import com.xukunz.wakeupmywall.core.connectivity.ConnectivityTester
 import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
 import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
 import com.xukunz.wakeupmywall.core.network.AgentApi
+import com.xukunz.wakeupmywall.core.network.ApiResult
 import com.xukunz.wakeupmywall.core.network.createAgentHttpClient
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.theme.ThemeAccent
 import com.xukunz.wakeupmywall.core.storage.SettingsStorage
+import com.xukunz.wakeupmywall.core.wol.UnsupportedWakeOnLanSender
+import com.xukunz.wakeupmywall.core.wol.WakeOnLanSender
+import com.xukunz.wakeupmywall.core.wol.WakeOutcome
+import com.xukunz.wakeupmywall.core.wol.WakeSequence
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
 import com.xukunz.wakeupmywall.data.device.DeviceRepository
 import com.xukunz.wakeupmywall.data.settings.InMemorySettingsStorage
@@ -65,6 +70,12 @@ fun App(
     storage: SettingsStorage = remember { InMemorySettingsStorage() },
     // 平台实现在 MainActivity 注入（java.net.Socket）；桌面没有 TCP 探测能力，如实报不可用。
     probe: TcpProbe = UnsupportedTcpProbe,
+    // 平台实现在 MainActivity 注入（java.net.DatagramSocket）；桌面如实报不可用。
+    wakeSender: WakeOnLanSender = UnsupportedWakeOnLanSender,
+    wakePollMillis: Long = 2_000,
+    wakeBudgetMillis: Long = 60_000,
+    /** 测试注入用：是否认为 Agent 已经起来。默认 null = 真去问 `GET /api/v1/status`。 */
+    wakeAgentResponds: (suspend (PcDevice) -> Boolean)? = null,
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
@@ -90,6 +101,8 @@ fun App(
     }
     var connectionReport by remember { mutableStateOf<ConnectionReport?>(null) }
     var isTestingConnection by remember { mutableStateOf(false) }
+    // 唤醒失败/超时的解释行；成功或被重新触发时清空。
+    var wakeNote by remember { mutableStateOf<String?>(null) }
     // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
     var appearance by remember {
         mutableStateOf(
@@ -106,7 +119,24 @@ fun App(
     var deviceInput by remember {
         mutableStateOf(device.toSetupInput())
     }
-    val railModel = powerRailModel(pcState, device)
+    val wakeSequence = remember(wakeSender, wakePollMillis, wakeBudgetMillis, wakeAgentResponds, device) {
+        WakeSequence(
+            sender = wakeSender,
+            agentResponded = wakeAgentResponds ?: { target ->
+                // HTTP 客户端**在真正轮询时才建**：桌面 target 没有装引擎，提前建会崩。
+                val host = target.agentHost ?: target.ipAddress
+                // 探测本身失败也算"还没起来"：轮询期间不该因为一次请求异常把唤醒流程打断。
+                host != null && runCatching {
+                    AgentApi(createAgentHttpClient())
+                        .status("http://$host:${target.agentPort}", null) is ApiResult.Success
+                }.getOrDefault(false)
+            },
+            pollIntervalMillis = wakePollMillis,
+            waitBudgetMillis = wakeBudgetMillis,
+            onEvent = { event -> pcState = PcStateMachine.reduce(pcState, event) },
+        )
+    }
+    val railModel = powerRailModel(pcState, device, wakeNote = wakeNote)
 
     LaunchedEffect(repository) { repository.load() }
     // 表单跟着仓库里那台设备走。键必须是**整个 `device`**，不能只用 `device.id`：
@@ -141,8 +171,12 @@ fun App(
                         onRailEvent = { event ->
                             when (event) {
                                 RailEvent.Settings -> navigator.goTo(Workspace.Settings)
-                                RailEvent.Primary ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.WakeRequested)
+                                // 唤醒是"发 3 次魔包 + 轮询 Agent"的多步流程，交给 WakeSequence；
+                                // 状态依旧只由状态机决定（它收到 WakeRequested/AgentResponded/WakeTimedOut）。
+                                RailEvent.Primary -> {
+                                    wakeNote = null
+                                    scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
+                                }
                                 RailEvent.Sleep ->
                                     pcState = PcStateMachine.reduce(pcState, PcEvent.SleepRequested)
                                 RailEvent.Shutdown ->
@@ -177,8 +211,10 @@ fun App(
                         onRailEvent = { event ->
                             when (event) {
                                 RailEvent.Settings -> Unit
-                                RailEvent.Primary ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.WakeRequested)
+                                RailEvent.Primary -> {
+                                    wakeNote = null
+                                    scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
+                                }
                                 RailEvent.Sleep ->
                                     pcState = PcStateMachine.reduce(pcState, PcEvent.SleepRequested)
                                 RailEvent.Shutdown ->
@@ -272,3 +308,18 @@ private fun PcDevice.toSetupInput() = DeviceSetupInput(
     agentPort = agentPort.toString(),
     agentHost = agentHost.orEmpty(),
 )
+
+/**
+ * 只在"没成功"时给用户一句话，成功时 rail 的状态行已经说明一切。
+ * 失败文案带 `host:port` 或具体原因，避免"只显示 Failed"。
+ */
+private fun WakeOutcome.toNote(): String? = when (this) {
+    is WakeOutcome.AgentOnline -> null
+    is WakeOutcome.NoAnswer -> "Sent $packets wake packets — no answer from the Agent within ${formatWaited(waitedMillis)}"
+    is WakeOutcome.Failed -> message
+}
+
+private fun formatWaited(millis: Long): String {
+    val seconds = millis / 1_000
+    return if (seconds < 1) "<1 s" else "$seconds s"
+}

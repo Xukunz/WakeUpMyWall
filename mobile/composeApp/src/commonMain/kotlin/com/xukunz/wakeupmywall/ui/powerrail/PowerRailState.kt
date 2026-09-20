@@ -22,6 +22,8 @@ data class PowerRailModel(
     val canRestart: Boolean,
     val connectionLabel: String,
     val statusLine: String,
+    /** 唤醒失败/超时的解释行；null = 不渲染（成功与未尝试过都不该多一行）。 */
+    val wakeNote: String? = null,
 )
 
 /** Agent 可达（= 次级电源动作可用）。状态点用它决定是否用"在线色"。 */
@@ -38,7 +40,7 @@ val PowerRailModel.agentReachable: Boolean get() = canSleep
  */
 val PowerRailModel.showsStatusLine: Boolean get() = statusLine != connectionLabel
 
-fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
+fun powerRailModel(state: PcState, device: PcDevice?, wakeNote: String? = null): PowerRailModel {
     val capabilities = state.capabilities(device)
     return PowerRailModel(
         pcName = device?.name ?: "My PC",
@@ -54,6 +56,7 @@ fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
         // 唯一决定连接条文案的地方：在线走 Agent，其余一律是 WOL 通道（规范 §3 术语规则）。
         connectionLabel = if (state == PcState.ONLINE) "Agent connected over LAN" else "Wake-on-LAN Ready",
         statusLine = capabilities.statusText,
+        wakeNote = wakeNote,
     )
 }
 
