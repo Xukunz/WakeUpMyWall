@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,8 +26,8 @@ import com.xukunz.wakeupmywall.ui.components.PlaceholderScreen
 import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
-import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
-import com.xukunz.wakeupmywall.ui.monitor.MonitorMode
+import com.xukunz.wakeupmywall.ui.dashboard.HomeMode
+import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
 import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 
@@ -38,8 +39,18 @@ fun App(
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
+    var homeMode by remember { mutableStateOf(HomeMode.Dashboard) }
     val device = MockData.defaultDevice
     val railModel = powerRailModel(pcState, device)
+
+    // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
+    LaunchedEffect(workspace) {
+        when (workspace) {
+            Workspace.Monitor -> homeMode = HomeMode.Monitor
+            Workspace.Dashboard -> homeMode = HomeMode.Dashboard
+            Workspace.Settings -> Unit
+        }
+    }
 
     WakeUpMyWallTheme {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -68,30 +79,25 @@ fun App(
                             }
                         },
                     ) {
-                        when (workspace) {
-                            Workspace.Dashboard -> DashboardMode(
-                                data = DashboardData(
-                                    greeting = MockData.greetingText,
-                                    time = MockData.clockTime,
-                                    date = MockData.calendarDateLabel,
-                                    weather = MockData.weather,
-                                    events = MockData.calendarEvents,
-                                    todos = MockData.todos,
-                                    pc = railModel,
-                                    pcSummary = MockData.summaryMetrics,
-                                    widgets = DashboardLayout.default,
-                                ),
-                                style = WidgetStyle.Glass,
-                                onPcSummaryClick = { navigator.goTo(Workspace.Monitor) },
-                            )
-                            else -> MonitorMode(
-                                metrics = MockData.metrics,
-                                history = mockMetricHistory(MockData.metrics),
-                                style = WidgetStyle.Glass,
-                                identity = MockData.hardware,
-                                onOpenDevice = { navigator.goTo(Workspace.Dashboard) },
-                            )
-                        }
+                        HomeSurface(
+                            mode = homeMode,
+                            dashboard = DashboardData(
+                                greeting = MockData.greetingText,
+                                time = MockData.clockTime,
+                                date = MockData.calendarDateLabel,
+                                weather = MockData.weather,
+                                events = MockData.calendarEvents,
+                                todos = MockData.todos,
+                                pc = railModel,
+                                pcSummary = MockData.summaryMetrics,
+                                widgets = DashboardLayout.default,
+                            ),
+                            metrics = MockData.metrics,
+                            history = mockMetricHistory(MockData.metrics),
+                            style = WidgetStyle.Glass,
+                            onModeChange = { homeMode = it },
+                            identity = MockData.hardware,
+                        )
                     }
                     Workspace.Settings -> PlaceholderScreen("Settings")
                 }

@@ -1315,7 +1315,7 @@ git commit -m "feat: add monitor mode with metric cards and sparklines"
   - `class HomeModeController { val current: StateFlow<HomeMode>; fun show(mode: HomeMode); fun toggle(); fun onSwipeLeft(); fun onSwipeRight() }`（左滑进 Monitor，右滑回 Dashboard）
   - `@Composable fun HomeSurface(mode: HomeMode, dashboard: DashboardData, metrics: MetricsSnapshot, history: Map<String, List<Float>>, style: WidgetStyle, onModeChange: (HomeMode) -> Unit, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 写失败测试（控制器）**
+- [x] **Step 1: 写失败测试（控制器）**
 
 ```kotlin
 class HomeSurfaceStateTest {
@@ -1350,7 +1350,7 @@ class HomeSurfaceStateTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*HomeSurfaceStateTest*"
@@ -1358,7 +1358,7 @@ class HomeSurfaceStateTest {
 
 Expected: 编译失败，`Unresolved reference: HomeModeController`。
 
-- [ ] **Step 3: 实现控制器与 UI 切换**
+- [x] **Step 3: 实现控制器与 UI 切换**
 
 `HomeSurface` 用 `Modifier.pointerInput` 处理水平拖动（阈值 60dp 判定方向），并在 `DashboardMode` 的 PC Summary 点击回调里 `onModeChange(HomeMode.Monitor)`；`MonitorMode` 顶部提供返回 Dashboard 的入口。
 
@@ -1396,7 +1396,7 @@ fun HomeSurface(
 }
 ```
 
-- [ ] **Step 4: 写 UI 测试**
+- [x] **Step 4: 写 UI 测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -1426,7 +1426,7 @@ class HomeSurfaceTest {
 }
 ```
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -2171,3 +2171,19 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 
 - 1280dp 宽的整屏下主区约 921dp → 落进 3 列区间，内容需要滚动；概念图的 5 列排布要求主区 ≥ 1000dp，即整屏约 1400dp 以上。
 - 这说明"72/28 + 5 列"是宽屏形态；Task 14 需要决定在 1000–1400dp 区间是放宽 Rail 还是改指标卡密度。
+
+---
+
+## 执行记录：Task 9（2026-09-19）
+
+已完成 Task 9。证据：`testDebugUnitTest` 67 + `desktopTest` 109 全绿；`HomeSurfaceTest` 用 `performTouchInput { swipeLeft()/swipeRight() }` 验证的是**真实手势路径**，不只是控制器。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| 滑动判定 | 单次 `dragAmount` 与 ±60 比较 | 累计本次拖拽位移，在 `onDragEnd` 判定 | 单次拖拽事件通常只有几像素，永远达不到 60dp 阈值，原写法手势实际不会触发 |
+| 阈值来源 | 代码里写 `60f` | `AppSizes.swipeThreshold` 令牌 + `LocalDensity` 转 px | 原有写法把 dp 阈值当像素用；而且裸 dp 会被 `DesignTokenDisciplineTest` 拦下 |
+| `HomeSurface` 签名 | `(mode, dashboard, metrics, history, style, onModeChange, modifier)` | 追加 `identity: HardwareIdentity? = null` | 否则 Monitor 里的身份卡会丢掉主机名/系统/CPU/GPU（Task 8 已引入这些字段） |
+| Monitor 返回入口 | "MonitorMode 顶部提供返回 Dashboard 的入口" | 身份卡的 `>` 变成可点返回 | 复用既有 `onOpenDevice` 回调，避免再加一个按钮 |
+| App 接入 | 只写"用 HomeSurface" | 工作空间作为入口 + `LaunchedEffect(workspace)` 同步形态；形态由 HomeSurface 自己管 | 保留 Phase 0 的三工作空间导航语义（`Workspace.Monitor` 仍能直接落到 Monitor 形态），同时不让导航状态与主页形态互相打架 |

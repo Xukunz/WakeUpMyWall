@@ -1,6 +1,7 @@
 package com.xukunz.wakeupmywall.ui.monitor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -155,7 +156,13 @@ private fun DeviceIdentityCard(
     onOpen: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    WidgetSurface(style = style, modifier = modifier.testTag("monitor:identity")) {
+    // 身份卡右上角的 `>` 是可点返回入口（HomeSurface 用它回 Dashboard）。
+    WidgetSurface(
+        style = style,
+        modifier = modifier
+            .testTag("monitor:identity")
+            .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

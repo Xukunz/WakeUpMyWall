@@ -43,6 +43,8 @@ object AppSizes {
     /** 响应式断点阈值（风险 R7）。放在令牌里，`ui/` 不允许出现裸断点数值。 */
     val fiveColumnMinWidth = 1000.dp
     val threeColumnMinWidth = 600.dp
+    /** 主页形态切换的水平滑动阈值。 */
+    val swipeThreshold = 60.dp
 }
 
 object DarkSurface {
