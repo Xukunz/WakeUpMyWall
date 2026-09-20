@@ -43,7 +43,7 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `agent/WakeUpMyWall.Agent.sln` | 解决方案 |
+| `agent/WakeUpMyWall.Agent.slnx` | 解决方案 |
 | `agent/src/WakeUpMyWall.Agent/WakeUpMyWall.Agent.csproj` | `Microsoft.NET.Sdk.Web` + `net10.0` + `Nullable` + `TreatWarningsAsErrors` |
 | `agent/src/WakeUpMyWall.Agent/Program.cs` | 组装：配置、鉴权过滤器、端点映射；末尾 `public partial class Program;` 供测试工厂使用 |
 | `agent/src/WakeUpMyWall.Agent/Api/StatusEndpoints.cs` | `GET /api/v1/status`（免鉴权，最小信息） |
@@ -65,7 +65,7 @@
 ### Task A1: Agent 骨架 + `GET /api/v1/status`
 
 **Files:**
-- Create: `agent/WakeUpMyWall.Agent.sln`、`agent/src/WakeUpMyWall.Agent/Program.cs`、`agent/src/WakeUpMyWall.Agent/Api/StatusEndpoints.cs`、`agent/src/WakeUpMyWall.Agent/Auth/TokenStore.cs`（只放接口 + 内存实现）
+- Create: `agent/WakeUpMyWall.Agent.slnx`、`agent/src/WakeUpMyWall.Agent/Program.cs`、`agent/src/WakeUpMyWall.Agent/Api/StatusEndpoints.cs`、`agent/src/WakeUpMyWall.Agent/Auth/TokenStore.cs`（只放接口 + 内存实现）
 - Create: `agent/tests/WakeUpMyWall.Agent.Tests/StatusEndpointTests.cs` + 测试工程文件
 - Modify: `.gitignore`（`agent/**/bin/`、`agent/**/obj/`）
 
