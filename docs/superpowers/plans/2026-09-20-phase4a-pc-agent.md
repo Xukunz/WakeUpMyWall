@@ -445,7 +445,7 @@ git commit -m "feat: pair the phone with a one-time code and guard the api with 
   - `IPowerController`（四个 `Task<PowerResult> …Async(CancellationToken)`）、`PowerResult(bool Accepted, string? Error)`
   - `ActionRegistry`：`All`、`TryExecute(id, power)`、`Executed`、`ResetExecutions()`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```csharp
 // PowerEndpointTests.cs
@@ -513,12 +513,12 @@ public class ActionEndpointTests(WebApplicationFactory<Program> factory) : IClas
 
 `TestAuth` 是一个小 helper（测试工程里）：拿 `PairingService.CreateCode()` → `POST /api/v1/pairing` → 返回带 `Authorization` 的 `HttpClient`；`AuthTests` 也可以改用它减少重复。
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `export PATH="$HOME/.dotnet-local:$PATH"; cd agent && dotnet test`
 Expected: FAIL —— 端点是 404、`FakePowerController` / `ActionRegistry` / `TestAuth` 不存在
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```csharp
 // Power/IPowerController.cs
@@ -691,12 +691,12 @@ protectedEndpoints.MapGet("/api/v1/system", () =>
     Results.Json(new { error = "metrics land in Phase 5 (LibreHardwareMonitor)" }, statusCode: 501));
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `export PATH="$HOME/.dotnet-local:$PATH"; cd agent && dotnet test`
 Expected: PASS（A1 1 + A2 3 + A3 7）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 cd /home/xukunz/桌面/WakeUpMyWall

@@ -1,5 +1,7 @@
 using WakeUpMyWall.Agent.Api;
 using WakeUpMyWall.Agent.Auth;
+using WakeUpMyWall.Agent.Actions;
+using WakeUpMyWall.Agent.Power;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton(TimeProvider.System);
@@ -8,6 +10,13 @@ builder.Services.AddSingleton<ITokenStore>(services => new FileTokenStore(
     services.GetRequiredService<IConfiguration>()["Agent:TokenFile"] ?? AgentPaths.DefaultTokenFile));
 builder.Services.AddSingleton<PairingService>();
 builder.Services.AddSingleton<BearerAuthFilter>();
+builder.Services.AddSingleton<ActionRegistry>();
+
+// 电源动作只有 Windows 能真做；其它平台（CI / 开发机 / 冒烟）用 --fake-power，
+// 只记录不执行，避免把开发机真的关掉。
+var useFakePower = args.Contains("--fake-power") || !OperatingSystem.IsWindows();
+if (useFakePower) builder.Services.AddSingleton<IPowerController, FakePowerController>();
+else builder.Services.AddSingleton<IPowerController, WindowsPowerController>();
 
 var app = builder.Build();
 
@@ -20,6 +29,8 @@ protectedEndpoints.MapGet("/api/v1/system", () =>
     Results.Json(
         new { error = "metrics land in Phase 5 (LibreHardwareMonitor)" },
         statusCode: StatusCodes.Status501NotImplemented));
+protectedEndpoints.MapPowerEndpoints();
+protectedEndpoints.MapActionEndpoints();
 
 app.MapPost("/api/v1/pairing", (PairingRequest request, PairingService pairing) =>
     pairing.IsPaired
