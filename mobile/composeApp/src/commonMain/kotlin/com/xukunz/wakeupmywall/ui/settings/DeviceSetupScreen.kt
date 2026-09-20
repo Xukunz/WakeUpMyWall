@@ -57,6 +57,13 @@ fun DeviceSetupScreen(
     onSelectDevice: (String) -> Unit,
     onDeleteDevice: (String) -> Unit,
     onAddDevice: () -> Unit,
+    agent: AgentPairingUi = AgentPairingUi(
+        paired = false,
+        isPairing = false,
+        note = null,
+        onPair = {},
+        onUnpair = {},
+    ),
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("device:setup")) {
@@ -77,6 +84,7 @@ fun DeviceSetupScreen(
                 )
                 SavedComputers(devices, onSelectDevice, onDeleteDevice, onAddDevice, Modifier.fillMaxWidth())
                 IntegratedServices(Modifier.fillMaxWidth())
+                AgentSection(input.agentHost, input.agentPort, agent, Modifier.fillMaxWidth())
             }
         } else {
             Row(
@@ -99,6 +107,7 @@ fun DeviceSetupScreen(
                 ) {
                     SavedComputers(devices, onSelectDevice, onDeleteDevice, onAddDevice, Modifier.fillMaxWidth())
                     IntegratedServices(Modifier.fillMaxWidth())
+                    AgentSection(input.agentHost, input.agentPort, agent, Modifier.fillMaxWidth())
                 }
             }
         }

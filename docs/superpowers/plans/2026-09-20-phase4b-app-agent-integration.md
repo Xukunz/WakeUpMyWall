@@ -92,11 +92,11 @@ fun `pairing failure surfaces the reason instead of throwing`() = runTest {
 - Produces: `interface AgentTokenStore { suspend fun read(deviceId: String): String?; suspend fun write(deviceId: String, token: String); suspend fun clear(deviceId: String) }`；`InMemoryAgentTokenStore`；`KeystoreAgentTokenStore(store: KeyValueStore)`；`AgentSection(host, port, paired: Boolean, isPairing: Boolean, onPair: (String) -> Unit, onUnpair: () -> Unit, modifier)`
 - 行为约定：配对成功后 `device:pairing-state` 显示 `Paired · token stored in Keystore`；未配对显示 `Not paired yet`；`device:unpair` 清掉 Token（并可再次配对）。
 
-- [ ] **Step 1: 写失败测试**（内存 store 的读写/清除；AgentSection 的 Pair 回调与两态文案）
-- [ ] **Step 2: 跑测试确认失败**
-- [ ] **Step 3: 实现**（Keystore：`KeyGenParameterSpec` + `AES/GCM/NoPadding`；IV 与密文一起 base64 后写入 `KeyValueStore("agent-token:<deviceId>")`）
-- [ ] **Step 4: 跑全量测试 + `assembleDebug` 确认通过**
-- [ ] **Step 5: 提交** `feat: pair the phone and keep the agent token in the keystore`
+- [x] **Step 1: 写失败测试**（内存 store 的读写/清除；AgentSection 的 Pair 回调与两态文案）
+- [x] **Step 2: 跑测试确认失败**
+- [x] **Step 3: 实现**（Keystore：`KeyGenParameterSpec` + `AES/GCM/NoPadding`；IV 与密文一起 base64 后写入 `KeyValueStore("agent-token:<deviceId>")`）
+- [x] **Step 4: 跑全量测试 + `assembleDebug` 确认通过**
+- [x] **Step 5: 提交** `feat: pair the phone and keep the agent token in the keystore`
 
 ### Task B3: 存在性轮询（PC 是否开着）
 

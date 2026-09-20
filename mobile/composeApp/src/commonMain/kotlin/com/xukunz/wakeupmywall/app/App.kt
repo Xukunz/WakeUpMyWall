@@ -22,8 +22,11 @@ import com.xukunz.wakeupmywall.core.connectivity.ConnectionReport
 import com.xukunz.wakeupmywall.core.connectivity.ConnectivityTester
 import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
 import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
+import com.xukunz.wakeupmywall.core.agent.AgentTokenStore
+import com.xukunz.wakeupmywall.core.agent.InMemoryAgentTokenStore
 import com.xukunz.wakeupmywall.core.network.AgentApi
 import com.xukunz.wakeupmywall.core.network.ApiResult
+import com.xukunz.wakeupmywall.core.network.PowerAction
 import com.xukunz.wakeupmywall.core.network.createAgentHttpClient
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.theme.ThemeAccent
@@ -51,6 +54,7 @@ import com.xukunz.wakeupmywall.ui.settings.SettingsWorkspace
 import com.xukunz.wakeupmywall.ui.settings.DeviceSetupScreen
 import com.xukunz.wakeupmywall.ui.settings.AppearanceScreen
 import com.xukunz.wakeupmywall.ui.settings.AppearanceState
+import com.xukunz.wakeupmywall.ui.settings.AgentPairingUi
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupInput
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupValidator
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
@@ -77,6 +81,13 @@ fun App(
     wakeBudgetMillis: Long = 60_000,
     /** 测试注入用：是否认为 Agent 已经起来。默认 null = 真去问 `GET /api/v1/status`。 */
     wakeAgentResponds: (suspend (PcDevice) -> Boolean)? = null,
+    // 平台实现在 MainActivity 注入（Keystore + DataStore）；测试与预览用内存实现。
+    agentTokens: AgentTokenStore = remember { InMemoryAgentTokenStore() },
+    /**
+     * Agent 客户端工厂。**工厂而不是实例**：桌面 target 没有 Ktor 引擎，
+     * 提前构造会让每一屏都起不来（Phase 2 实测）；只有真的要发请求时才建。
+     */
+    agentApiFactory: () -> AgentApi = { AgentApi(createAgentHttpClient()) },
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
@@ -98,10 +109,15 @@ fun App(
     val connectivity = remember(probe) {
         ConnectivityTester(probe = probe, api = { AgentApi(createAgentHttpClient()) })
     }
+    val agentApi by remember(agentApiFactory) { lazy(agentApiFactory) }
     var connectionReport by remember { mutableStateOf<ConnectionReport?>(null) }
     var isTestingConnection by remember { mutableStateOf(false) }
     // 唤醒失败/超时的解释行；成功或被重新触发时清空。
     var wakeNote by remember { mutableStateOf<String?>(null) }
+    // Agent 配对状态：Token 本体只存在 Keystore/内存 store 里，这里只留一份用于发请求的副本。
+    var agentToken by remember { mutableStateOf<String?>(null) }
+    var isPairing by remember { mutableStateOf(false) }
+    var pairingNote by remember { mutableStateOf<String?>(null) }
     // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
     var appearance by remember {
         mutableStateOf(
@@ -182,6 +198,12 @@ fun App(
     // 首次播种的设备与存储里的设备共用同一个 id（`desktop-alpha`），只比 id 就漏掉了
     // "同一台设备、值不一样"这一种，表单会一直停在 Mock 值上而 Test Connection 用的是仓库值。
     LaunchedEffect(device) { device?.let { deviceInput = it.toSetupInput() } }
+
+    // 换设备时把该设备的配对 Token 读回来（Keystore 里是密文）。
+    LaunchedEffect(device?.id, agentTokens) {
+        pairingNote = null
+        agentToken = device?.let { agentTokens.read(it.id) }
+    }
 
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
     LaunchedEffect(workspace) {
@@ -313,6 +335,38 @@ fun App(
                                             )
                                         }
                                     },
+                                    agent = AgentPairingUi(
+                                        paired = agentToken != null,
+                                        isPairing = isPairing,
+                                        note = pairingNote,
+                                        onPair = { code ->
+                                            val target = device
+                                            scope.launch {
+                                                isPairing = true
+                                                pairingNote = null
+                                                if (target == null) {
+                                                    pairingNote = "Add a device first"
+                                                } else {
+                                                    when (val result = agentApi.pair(baseUrl(target), code)) {
+                                                        is ApiResult.Success -> {
+                                                            agentTokens.write(target.id, result.value.token)
+                                                            agentToken = result.value.token
+                                                        }
+                                                        is ApiResult.Failure -> pairingNote = result.message
+                                                    }
+                                                }
+                                                isPairing = false
+                                            }
+                                        },
+                                        onUnpair = {
+                                            val target = device
+                                            scope.launch {
+                                                pairingNote = null
+                                                if (target != null) agentTokens.clear(target.id)
+                                                agentToken = null
+                                            }
+                                        },
+                                    ),
                                 )
                                 SettingsSection.Appearance -> AppearanceScreen(
                                     state = appearance,
@@ -376,6 +430,12 @@ private fun formatWaited(millis: Long): String {
 /** 桌面 `UnsupportedTcpProbe` 之类"这条平台没有探测能力"的结论：不要拿它改状态。 */
 private fun ConnectionReport.isProbeUnavailable(): Boolean =
     this is ConnectionReport.Failed && reason == ConnectionFailure.PROBE_UNAVAILABLE
+
+/** Agent 的基址：优先 `agentHost`，没有再退回设备 IP。 */
+private fun baseUrl(device: PcDevice): String {
+    val host = device.agentHost ?: device.ipAddress ?: "127.0.0.1"
+    return "http://$host:${device.agentPort}"
+}
 
 /** 一台设备都没配时的空表单（字段留空，保存按钮会被校验挡住）。 */
 private fun emptySetupInput() = DeviceSetupInput(
