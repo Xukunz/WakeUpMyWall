@@ -46,6 +46,7 @@ BUILD SUCCESSFUL in 1m 8s
 | kotlinx-datetime | 0.8.0 | 已解析 |
 | Room / DataStore | **DataStore Preferences 1.2.1**（仅 androidMain） | Phase 2 选型定案（理由与备选对比见 [Phase 2 计划](../superpowers/plans/2026-09-20-phase2-device-system.md) §0）：键值容器 + commonMain 的 `JsonSettingsStorage` 负责序列化，`assembleDebug` 与真机落盘均通过 |
 | TCP 探测 | JDK 自带 `java.net.Socket`（androidMain） | 未引入 `ktor-network`：探测只需"连得上/被拒/超时/解析失败"四态，JDK socket 足够，且异常映射能按类型写（common 侧拿不到这些异常类型） |
+| WOL 发送 | JDK 自带 `java.net.DatagramSocket`（androidMain，`broadcast = true`） | 不新增依赖；魔包 102 字节由 commonMain 的 `MagicPacket` 编码，androidUnitTest 用真 UDP socket 逐字节验过 |
 
 ### AGP 9 与 KMP 的关键限制（实测）
 

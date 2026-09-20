@@ -6,7 +6,7 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 
 ## 项目状态
 
-当前处于 **Phase 2（设备系统）已完成、Phase 3（唤醒与守护）未开始**：Phase 0（KMP 工程基础）、Phase 1（Design System + Mock UI）与 Phase 2 均已交付。已完成：
+当前处于 **Phase 3（WOL）**：Phase 0（KMP 工程基础）、Phase 1（Design System + Mock UI）、Phase 2（设备系统）已交付，Phase 3 的代码与模拟器验收已落地 —— 只剩"真机对目标 PC 连续 10 次开机"需要你在有目标 PC 的局域网里执行（步骤与记录表见 [Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) Task 5 Step 3）。已完成：
 
 - Kotlin Multiplatform 工程骨架（`commonMain` 不依赖任何 Android API）
 - 领域模型与 PC 状态机（纯函数 + 单元测试）
@@ -20,12 +20,16 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - Device Setup 接真实设备：Port 步进器、Saved Computers 变成选择器（点行=切换当前设备、`✕`=删除、`+ Add Device`=新增），Rail / Dashboard / 表单都跟随仓库里的当前设备
 - `Test Connection` 给出具体失败原因：连不上 / 被拒 / 超时 / 返回 404（"这不是 WakeUpMyWall Agent"）/ 401 / 流中断，六类都有可读结论，没有静默 `Failed`
 - Android 真机验收：冷启动后设备列表与当前设备原样恢复（`files/datastore/settings.preferences_pb`）、删除当前设备后默认设备自动回落、四类连接结论实测（见 [Phase 2 计划](docs/superpowers/plans/2026-09-20-phase2-device-system.md) §4 验收实录）
+- WOL：102 字节魔包（6×`0xFF` + MAC×16，纯函数 + 逐字节单测）、UDP 广播 ×3（JDK `DatagramSocket`，`broadcast = true`）、`WAKING` 期间每 2 秒轮询 `GET /api/v1/status`，应答即 `ONLINE`，预算耗尽回落 `WOL_READY` 并给出 `Sent 3 wake packets — no answer …` 这类解释行
+- 状态派生：`Test Connection` 的结论会喂给状态机 —— Agent 不可达但设备有 MAC/广播（`PcDevice.isWakeable`）时落 `WOL_READY`（主环可点），否则 `OFFLINE`
+- WOL 真机验收（模拟器）：logcat `sent 102 bytes x3 to 192.168.1.255:9`、rail `Waking PC…` → 60 s 后带原因回落、stub Agent 应答后回到 `Online`（见 [Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) §4.2、`docs/plans/screenshots/phase3-*.png`）
 - GitHub Actions CI：单元测试 + Compose UI 测试 + Debug 组装
 
 计划与验收标准：
 
 - Phase 1：[2026-09-19-phase1-design-system-and-mock-ui.md](docs/superpowers/plans/2026-09-19-phase1-design-system-and-mock-ui.md)、视觉复核 [phase1-visual-review.md](docs/plans/phase1-visual-review.md)
 - Phase 2（已完成）：[2026-09-20-phase2-device-system.md](docs/superpowers/plans/2026-09-20-phase2-device-system.md)
+- Phase 3（代码与模拟器验收已完成，真机 10/10 待执行）：[2026-09-20-phase3-wol.md](docs/superpowers/plans/2026-09-20-phase3-wol.md)
 - 全阶段路标：[2026-09-19-roadmap.md](docs/superpowers/plans/2026-09-19-roadmap.md)
 
 ## 技术栈
