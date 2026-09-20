@@ -46,6 +46,12 @@ object AppSizes {
     /** 主页形态切换的水平滑动阈值。 */
     val swipeThreshold = 60.dp
     val settingsNavWidth = 240.dp
+    val appearanceNavWidth = 180.dp
+    val wallpaperChip = 40.dp
+    val accentDot = 24.dp
+    val sliderHeight = 32.dp
+    const val minFontScale = 0.8f
+    const val maxFontScale = 1.4f
 }
 
 object DarkSurface {

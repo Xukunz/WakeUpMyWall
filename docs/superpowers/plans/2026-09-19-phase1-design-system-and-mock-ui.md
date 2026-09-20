@@ -1721,7 +1721,7 @@ git commit -m "feat: add device setup form with validation"
   - `object BuiltInWallpapers { val ids: List<String> }`（顺序固定：`dusk-lake` / `mountains` / `forest` / `city-night` / `cozy-room` / `minimal` / `abstract`；`dusk-lake` 为默认）
   - `@Composable fun AppearanceScreen(state: AppearanceState, onStateChange: (AppearanceState) -> Unit, preview: @Composable (AppearanceState) -> Unit, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 class AppearanceStateTest {
@@ -1771,7 +1771,7 @@ class AppearanceStateTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*AppearanceStateTest*"
@@ -1779,11 +1779,11 @@ class AppearanceStateTest {
 
 Expected: 编译失败，`Unresolved reference: AppearanceState`。
 
-- [ ] **Step 3: 实现状态与归约器**
+- [x] **Step 3: 实现状态与归约器**
 
 `AppearanceReducer` 全部为纯函数（`copy` 返回新状态）；`setWallpaper` 对非法 id 保持原值，不抛异常。
 
-- [ ] **Step 4: 实现 UI（含 Live Preview）**
+- [x] **Step 4: 实现 UI（含 Live Preview）**
 
 严格按权威规格 F 表构建：
 
@@ -1798,7 +1798,7 @@ Expected: 编译失败，`Unresolved reference: AppearanceState`。
 
 滑杆取值写入 `AppearanceState.transparency` 与 `fontScale`；`fontScale` 通过 `LocalDensity` 的 `fontScale` 覆盖应用到 Live Preview 内的预览子树。
 
-- [ ] **Step 5: 写 UI 测试**
+- [x] **Step 5: 写 UI 测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -1826,7 +1826,7 @@ class AppearanceScreenTest {
 }
 ```
 
-- [ ] **Step 6: 运行测试并提交**
+- [x] **Step 6: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -2219,3 +2219,28 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 | Saved Computers 行 | 未指定排布 | 名称 + MAC 竖排，"Default" 作为右侧徽标 | 实测横向排会把 MAC 拆成逐字符换行 |
 | `ip` 字段 | 校验器里要求"非空时必须合法" | 补了一条测试固定该行为 | 计划只有实现没有测试覆盖，容易在重构时丢失 |
 | App 接线 | 未指定初值 | 用 `MockData.defaultDevice` 预填表单 | 概念图 E 显示的就是一台已配置好、处于 `WOL Ready` 的设备 |
+
+---
+
+## 执行记录：Task 12（2026-09-19）
+
+已完成 Task 12。证据：`testDebugUnitTest` 86 + `desktopTest` 143 全绿；Appearance 真实成帧见 `build/screenshots/appearance-live-preview.png`。
+
+### 需要用户裁决的缺口：壁纸素材
+
+权威规格 F 列出 7 张壁纸（`dusk-lake` / `mountains` / `forest` / `city-night` / `cozy-room` / `minimal` / `abstract`），但**只有用户提供的两张有真实母版**（`aurora` / `minimal`）。因此目录里只保留这两张：
+
+- 若把另外 5 个 id 塞进目录，`WallpaperBackground.drawable()` 会命中 `error("Unmapped built-in wallpaper")` —— 也就是说必须要么补素材，要么承认目录只有两张。
+- `AppearanceStateTest` 用一条测试把"目录只暴露有素材的壁纸"固定下来，避免以后有人只改 id 不改素材。
+- **待裁决**：这 5 张是否要补（自己拍/生成/买图），还是把概念图 F 行的 7 张缩略图视为"示意"、正式版只出 2–3 张？
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| `BuiltInWallpapers` 位置 | 新建在 `data/mock`，7 个固定 id | 复用 Task 8.5 已建的 `core/wallpaper/BuiltInWallpapers`（2 个真实 id） | 该文件已存在且被 `WallpaperBackground` / `AppearanceSettings` 引用；重建会同时出现两套 id |
+| 归约器接口 | 只列了 4 个函数 | 追加 `setTransparency` / `setFontScale`（带钳制，字号上下限进 `AppSizes` 令牌） | 规格 F 有这两个滑杆；不钳制的话滑杆能把字号推到荒谬值 |
+| 底部控制条 | 步骤 4 读起来像竖直四段 | 四段**并排**在同一行 | 规格 F 原文是"底部控制条四段"；实测竖排会把 Live Preview 挤到几乎看不见 |
+| `AppearanceScreen` 签名 | `(state, onStateChange, preview, modifier)` | `(state, onStateChange, modifier, selectedSection, onSectionChange, preview)` | 左导航需要受控选中态；`preview` 放最后以便尾随 lambda |
+| Appearance 的作用域 | 只描述"Live Preview 会跟着变" | **Accent / Wallpaper / WidgetStyle 现在是全应用外观的唯一来源**：`WakeUpMyWallTheme(accent=…)`、`WallpaperBackground(appearance.wallpaperId)`、`HomeSurface(style=appearance.widgetStyle)` 全部读它 | 否则用户在 Appearance 里改完，回到主页发现没变——那不叫外观设置，只是预览器 |
+| 截图组合 | — | 截图测试补上壁纸底层 | 首次截图是白底：`AppearanceScreen` 本身不铺背景，真实 App 里它浮在壁纸上 |

@@ -1,6 +1,7 @@
 package com.xukunz.wakeupmywall.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -13,6 +14,19 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import java.io.File
+import com.xukunz.wakeupmywall.core.theme.ThemeAccent
+import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
+import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
+import com.xukunz.wakeupmywall.data.mock.MockData
+import com.xukunz.wakeupmywall.domain.model.DashboardLayout
+import com.xukunz.wakeupmywall.domain.model.PcState
+import com.xukunz.wakeupmywall.ui.components.WidgetStyle
+import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
+import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
+import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
+import com.xukunz.wakeupmywall.ui.settings.AppearanceScreen
+import com.xukunz.wakeupmywall.ui.settings.AppearanceState
+import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
 import kotlin.test.Test
 
 /**
@@ -41,6 +55,43 @@ class AppScreenshotTest {
     @Test
     fun `capture dashboard with minimal wallpaper`() = capture("dashboard-minimal") {
         App(wallpaperId = "minimal")
+    }
+
+    @Test
+    fun `capture appearance screen with live preview`() = capture("appearance-live-preview") {
+        WakeUpMyWallTheme {
+            // 与真实 App 一致的组合：壁纸在底层，Appearance 面板浮在其上。
+            Box(Modifier.fillMaxSize()) {
+                WallpaperBackground(BuiltInWallpapers.DefaultId)
+            AppearanceScreen(
+                state = AppearanceState(
+                    accent = ThemeAccent.AuroraBlue,
+                    widgetStyle = WidgetStyle.Glass,
+                    wallpaperId = BuiltInWallpapers.DefaultId,
+                    transparency = 0.7f,
+                    fontScale = 1f,
+                    widgets = DashboardLayout.default,
+                ),
+                onStateChange = {},
+            ) { previewState ->
+                DashboardMode(
+                    data = DashboardData(
+                        greeting = MockData.greetingText,
+                        time = MockData.clockTime,
+                        date = MockData.calendarDateLabel,
+                        weather = MockData.weather,
+                        events = MockData.calendarEvents,
+                        todos = MockData.todos,
+                        pc = powerRailModel(PcState.ONLINE, MockData.defaultDevice),
+                        pcSummary = MockData.summaryMetrics,
+                        widgets = previewState.widgets,
+                    ),
+                    style = previewState.widgetStyle,
+                    onPcSummaryClick = {},
+                )
+            }
+            }
+        }
     }
 
     private fun capture(name: String, content: @androidx.compose.runtime.Composable () -> Unit) =

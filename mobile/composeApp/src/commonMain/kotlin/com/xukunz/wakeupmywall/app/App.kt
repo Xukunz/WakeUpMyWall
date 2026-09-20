@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
+import com.xukunz.wakeupmywall.core.theme.ThemeAccent
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
 import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.DashboardLayout
@@ -28,9 +29,12 @@ import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.settings.SettingsSection
 import com.xukunz.wakeupmywall.ui.settings.SettingsWorkspace
 import com.xukunz.wakeupmywall.ui.settings.DeviceSetupScreen
+import com.xukunz.wakeupmywall.ui.settings.AppearanceScreen
+import com.xukunz.wakeupmywall.ui.settings.AppearanceState
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupInput
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupValidator
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
+import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
 import com.xukunz.wakeupmywall.ui.dashboard.HomeMode
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
 import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
@@ -47,6 +51,19 @@ fun App(
     var homeMode by remember { mutableStateOf(HomeMode.Dashboard) }
     var settingsSection by remember { mutableStateOf(SettingsSection.DeviceSetup) }
     val device = MockData.defaultDevice
+    // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
+    var appearance by remember {
+        mutableStateOf(
+            AppearanceState(
+                accent = ThemeAccent.AuroraBlue,
+                widgetStyle = WidgetStyle.Glass,
+                wallpaperId = wallpaperId,
+                transparency = 0.7f,
+                fontScale = 1f,
+                widgets = DashboardLayout.default,
+            ),
+        )
+    }
     var deviceInput by remember {
         mutableStateOf(
             DeviceSetupInput(
@@ -71,9 +88,9 @@ fun App(
         }
     }
 
-    WakeUpMyWallTheme {
+    WakeUpMyWallTheme(accent = appearance.accent) {
         Box(modifier = Modifier.fillMaxSize()) {
-            WallpaperBackground(wallpaperId)
+            WallpaperBackground(appearance.wallpaperId)
             // Surface 保持透明，只借用 Material3 的 contentColor，让壁纸透出来。
             Surface(
                 modifier = Modifier.fillMaxSize(),
@@ -113,7 +130,7 @@ fun App(
                             ),
                             metrics = MockData.metrics,
                             history = mockMetricHistory(MockData.metrics),
-                            style = WidgetStyle.Glass,
+                            style = appearance.widgetStyle,
                             onModeChange = { homeMode = it },
                             identity = MockData.hardware,
                         )
@@ -148,7 +165,27 @@ fun App(
                                     onSave = {},
                                     onTestConnection = {},
                                 )
-                                // Task 12 会替换为 Appearance 与 Live Preview。
+                                SettingsSection.Appearance -> AppearanceScreen(
+                                    state = appearance,
+                                    onStateChange = { appearance = it },
+                                ) { previewState ->
+                                    DashboardMode(
+                                        data = DashboardData(
+                                            greeting = MockData.greetingText,
+                                            time = MockData.clockTime,
+                                            date = MockData.calendarDateLabel,
+                                            weather = MockData.weather,
+                                            events = MockData.calendarEvents,
+                                            todos = MockData.todos,
+                                            pc = railModel,
+                                            pcSummary = MockData.summaryMetrics,
+                                            widgets = previewState.widgets,
+                                        ),
+                                        style = previewState.widgetStyle,
+                                        onPcSummaryClick = {},
+                                    )
+                                }
+                                // Task 13/14 会继续填充其余 section。
                                 else -> PlaceholderScreen(current.title)
                             }
                         }
