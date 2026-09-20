@@ -10,6 +10,8 @@ import com.xukunz.wakeupmywall.domain.model.capabilities
  */
 data class PowerRailModel(
     val pcName: String,
+    /** 设备 id：决定摘要卡 / 身份卡用哪张封面素材（取不到回落默认封面）。 */
+    val deviceId: String?,
     val subtitle: String,
     val stateLabel: String,
     val primaryLabel: String,
@@ -29,6 +31,7 @@ fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
     val capabilities = state.capabilities(device)
     return PowerRailModel(
         pcName = device?.name ?: "My PC",
+        deviceId = device?.id,
         subtitle = "POWER CONTROL",
         stateLabel = state.shortLabel(),
         primaryLabel = state.primaryLabel(capabilities.primaryLabel),

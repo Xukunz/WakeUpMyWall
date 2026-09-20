@@ -4,7 +4,17 @@ package com.xukunz.wakeupmywall.domain.model
  * 只读快照模型：字段按「概念图还原规格」列出屏幕要显示的信息量，
  * 真实数据源（Weather Provider / Android Calendar / Agent）按对应 Phase 替换 Mock。所有取值都不可变。
  */
-data class HourlyForecast(val label: String, val temperatureC: Int)
+/**
+ * 逐时预报。`condition` / `isNight` 是图标选型要用的数据，必须由数据源给出，
+ * 不允许从已经格式化好的 `label`（如 `10PM`）反推——那会把展示串当数据用。
+ * Phase 6 接真实 Weather Provider 后由 provider 直接填这两个字段。
+ */
+data class HourlyForecast(
+    val label: String,
+    val temperatureC: Int,
+    val condition: String = "Cloudy",
+    val isNight: Boolean = false,
+)
 
 data class WeatherSnapshot(
     val location: String,
@@ -15,6 +25,8 @@ data class WeatherSnapshot(
     val nextHours: List<HourlyForecast>,
     /** StandBy 天气卡上的一句话天气（权威规格 D）。 */
     val summary: String = "",
+    /** 当前是夜间：决定图标用日间版还是夜间版（概念图 21:04 用的是月亮+云）。 */
+    val isNight: Boolean = false,
 )
 
 /** StandBy 的下一场日程（权威规格 D：In 1 hr 19 min / Team sync / 11:00 PM – 12:00 AM / Microsoft Teams）。 */

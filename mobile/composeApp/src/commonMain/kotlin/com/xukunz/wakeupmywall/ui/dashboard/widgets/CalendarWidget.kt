@@ -20,6 +20,8 @@ import com.xukunz.wakeupmywall.core.theme.Spacing
 import com.xukunz.wakeupmywall.domain.model.CalendarEvent
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.components.WidgetSurface
+import com.xukunz.wakeupmywall.ui.icons.AppIcon
+import com.xukunz.wakeupmywall.ui.icons.AppIconKind
 
 private val weekLetters = listOf("S", "M", "T", "W", "T", "F", "S")
 private val weekDates = (20..26).map { it.toString() }
@@ -44,7 +46,11 @@ fun CalendarWidget(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text("+", style = MaterialTheme.typography.labelSmall)
+                AppIcon(
+                    kind = AppIconKind.Plus,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = AppSizes.iconSmall,
+                )
             }
         }
 

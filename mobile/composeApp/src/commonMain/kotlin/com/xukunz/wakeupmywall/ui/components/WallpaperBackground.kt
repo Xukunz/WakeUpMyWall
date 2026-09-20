@@ -13,7 +13,19 @@ import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
 import com.xukunz.wakeupmywall.core.wallpaper.Wallpaper
 import com.xukunz.wakeupmywall.resources.Res
 import com.xukunz.wakeupmywall.resources.aurora_wallpaper
+import com.xukunz.wakeupmywall.resources.cherry_wallpaper
+import com.xukunz.wakeupmywall.resources.cherry_wallpaper_thumb
+import com.xukunz.wakeupmywall.resources.aurora_wallpaper_thumb
+import com.xukunz.wakeupmywall.resources.city_night_wallpaper
+import com.xukunz.wakeupmywall.resources.city_night_wallpaper_thumb
+import com.xukunz.wakeupmywall.resources.dusk_lake_wallpaper
+import com.xukunz.wakeupmywall.resources.dusk_lake_wallpaper_thumb
+import com.xukunz.wakeupmywall.resources.forest_mist_wallpaper
+import com.xukunz.wakeupmywall.resources.forest_mist_wallpaper_thumb
 import com.xukunz.wakeupmywall.resources.minimal_wallpaper
+import com.xukunz.wakeupmywall.resources.minimal_wallpaper_thumb
+import com.xukunz.wakeupmywall.resources.space_wallpaper
+import com.xukunz.wakeupmywall.resources.space_wallpaper_thumb
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -24,8 +36,29 @@ import org.jetbrains.compose.resources.painterResource
  */
 internal fun Wallpaper.drawable(): DrawableResource = when (id) {
     BuiltInWallpapers.Aurora.id -> Res.drawable.aurora_wallpaper
+    BuiltInWallpapers.DuskLake.id -> Res.drawable.dusk_lake_wallpaper
+    BuiltInWallpapers.ForestMist.id -> Res.drawable.forest_mist_wallpaper
+    BuiltInWallpapers.CityNight.id -> Res.drawable.city_night_wallpaper
+    BuiltInWallpapers.Space.id -> Res.drawable.space_wallpaper
+    BuiltInWallpapers.Cherry.id -> Res.drawable.cherry_wallpaper
     BuiltInWallpapers.Minimal.id -> Res.drawable.minimal_wallpaper
     else -> error("Unmapped built-in wallpaper: $id")
+}
+
+/**
+ * 编目项 → 缩略图资源（Appearance 的 Wallpaper 段）。与 [drawable] 一样刻意不兜底：
+ * 新增壁纸却漏了缩略图，`AppearanceScreenTest.wallpaper thumbnails cover the bundled catalogue`
+ * 会在渲染阶段直接失败，而不是悄悄显示成别的图。
+ */
+internal fun Wallpaper.thumbnail(): DrawableResource = when (id) {
+    BuiltInWallpapers.Aurora.id -> Res.drawable.aurora_wallpaper_thumb
+    BuiltInWallpapers.DuskLake.id -> Res.drawable.dusk_lake_wallpaper_thumb
+    BuiltInWallpapers.ForestMist.id -> Res.drawable.forest_mist_wallpaper_thumb
+    BuiltInWallpapers.CityNight.id -> Res.drawable.city_night_wallpaper_thumb
+    BuiltInWallpapers.Space.id -> Res.drawable.space_wallpaper_thumb
+    BuiltInWallpapers.Cherry.id -> Res.drawable.cherry_wallpaper_thumb
+    BuiltInWallpapers.Minimal.id -> Res.drawable.minimal_wallpaper_thumb
+    else -> error("Unmapped wallpaper thumbnail: $id")
 }
 
 @Composable

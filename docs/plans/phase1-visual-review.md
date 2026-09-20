@@ -166,3 +166,34 @@ JAVA_HOME=<jdk-25> ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTe
 ```
 
 截图由同一次 `desktopTest` 重新产出（`AppScreenshotTest` 会断言帧尺寸），并复制到 `docs/plans/screenshots/`（见该目录 README）。
+
+---
+
+## 8. 2026-09-20 补记（二）：UI 素材接入
+
+**这一节解掉了 §6 / §7.4 里"待用户提供"的两条阻塞项。** 用户交付了：
+
+- `imgs/ui/`：11 个天气图标、1 张 PC 默认封面、1 张电源按钮底图（均为带真实 alpha 的 PNG）；
+- `imgs/wallpaper/`：补齐到 7 张母版（规格 F 要几张就有几张）。
+
+处理原则由用户给定：**没有的尽量用代码实现，做不到的再回报要图**。执行结果与逐项清单见
+[2026-09-20-ui-asset-integration.md](2026-09-20-ui-asset-integration.md)，要点：
+
+| §6 / §7.4 的待办 | 现在 |
+| --- | --- |
+| 壁纸素材（规格 F 要 7 张，只有 2 张） | ✅ 7 张母版全部入库进包，Appearance 的缩略图从母版派生 |
+| 图标方案（引入图标库 / 自绘矢量 / 继续字形占位） | ✅ 拐点是**第三条路 + 素材**：天气 / PC 封面 / 电源用交付的 PNG，其余界面图标由 `ui/icons/AppIcons.kt` 代码绘制（不引库、不内置第三方商标） |
+| T2 温度 / 风扇 / 最近活动的圆点与进度条 | ✅ 已按概念图补齐，并加了不等权重让 Recent Activity 不再截断 |
+| 逐时天气无图标、温度区间错位、PC 摘要四项纵向堆叠 | ✅ 三项都改了（见上表链接的 §4） |
+
+**第二批复核（2026-09-20）** 按用户指示把上面三点全部收口，并补了手机 / 折叠屏的响应式适配：
+
+1. `default wallpaper` 改为 `Dusk Lake`（`aurora` 降为备选）；
+2. StandBy 浮层卡按概念图 D 逐项重建（`POWER CONTROL` + `>`、`Power On`/`WAKE YOUR PC`、
+   `Night Mode`/`Auto-Dim` 图标瓦片、底部状态条）；
+3. 电源按钮改为概念图的发光环（弃用旋钮底图，纯代码绘制）。
+
+细节与证据见 [2026-09-20-responsive-and-concept-alignment.md](2026-09-20-responsive-and-concept-alignment.md)。
+
+验证：`testDebugUnitTest 101 / desktopTest 184`，0 failures；`docs/plans/screenshots/` 下的
+帧已按本轮代码重出（含 20:9 / 21.1:9 / 4:3.55 三种手机与折叠屏比例）。

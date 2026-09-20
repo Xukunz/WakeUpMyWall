@@ -12,8 +12,10 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - 领域模型与 PC 状态机（纯函数 + 单元测试）
 - 网络抽象（Ktor + 请求超时 + 统一错误映射）与存储抽象（内存实现，真实后端留到 Phase 2）
 - 三个工作空间的导航骨架、暗色主题与 6 套强调色令牌
-- 内置壁纸（默认 Aurora），并带资源级 UI 测试
+- 内置壁纸（默认 Dusk Lake），并带资源级 UI 测试
 - GitHub Actions CI：单元测试 + Compose UI 测试 + Debug 组装
+- 内置壁纸 7 张（默认 Dusk Lake）、11+1 类天气图标、3 张设备封面、电源发光环（代码绘制）
+- 响应式外壳：墙面屏/内屏走 72/28 侧栏，手机 20:9、折叠外屏 21.1:9 走底部常驻栏
 
 详细计划与验收标准见 [docs/superpowers/plans/2026-09-19-phase0-kmp-foundation.md](docs/superpowers/plans/2026-09-19-phase0-kmp-foundation.md)。
 
@@ -47,7 +49,9 @@ mobile/composeApp/                 # 移动端（KMP）
 agent/                             # PC Agent（Phase 4 引入）
 docs/                              # 产品设计、规范、路标与分阶段实施计划
 imgs/concept/                      # 概念图
+imgs/ui/                           # UI 素材母版（11 个天气图标 / PC 封面 / 电源按钮底图）
 imgs/wallpaper/                    # 内置壁纸母版与派生规则
+tools/prepare_ui_assets.py         # 素材加工：裁剪透明边、统一留白与尺寸、派生打包资源
 ```
 
 `jvm("desktop")` target 只用于 Compose UI 测试与设计预览，不是产品形态。
@@ -85,6 +89,13 @@ APK 位于 `mobile/composeApp/build/outputs/apk/debug/`。
 ## 壁纸资源
 
 内置壁纸母版、派生规则与更新流程见 [imgs/wallpaper/README.md](imgs/wallpaper/README.md)。
+
+## UI 素材
+
+`imgs/ui/` 下的 PNG 母版（天气图标、PC 封面、电源按钮底图）**不直接进包**，先由
+`python3 tools/prepare_ui_assets.py` 加工到 `mobile/composeApp/src/commonMain/composeResources/drawable/`。
+脚本幂等，改素材后重跑即可；缺口清单与接入记录见
+[docs/plans/2026-09-20-ui-asset-integration.md](docs/plans/2026-09-20-ui-asset-integration.md)。
 
 ## 许可证
 

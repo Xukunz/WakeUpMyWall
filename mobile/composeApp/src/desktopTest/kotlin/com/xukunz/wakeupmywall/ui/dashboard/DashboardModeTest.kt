@@ -80,11 +80,15 @@ class DashboardModeTest {
         setContent { WakeUpMyWallTheme { DashboardMode(data, WidgetStyle.Glass, {}) } }
 
         onNodeWithTag("dashboard:weather-temp").assertTextEquals("18°")
-        onNodeWithTag("dashboard:weather-range").assertTextEquals("↑22° ↓14°")
+        // 概念图 B 行 2 把最高/最低温排成温度右侧的上下两行，因此是两个节点而不是一个。
+        onNodeWithTag("dashboard:weather-high").assertTextEquals("↑22°")
+        onNodeWithTag("dashboard:weather-low").assertTextEquals("↓14°")
         onNodeWithTag("dashboard:todo-count").assertTextEquals("3 of 5")
         // PC 摘要整卡是可点击的，子节点语义被合并进卡片，断言需显式读未合并树。
-        onNodeWithTag("dashboard:pc-cpu", useUnmergedTree = true).assertTextEquals("CPU 12%")
-        onNodeWithTag("dashboard:pc-temp", useUnmergedTree = true).assertTextEquals("Temp 42°C")
-        onNodeWithTag("dashboard:pc-ram", useUnmergedTree = true).assertTextEquals("RAM 38%")
+        // 摘要卡改成概念图的"横向四列"后，名称与数值是两个节点（名称在上、数值在下）。
+        onNodeWithTag("dashboard:pc-cpu-label", useUnmergedTree = true).assertTextEquals("CPU")
+        onNodeWithTag("dashboard:pc-cpu", useUnmergedTree = true).assertTextEquals("12%")
+        onNodeWithTag("dashboard:pc-temp", useUnmergedTree = true).assertTextEquals("42°C")
+        onNodeWithTag("dashboard:pc-ram", useUnmergedTree = true).assertTextEquals("38%")
     }
 }

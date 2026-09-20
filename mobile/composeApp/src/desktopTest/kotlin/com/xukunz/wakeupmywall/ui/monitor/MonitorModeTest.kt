@@ -83,8 +83,10 @@ class MonitorModeTest {
 
         onNodeWithTag("monitor:identity-hostname", useUnmergedTree = true).assertTextEquals("DESKTOP-ALPHA")
         onNodeWithTag("monitor:identity-os", useUnmergedTree = true).assertTextEquals("Windows 11 Pro")
-        onNodeWithTag("metric:temps-cpu", useUnmergedTree = true).assertTextEquals("CPU 68°C")
-        onNodeWithTag("metric:fans-cpu", useUnmergedTree = true).assertTextEquals("CPU Fan 1,240 RPM")
+        // 温度 / 风扇行按概念图改成"圆点 + 名称 + 右对齐数值 + 细条"，名称与数值分开断言。
+        onNodeWithTag("metric:temps-cpu-label", useUnmergedTree = true).assertTextEquals("CPU")
+        onNodeWithTag("metric:temps-cpu", useUnmergedTree = true).assertTextEquals("68°C")
+        onNodeWithTag("metric:fans-cpu", useUnmergedTree = true).assertTextEquals("1,240 RPM")
         onNodeWithTag("metric:uptime-value").assertTextEquals("3d 6h 24m")
     }
 }

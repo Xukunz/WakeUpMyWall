@@ -1,7 +1,10 @@
 package com.xukunz.wakeupmywall.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -92,8 +95,10 @@ fun App(
         Box(modifier = Modifier.fillMaxSize()) {
             WallpaperBackground(appearance.wallpaperId)
             // Surface 保持透明，只借用 Material3 的 contentColor，让壁纸透出来。
+            // 壁纸铺满整屏（含刘海与手势条区域），但**交互内容**要躲开系统栏：
+            // Android 15+ 强制 edge-to-edge，真实手机上不躲就会出现"齿轮被状态栏压住"这类问题。
             Surface(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
                 color = Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onBackground,
             ) {

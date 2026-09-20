@@ -93,6 +93,7 @@ fun HomeSurface(
                 history = history,
                 style = style,
                 identity = identity,
+                deviceId = dashboard.pc.deviceId,
                 onOpenDevice = { onModeChange(HomeMode.Dashboard) },
                 status = PcStatusLine(
                     name = dashboard.pc.pcName,

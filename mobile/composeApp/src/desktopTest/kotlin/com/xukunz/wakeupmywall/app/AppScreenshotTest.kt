@@ -2,7 +2,10 @@ package com.xukunz.wakeupmywall.app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -47,25 +50,71 @@ class AppScreenshotTest {
         /** 墙面屏形态：1280×720dp。 */
         const val FrameWidth = 1280
         const val FrameHeight = 720
+
+        /**
+         * 手机与折叠屏的实际比例（dp，按各自典型 dpi 折算）：
+         * 20:9 主流安卓机 412×915；21.1:9 折叠外屏 412×965；4:3.55 内屏展开 790×700 与竖放 700×790。
+         */
+        const val PhoneWidth = 412
+        const val PhoneHeight = 915
+        const val FoldOuterWidth = 412
+        const val FoldOuterHeight = 965
+        const val FoldInnerWidth = 790
+        const val FoldInnerHeight = 700
+        const val FoldInnerPortraitWidth = 700
+        const val FoldInnerPortraitHeight = 790
     }
 
     @Test
-    fun `capture dashboard with default wallpaper`() = capture("dashboard-aurora") { App() }
+    fun `capture dashboard with default wallpaper`() = capture("dashboard-default") { App() }
 
     @Test
-    fun `capture monitor workspace`() = capture("monitor-aurora") {
+    fun `capture monitor workspace`() = capture("monitor-default") {
         App(navigator = AppNavigator().apply { goTo(Workspace.Monitor) })
     }
 
     @Test
-    fun `capture settings workspace`() = capture("settings-aurora") {
+    fun `capture settings workspace`() = capture("settings-default") {
         App(navigator = AppNavigator().apply { goTo(Workspace.Settings) })
     }
 
     @Test
-    fun `capture dashboard with minimal wallpaper`() = capture("dashboard-minimal") {
-        App(wallpaperId = "minimal")
+    fun `capture dashboard with the aurora wallpaper`() = capture("dashboard-aurora") {
+        App(wallpaperId = "aurora")
     }
+
+    @Test
+    fun `capture dashboard with minimal wallpaper`() = capture("dashboard-minimal") { App(wallpaperId = "minimal") }
+
+    // 手机 / 折叠屏：竖屏形态下常驻控制栏在底部，Dashboard 单列。
+    @Test
+    fun `capture phone portrait dashboard`() =
+        capture("phone-portrait-dashboard", PhoneWidth, PhoneHeight) { App() }
+
+    @Test
+    fun `capture phone portrait monitor`() = capture("phone-portrait-monitor", PhoneWidth, PhoneHeight) {
+        App(navigator = AppNavigator().apply { goTo(Workspace.Monitor) })
+    }
+
+    @Test
+    fun `capture phone portrait settings`() = capture("phone-portrait-settings", PhoneWidth, PhoneHeight) {
+        App(navigator = AppNavigator().apply { goTo(Workspace.Settings) })
+    }
+
+    @Test
+    fun `capture foldable outer screen`() =
+        capture("fold-outer-dashboard", FoldOuterWidth, FoldOuterHeight) { App() }
+
+    @Test
+    fun `capture foldable inner screen landscape`() =
+        capture("fold-inner-dashboard", FoldInnerWidth, FoldInnerHeight) { App() }
+
+    @Test
+    fun `capture foldable inner screen portrait`() = capture(
+        "fold-inner-portrait-dashboard",
+        FoldInnerPortraitWidth,
+        FoldInnerPortraitHeight,
+    ) { App() }
 
     @Test
     fun `capture dashboard at compact width`() =
@@ -73,7 +122,7 @@ class AppScreenshotTest {
         capture("dashboard-compact", width = 800, height = FrameHeight) { App() }
 
     @Test
-    fun `capture standby mode`() = capture("standby-aurora") {
+    fun `capture standby mode`() = capture("standby-default") {
         WakeUpMyWallTheme {
             Box(Modifier.fillMaxSize()) {
                 WallpaperBackground(BuiltInWallpapers.DefaultId)
@@ -85,11 +134,13 @@ class AppScreenshotTest {
                         weather = MockData.weather,
                         events = MockData.calendarEvents,
                         todos = MockData.todos,
-                        pc = powerRailModel(PcState.ONLINE, MockData.defaultDevice),
+                    // 概念图的浮层卡是"可按的电源环 + Power On / WAKE YOUR PC"，那对应 WOL_READY；
+                    // 用 ONLINE 抓图会渲染成禁用环 + 状态文案，与概念图不是同一形态。
+                    pc = powerRailModel(PcState.WOL_READY, MockData.defaultDevice),
                         pcSummary = MockData.summaryMetrics,
                         widgets = DashboardLayout.default,
                     ),
-                    rail = powerRailModel(PcState.ONLINE, MockData.defaultDevice),
+                    rail = powerRailModel(PcState.WOL_READY, MockData.defaultDevice),
                     nextEvent = MockData.nextEvent,
                     onRailEvent = {},
                     onOpenMonitor = {},
@@ -142,7 +193,18 @@ class AppScreenshotTest {
         content: @androidx.compose.runtime.Composable () -> Unit,
     ) = runDesktopComposeUiTest(width = width, height = height) {
             setContent {
-                Box(Modifier.fillMaxSize()) { content() }
+                // 与 App 的真实组合一致：主题 + 透明 Surface，由 Surface 提供 contentColor。
+                // 少了这一层，没有显式指定颜色的文字会拿到 LocalContentColor 的默认黑，
+                // 在深色壁纸上直接看不见（StandBy 的时钟小时位就这样被漏掉过一版）。
+                WakeUpMyWallTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onBackground,
+                    ) {
+                        Box(Modifier.fillMaxSize()) { content() }
+                    }
+                }
             }
 
             val target = File("build/screenshots/$name.png")

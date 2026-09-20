@@ -7,6 +7,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.runComposeUiTest
 import com.xukunz.wakeupmywall.core.theme.ThemeAccent
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
@@ -57,7 +58,8 @@ class AppearanceScreenTest {
         setContent { WakeUpMyWallTheme { AppearanceScreen(state, { latest = it }) { } } }
 
         BuiltInWallpapers.all.forEach { onNodeWithTag("appearance:wallpaper:${it.id}").assertExists() }
-        onNodeWithTag("appearance:wallpaper:${BuiltInWallpapers.Minimal.id}").performClick()
+        // 7 张缩略图在控制条里横向滚动（1280dp 下这一段放不下 7 张），最后一页必须先滚进视口。
+        onNodeWithTag("appearance:wallpaper:${BuiltInWallpapers.Minimal.id}").performScrollTo().performClick()
 
         assertEquals(BuiltInWallpapers.Minimal.id, latest?.wallpaperId)
     }

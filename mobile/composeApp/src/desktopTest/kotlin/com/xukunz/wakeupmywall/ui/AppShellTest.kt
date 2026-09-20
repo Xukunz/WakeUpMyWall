@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.runDesktopComposeUiTest
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.domain.model.MacAddress
 import com.xukunz.wakeupmywall.domain.model.PcDevice
@@ -41,6 +42,37 @@ class AppShellTest {
         onNodeWithTag("powerrail").assertIsDisplayed()
         onNodeWithTag("appshell:main").assertExists()
         onNodeWithTag("appshell:rail").assertExists()
+    }
+
+    @Test
+    fun `phone portrait stacks content above a bottom rail`() = runDesktopComposeUiTest(412, 915) {
+        setContent {
+            WakeUpMyWallTheme {
+                AppShell(rail = rail(PcState.ONLINE), onRailEvent = {}) {
+                    Text("MAIN", modifier = Modifier.testTag("shell:main"))
+                }
+            }
+        }
+
+        // 20:9 手机：常驻控制栏仍然在（同一批标签），只是挪到了底部。
+        onNodeWithTag("powerrail").assertIsDisplayed()
+        onNodeWithTag("powerrail:primary").assertIsDisplayed()
+        onNodeWithTag("shell:main").assertIsDisplayed()
+    }
+
+    @Test
+    fun `foldable inner screen keeps the side rail`() = runDesktopComposeUiTest(790, 700) {
+        setContent {
+            WakeUpMyWallTheme {
+                AppShell(rail = rail(PcState.ONLINE), onRailEvent = {}) {
+                    Text("MAIN", modifier = Modifier.testTag("shell:main"))
+                }
+            }
+        }
+
+        // 4:3.55 内屏横放（790×700）：宽度够 + 横屏，回到概念图的 72/28 侧栏。
+        onNodeWithTag("powerrail").assertIsDisplayed()
+        onNodeWithTag("shell:main").assertIsDisplayed()
     }
 
     @Test

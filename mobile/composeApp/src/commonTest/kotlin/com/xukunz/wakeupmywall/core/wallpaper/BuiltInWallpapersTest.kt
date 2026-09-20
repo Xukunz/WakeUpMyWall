@@ -8,8 +8,9 @@ import kotlin.test.assertTrue
 class BuiltInWallpapersTest {
 
     @Test
-    fun `default wallpaper is the dark aurora master`() {
-        assertEquals("aurora", BuiltInWallpapers.DefaultId)
+    fun `default wallpaper is the dark dusk lake master`() {
+        // 概念图 F 行标的是 Dusk Lake（带对勾），2026-09-20 用户确认按概念图走。
+        assertEquals("dusk_lake", BuiltInWallpapers.DefaultId)
         val default = BuiltInWallpapers.byId(BuiltInWallpapers.DefaultId)
         assertFalse(default.isLight, "默认壁纸必须是暗色，否则暗色主题的正文对比度不成立")
     }

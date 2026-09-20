@@ -33,9 +33,21 @@ object Spacing {
 /** 组件尺寸令牌（与间距分开，避免把"元素多大"和"元素之间多远"混成一个量表）。 */
 object AppSizes {
     val ringDiameter = 220.dp
-    val standbyRingDiameter = 140.dp
+    /**
+     * StandBy 浮层卡里的环。概念图 D 的环占卡片高度约 2/3；140dp 会把卡片撑高到
+     * 和时钟抢空间，且旋钮底图的深色圆盘会盖住卡片左侧的标题，实测后收到 112dp。
+     */
+    /**
+     * StandBy 浮层卡里的环。概念图 D 的环直径约为卡片宽度的 2/3，实测按 168dp 才接近；
+     * 之前 112/140dp 是因为旋钮位图把小卡片压得发闷，改用代码发光环后不再有这个问题。
+     */
+    val standbyRingDiameter = 168.dp
     const val standbyCardWidthFraction = 0.34f
     val ringStroke = 3.dp
+    /** 主电源环的环宽（概念图 A3 是粗环 + 外发光，不是细描边）。 */
+    val powerRingStroke = 6.dp
+    /** 竖屏底部常驻栏里的环：整条栏要放在 400dp 级别的宽度里。 */
+    val compactRingDiameter = 88.dp
     val statusDot = 8.dp
     val barHeight = 6.dp
     val sparklineStroke = 2.dp
@@ -58,6 +70,45 @@ object AppSizes {
     val wallpaperChip = 40.dp
     val accentDot = 24.dp
     val sliderHeight = 32.dp
+    /** 图标尺寸：小号用于行内元数据，中号用于按钮与列表行，大号用于卡片标题行与快捷动作。 */
+    val iconSmall = 16.dp
+    val iconMedium = 20.dp
+    val iconLarge = 28.dp
+    /** 快捷动作的方形图标瓦片。 */
+    val iconTile = 44.dp
+    /** 天气图标：卡片主图标与逐时列的小图标。 */
+    val weatherIcon = 56.dp
+    val weatherIconHourly = 24.dp
+    /** 主电源环内部代码绘制的电源字形外接边长。 */
+    val powerGlyph = 92.dp
+    /** 待办勾选圈直径。 */
+    val checkbox = 18.dp
+    /** 概念图里的指标条是细线，不是进度条（与 6dp 的进度条分开）。 */
+    val metricBarHeight = 3.dp
+    /** PC 封面缩略图：摘要卡（小）与 Monitor 身份卡（中）两个尺寸。 */
+    val coverThumbnailWidth = 72.dp
+    val coverThumbnailHeight = 48.dp
+    val coverIdentityWidth = 112.dp
+    val coverIdentityHeight = 72.dp
+    /**
+     * 摘要卡"横向四列"所需的最小宽度。窄于它时（Compact 形态下摘要卡只有 ~260dp）
+     * 四列会把 `CPU` 压成竖排单字、`12%` 折行，因此改成"封面一行 + 指标 2×2"。
+     */
+    val summaryMetricsMinWidth = 340.dp
+    /**
+     * 常驻 Power Rail 从"侧栏"切成"底栏"的宽度下限。
+     * 手机的 20:9（~412dp 宽）与折叠外屏的 21.1:9（~412dp）都远低于它 → 底栏；
+     * 展开内屏（4:3.55，横放约 790dp）与墙面屏（1280dp）→ 侧栏。
+     */
+    val sideRailMinWidth = 600.dp
+    /** Dashboard 在竖屏窄机上退成单列：天气 / 日历 / 任务三张卡都不适合再并排。 */
+    val dashboardSingleColumnMaxWidth = 480.dp
+    /** 低于这个宽度时，Monitor 的身份卡与快捷动作不再并排（竖屏手机）。 */
+    val stackedRowsMaxWidth = 560.dp
+    /** 低于这个宽度时，Settings / Appearance 的左导航改成横向可滚动的条目条。 */
+    val inlineNavMaxWidth = 620.dp
+    /** 品牌条下面的短横线长度（概念图 D 顶行）。 */
+    val brandDividerWidth = 64.dp
     const val minFontScale = 0.8f
     const val maxFontScale = 1.4f
 }

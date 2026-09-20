@@ -64,9 +64,14 @@ class AppearanceStateTest {
 
     @Test
     fun `bundled catalogue only exposes wallpapers that ship an asset`() {
-        // 概念图 F 行的 7 张缩略图里，只有用户提供的两张有真实母版；其余不进目录，
-        // 否则 WallpaperBackground 会命中 "Unmapped built-in wallpaper"。
-        assertEquals(listOf("aurora", "minimal"), BuiltInWallpapers.all.map { it.id })
+        // 2026-09-20：用户补齐了全部 7 张母版（imgs/wallpaper/），目录因此与概念图 F 行的
+        // 缩略图数量对齐。编目项必须**逐一对得上**打包资源，否则 WallpaperBackground 会命中
+        // "Unmapped built-in wallpaper"；因此这里把 id 列表钉死，多一个少一个都要改两处。
+        assertEquals(
+            // 默认壁纸排在最前（Appearance 的缩略图按这个顺序排）。
+            listOf("dusk_lake", "aurora", "forest_mist", "city_night", "space", "cherry", "minimal"),
+            BuiltInWallpapers.all.map { it.id },
+        )
     }
 
     @Test

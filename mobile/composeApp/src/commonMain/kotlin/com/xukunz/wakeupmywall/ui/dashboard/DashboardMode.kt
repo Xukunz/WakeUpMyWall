@@ -64,8 +64,10 @@ fun DashboardMode(
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("dashboard")) {
         val available = maxWidth
         // Dashboard 的概念栅格是 3 列（见 Breakpoints.dashboardColumns），与 Monitor 的 5 列分开。
-        val columns = Breakpoints.dashboardColumns(available)
-        val scrollable = Breakpoints.requiresVerticalScroll(available)
+        // 竖屏窄机退成单列 + 纵向滚动（20:9 手机的 412dp 放不下三张卡并排）。
+        val portrait = maxHeight > maxWidth
+        val columns = Breakpoints.dashboardColumns(available, portrait = portrait)
+        val scrollable = Breakpoints.requiresVerticalScroll(available) || columns < 3
 
         // 概念图的三行排布：Compact（2 列）放不下，此时把三行摊平再按 2 列排并允许滚动。
         val greetingRow = buildList {

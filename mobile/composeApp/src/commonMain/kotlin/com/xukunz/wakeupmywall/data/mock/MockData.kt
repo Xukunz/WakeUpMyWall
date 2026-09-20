@@ -83,11 +83,14 @@ object MockData {
         condition = "Partly Cloudy",
         highC = 22,
         lowC = 14,
+        // 首页时钟是 21:04（概念图），因此主图标用夜间版（月亮 + 云）。
+        isNight = true,
         nextHours = listOf(
-            HourlyForecast("10PM", 17),
-            HourlyForecast("1AM", 16),
-            HourlyForecast("4AM", 15),
-            HourlyForecast("7AM", 16),
+            // 概念图的四列依次是：月亮+云、云、云、云。
+            HourlyForecast("10PM", 17, condition = "Partly Cloudy", isNight = true),
+            HourlyForecast("1AM", 16, condition = "Cloudy", isNight = true),
+            HourlyForecast("4AM", 15, condition = "Cloudy", isNight = true),
+            HourlyForecast("7AM", 16, condition = "Cloudy", isNight = false),
         ),
         summary = "Clearer skies later tonight.",
     )

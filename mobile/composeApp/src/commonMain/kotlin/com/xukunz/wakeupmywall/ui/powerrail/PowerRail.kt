@@ -26,6 +26,8 @@ import com.xukunz.wakeupmywall.core.theme.AppShapes
 import com.xukunz.wakeupmywall.core.theme.DarkSurface
 import com.xukunz.wakeupmywall.core.theme.LocalAccentPalette
 import com.xukunz.wakeupmywall.core.theme.Spacing
+import com.xukunz.wakeupmywall.ui.icons.AppIcon
+import com.xukunz.wakeupmywall.ui.icons.AppIconKind
 
 /**
  * 常驻 PC 控制栏（权威规格 A1–A6）。所有可用性都来自 [PowerRailModel]，
@@ -70,7 +72,11 @@ fun PowerRail(
                 )
             }
             IconButton(onClick = onSettings, modifier = Modifier.testTag("powerrail:settings")) {
-                Text("⚙", style = MaterialTheme.typography.titleLarge)
+                AppIcon(
+                    kind = AppIconKind.Gear,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = AppSizes.iconLarge,
+                )
             }
         }
 
@@ -93,7 +99,7 @@ fun PowerRail(
         }
 
         // A3 主电源环 + 标签 + 副标
-        PowerRingButton(enabled = model.primaryEnabled, onClick = onPrimary)
+        PowerRingButton(enabled = model.primaryEnabled, onClick = onPrimary, diameter = AppSizes.ringDiameter)
         Text(
             text = model.primaryLabel,
             style = MaterialTheme.typography.titleLarge,
@@ -113,9 +119,33 @@ fun PowerRail(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            RailAction("Sleep", "SNAP MODE", model.canSleep, onSleep, "powerrail:sleep", Modifier.weight(1f))
-            RailAction("Shut Down", "POWER OFF", model.canShutdown, onShutdown, "powerrail:shutdown", Modifier.weight(1f))
-            RailAction("Restart", "FRESH START", model.canRestart, onRestart, "powerrail:restart", Modifier.weight(1f))
+            RailAction(
+                icon = AppIconKind.Moon,
+                label = "Sleep",
+                caption = "SNAP MODE",
+                enabled = model.canSleep,
+                onClick = onSleep,
+                tag = "powerrail:sleep",
+                modifier = Modifier.weight(1f),
+            )
+            RailAction(
+                icon = AppIconKind.StopSquare,
+                label = "Shut Down",
+                caption = "POWER OFF",
+                enabled = model.canShutdown,
+                onClick = onShutdown,
+                tag = "powerrail:shutdown",
+                modifier = Modifier.weight(1f),
+            )
+            RailAction(
+                icon = AppIconKind.Restart,
+                label = "Restart",
+                caption = "FRESH START",
+                enabled = model.canRestart,
+                onClick = onRestart,
+                tag = "powerrail:restart",
+                modifier = Modifier.weight(1f),
+            )
         }
 
         // A5 连接条：通道文案 + 能力描述 + 箭头
@@ -132,13 +162,21 @@ fun PowerRail(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("⇄", style = MaterialTheme.typography.bodyMedium)
+                AppIcon(
+                    kind = AppIconKind.Wifi,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = AppSizes.iconMedium,
+                )
                 Text(
                     text = model.connectionLabel,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f).testTag("powerrail:connection"),
                 )
-                Text("→", style = MaterialTheme.typography.bodyMedium)
+                AppIcon(
+                    kind = AppIconKind.ChevronRight,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = AppSizes.iconMedium,
+                )
             }
             Text(
                 text = model.statusLine,
@@ -162,6 +200,7 @@ fun PowerRail(
 
 @Composable
 private fun RailAction(
+    icon: AppIconKind,
     label: String,
     caption: String,
     enabled: Boolean,
@@ -177,6 +216,15 @@ private fun RailAction(
         modifier = modifier.testTag(tag),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            AppIcon(
+                kind = icon,
+                tint = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                },
+                size = AppSizes.iconLarge,
+            )
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,

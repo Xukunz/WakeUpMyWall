@@ -31,9 +31,9 @@ class AppUiTest {
     }
 
     @Test
-    fun `default wallpaper is the aurora master`() = runComposeUiTest {
+    fun `default wallpaper is the dusk lake master`() = runComposeUiTest {
         setContent { App() }
-        onNodeWithTag("wallpaper:aurora").assertIsDisplayed()
+        onNodeWithTag("wallpaper:dusk_lake").assertIsDisplayed()
     }
 
     @Test
@@ -43,7 +43,7 @@ class AppUiTest {
 
         navigateThroughAllWorkspaces(navigator)
 
-        onNodeWithTag("wallpaper:aurora").assertIsDisplayed()
+        onNodeWithTag("wallpaper:dusk_lake").assertIsDisplayed()
         // Settings 已是真实工作空间（Task 10），不再是占位页。
         onNodeWithTag("settings:nav").assertIsDisplayed()
     }
@@ -57,7 +57,7 @@ class AppUiTest {
     @Test
     fun `unknown wallpaper id falls back to the default background`() = runComposeUiTest {
         setContent { App(wallpaperId = "no-such-wallpaper") }
-        onNodeWithTag("wallpaper:aurora").assertIsDisplayed()
+        onNodeWithTag("wallpaper:dusk_lake").assertIsDisplayed()
     }
 
     @Test
