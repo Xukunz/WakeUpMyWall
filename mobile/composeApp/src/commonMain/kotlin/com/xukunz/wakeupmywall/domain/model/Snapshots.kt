@@ -52,6 +52,12 @@ data class HardwareIdentity(
     val gpuName: String,
     val ramModule: String,
     val storageModule: String,
+    /**
+     * 指标卡上的型号小字（权威规格 C2）。概念图里卡片只用短名（`Ryzen 7 7700X` / `RTX 4070 Ti`），
+     * 带厂商前缀的全名只出现在身份卡上——卡片宽度装不下全名，实测会折成两行把环形进度挤变形。
+     */
+    val cpuShortName: String,
+    val gpuShortName: String,
 )
 
 data class MetricsSnapshot(

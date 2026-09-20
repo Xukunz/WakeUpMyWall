@@ -41,7 +41,9 @@ fun StandByClock(
             )
             Text(
                 text = meridiem,
-                style = AppTypography.metricUnit,
+                // 概念图（image-gen-5）里 `PM` 与数字同基线、高度约为数字的三分之一；
+                // 用 `metricUnit`（14sp）在 104sp 的数字旁会缩成一个小灰点（实测）。
+                style = AppTypography.metricValue,
                 modifier = Modifier.padding(start = Spacing.sm).testTag("standby:clock-meridiem"),
             )
         }

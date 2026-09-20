@@ -25,7 +25,9 @@ object MockData {
     val devices: List<PcDevice> = listOf(
         PcDevice(
             id = DEFAULT_DEVICE_ID,
-            name = "Desktop-Alpha",
+            // 权威规格 A1/E：用户在 Device Setup 里给这台机器起的名字是 `My PC`；
+            // `DESKTOP-ALPHA` 是主机名，只在 Monitor 身份卡上出现。
+            name = "My PC",
             macAddress = MacAddress.parse("00:1A:2B:3C:4D:5E"),
             ipAddress = "192.168.1.10",
             agentHost = "192.168.1.10",
@@ -57,6 +59,11 @@ object MockData {
     val greetingText: String = "Good Evening"
     val clockTime: String = "21:04"
     val calendarDateLabel: String = "Tue, Apr 22"
+    /**
+     * StandBy 的长日期（权威规格 D 逐字写的是 `Tuesday, April 22`）。
+     * 日历卡走的是短形态 `Tue, Apr 22`（规格 B2），两者不能共用一个字符串。
+     */
+    val standbyDateLabel: String = "Tuesday, April 22"
 
     val hardware = HardwareIdentity(
         hostname = "DESKTOP-ALPHA",
@@ -65,6 +72,9 @@ object MockData {
         gpuName = "NVIDIA GeForce RTX 4070 Ti",
         ramModule = "32 GB DDR5",
         storageModule = "2 TB NVMe SSD",
+        // 卡片短名与概念图逐字一致（权威规格 C2 的括号内文案）。
+        cpuShortName = "Ryzen 7 7700X",
+        gpuShortName = "RTX 4070 Ti",
     )
 
     val weather = WeatherSnapshot(
@@ -97,11 +107,11 @@ object MockData {
     )
 
     val todos: List<TodoItem> = listOf(
-        TodoItem(id = "1", title = "Review pull request", done = true),
-        TodoItem(id = "2", title = "Update wallpaper assets", done = true),
-        TodoItem(id = "3", title = "Wire WOL retry policy", done = true),
-        TodoItem(id = "4", title = "Draft Phase 2 device storage"),
-        TodoItem(id = "5", title = "Trim fan curves"),
+        TodoItem(id = "1", title = "Finish project notes", done = true),
+        TodoItem(id = "2", title = "Order desk accessories", done = true),
+        TodoItem(id = "3", title = "Reply to Alex"),
+        TodoItem(id = "4", title = "Plan weekend trip"),
+        TodoItem(id = "5", title = "Read 1 chapter"),
     )
 
     /** 首页摘要卡读数（权威规格 B3）。 */

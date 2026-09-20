@@ -19,5 +19,16 @@ object AppTypography {
     val body = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Normal)
     val label = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium)
     val metricValue = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
+    /**
+     * Monitor 第三行（Network / Uptime）的行内读数。概念图里这两个数字明显小于
+     * Dashboard 的天气温度（`metricValue`）：在 4 列等宽的卡片里用 32sp 时
+     * `↓124.3 Mbps` 会折成两行、`3d 6h 24m` 也会断行，与概念图的一行排布不符
+     * （2026-09-20 按 1280×720 真实成帧复核）。
+     *
+     * 18sp 不是拍脑袋：概念图里 `124.3 Mbps` 的数字高约 11.7dp、宽约 86dp，
+     * 换算字形高对应 ~16sp；本项目的默认字体比概念图的窄体更宽（0.69em/字符 vs 0.53），
+     * 取 18sp 才能既接近概念图的字号、又让 `↓124.3 Mbps` 在 152dp 的卡片内容宽里排成一行。
+     */
+    val metricReadout = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
     val metricUnit = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal)
 }

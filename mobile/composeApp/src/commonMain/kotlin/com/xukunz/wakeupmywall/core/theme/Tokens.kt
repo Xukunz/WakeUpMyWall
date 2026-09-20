@@ -42,8 +42,14 @@ object AppSizes {
     val ringArcStroke = 6.dp
     val progressRing = 84.dp
     val thumbnail = 48.dp
-    /** 响应式断点阈值（风险 R7）。放在令牌里，`ui/` 不允许出现裸断点数值。 */
-    val fiveColumnMinWidth = 1000.dp
+    /**
+     * 响应式断点阈值（风险 R7）。放在令牌里，`ui/` 不允许出现裸断点数值。
+     *
+     * `900.dp` 来自概念图本身：墙面屏是 1280×720dp，72% 主区 = 921dp，概念图在这个宽度下排的就是
+     * 5 列指标卡。Task 14 起初写的是 1000dp（估算"5 列要 200dp/张"），但那会让目标屏落进 3 列区间，
+     * 等于还原不出概念图的栅格——2026-09-20 按 1280×720 真实成帧复核后下调。
+     */
+    val fiveColumnMinWidth = 900.dp
     val threeColumnMinWidth = 600.dp
     /** 主页形态切换的水平滑动阈值。 */
     val swipeThreshold = 60.dp

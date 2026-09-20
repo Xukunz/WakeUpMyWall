@@ -2041,19 +2041,19 @@ git commit -m "feat: add responsive breakpoints for dashboard and monitor grids"
 - Consumes: Task 1–14 的全部 UI
 - Produces: 逐屏「已还原 / 有偏差」清单 + 校准后的主题色值
 
-- [ ] **Step 1: 用 desktop target 渲染五个屏幕并截图**
+- [x] **Step 1: 用 desktop target 渲染五个屏幕并截图**
 
 为每个屏幕写一个 `@Preview` 或 desktop `main` 入口渲染，把截图保存到 `docs/plans/screenshots/`；文件名与概念图屏幕名对应（`dashboard.png`、`monitor.png`、`standby.png`、`device-setup.png`、`personalization.png`）。
 
-- [ ] **Step 2: 逐屏比对并记录偏差**
+- [x] **Step 2: 逐屏比对并记录偏差**
 
 `docs/plans/phase1-visual-review.md` 必须逐屏列出：布局顺序、卡片数量、文案、数值、颜色、圆角与间距的差异，以及每项差异的处理结论（立即修 / 留到哪个 Phase）。**不允许写"基本一致"这类无法验证的结论。**
 
-- [ ] **Step 3: 取色校准写入令牌**
+- [x] **Step 3: 取色校准写入令牌**
 
 从概念图取色后更新 `Tokens.kt` 的 `DarkSurface` 与 `AccentPalette`，并保持 Task 1 的对比度测试（`ThemeAccentTest`）全绿；若某色值导致对比度不达标，必须调整并在复核文档里记录原因。
 
-- [ ] **Step 4: 运行全量测试并提交**
+- [x] **Step 4: 运行全量测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -2261,3 +2261,53 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 | PC 浮层卡宽度 | 未指定 | 占宽 34%（`AppSizes.standbyCardWidthFraction`） | 首次实现铺满整行，与"右侧浮层卡"不符 |
 | `nextEvent` 数据 | 只给了文案 | 新增 `NextEvent` 数据类 + `MockData.nextEvent`；`WeatherSnapshot` 增加 `summary` 字段 | 权威规格 D 的下一场日程与一句话天气在既有模型里无处安放 |
 | `HomeSurface` 参数 | `(mode, dashboard, metrics, history, style, onModeChange, modifier)` | 追加 `nextEvent`（默认取 `MockData.nextEvent`） | StandBy 需要日程数据；给默认值可以少改调用方，代价是 `ui/dashboard` 引用了 `data/mock`（纯 Mock 阶段的临时耦合，Phase 2 接真实数据源时一起清掉） |
+
+---
+
+## 执行记录：Task 14（2026-09-19，2026-09-20 修订）
+
+已完成 Task 14。证据：`Breakpoints` + `BreakpointsTest`（9 条）全绿；截图见 `docs/plans/screenshots/dashboard-compact.png`（800×720，主区 576dp → 2 列 + 滚动）。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| 阈值落点 | `AppSizes.fiveColumnMinWidth = 1000.dp`（本计划 Global Constraints 也写"主区 ≥1000dp 用概念图列数"） | **2026-09-20 下调为 900dp** | 概念图本身就是 1280×720dp 的墙面屏（1672×941 的图里 UI 区换算过），主区 921dp，概念图在这一宽度排的是 5 列指标卡。1000dp 是 Task 14 的估算（"5 列要 200dp/张"），会让目标屏永远落在 3 列，等于还原不出概念栅格。改的是令牌，架构（72/28）未动；`BreakpointsTest` 增加"墙面屏主区 921dp → 5 列"的回归断言 |
+| 列数只有一个 | `Breakpoints.columns()` 同时服务 Dashboard 与 Monitor | 追加 `Breakpoints.dashboardColumns()`（上限 3 列） | 概念图 B 的 Dashboard 最宽一行是 3 张卡，概念图 C 的 Monitor 指标行才是 5 张。5 列套到 Dashboard 上会把 3 张卡塞进 5 个名额（每张只剩 1/5 宽），实测把任务卡挤成逐字换行 |
+| 滚动条件 | "< 600dp 用 2 列并允许纵向滚动" | 改为"只要不是 5 列就必须允许滚动" | Task 8 实测：3 列时卡片换行堆叠、内容变高，固定高度下第三行被裁掉 |
+
+---
+
+## 执行记录：Task 15（2026-09-19 → 2026-09-20）
+
+已完成 Task 15，交付 `docs/plans/phase1-visual-review.md` + `docs/plans/screenshots/`。证据：`testDebugUnitTest` 94 + `desktopTest` 163 全绿，0 failures；五个屏幕按 **1280×720** 重出真实帧。
+
+复核过程中推翻了该文档自己写下的两处前提，按"证据优先"修掉（详见复核文档 §7）：
+
+| 编号 | 问题 | 处理 |
+| --- | --- | --- |
+| 证据 | 09-19 那批"1280×720"截图实际是 1024×720（`Modifier.size` 被测试窗口约束压回 1024 宽），整个比对是在 737dp 主区做的 | `AppScreenshotTest` 改用 `runDesktopComposeUiTest(width, height)`，并断言产出 PNG 尺寸等于声明的渲染条件；五个屏幕重出 |
+| 证据 | `android-standby.png` 与 `android-monitor.png` 逐字节相同（抓图时还没切到 StandBy） | 删除该文件；StandBy 在 Android 上仍**未验证**（本机 `/dev/kvm` 对当前用户不可用，恢复需交互式 `sudo`） |
+| T1 | Monitor 身份卡缺状态行 | 补上（绿点 + `My PC` + `Online` + `Last seen 1 min ago`），`HomeSurfaceTest` 守住 |
+| T3 | 指标卡型号小字用了带厂商前缀的全名 | 新增 `cpuShortName` / `gpuShortName`，卡片读短名（规格 C2），身份卡仍读全名（规格 C1） |
+| T4 | 断点见上（Task 14 修订） | 900dp + `dashboardColumns` |
+| T5 | `↓124.3 Mbps` / `3d 6h 24m` 在概念图的 4 列底行里折行 | 新增 `AppTypography.metricReadout = 18sp`（按概念图字形高换算） |
+| T6 | StandBy 日期用了日历卡的短形态 `Tue, Apr 22` | 新增 `MockData.standbyDateLabel = "Tuesday, April 22"`（规格 D 逐字），只在 StandBy 形态使用 |
+| T7 | StandBy 的 `PM` 是 14sp，在 104sp 数字旁成了小灰点 | 改用 `metricValue`（32sp，约为概念图里数字高的三分之一） |
+| T8 | Glass 卡面过透，StandBy 的 PC 浮层卡几乎看不出是张卡 | Glass α 0.35→0.6；实测卡面填充的离散度从 std 15 回到概念图的 std 9 |
+
+### 计划外新增的执行器
+
+`AppScreenshotTest` 的帧尺寸断言：把"复核文档写的渲染条件"变成可执行约束——以后测试窗口尺寸或 `Modifier.size` 行为再变，截图测试会直接失败，而不是产出一批与文档不符的图。
+
+### 仍未解决（已写入复核文档 §7.4）
+
+壁纸素材（规格 F 要 7 张、只有 2 张母版）、图标方案（Phase 1 不引入图标库）、Android StandBy 截图缺失、以及两个"概念图只给了像素、没有设计稿数值"的判断（Glass α、StandBy `PM` 字号）。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| Step 1 "为每个屏幕写一个 `@Preview` 或 desktop `main` 入口" | — | 用 `desktopTest` 里的 `AppScreenshotTest` 抓帧 | 这台机器没有可操作的图形界面，`@Preview` 与 `main` 窗口都拿不到；测试管线里 `captureToImage()` 还能顺带当渲染回归检查（渲染失败即测试失败） |
+| Step 3 "从概念图取色后更新 `Tokens.kt`" | 只预期改色值 | 色值未动，改的是 `WidgetStyle.surfaceAlpha()`（Glass 卡面不透明度） | 实测差异不在色相而在**不透明度**：概念图卡面填充比 Glass(0.35) 更均匀。深色/强调色令牌采样差 ≤10，维持原值，`ThemeAccentTest` 全绿 |
+| Step 4 提交信息 | `docs: add phase 1 visual parity review and calibrated tokens` | 一条提交同时带 UI 修正与文档 | T1/T3–T8 是复核过程中查出并修掉的偏差，与复核文档是同一次工作的产物，拆开会让"文档描述的状态"与"代码状态"短暂不一致 |

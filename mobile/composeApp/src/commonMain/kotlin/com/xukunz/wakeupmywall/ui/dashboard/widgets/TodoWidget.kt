@@ -27,7 +27,8 @@ fun TodoWidget(
             title = "My Tasks",
             trailing = {
                 Text(
-                    text = "${todos.count { it.done }} of ${todos.size}",
+                    // 概念图的 `3 of 5` 数的是**待办剩余**（图里 2 项已完成）而不是已完成数。
+                    text = "${todos.count { !it.done }} of ${todos.size}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("dashboard:todo-count"),

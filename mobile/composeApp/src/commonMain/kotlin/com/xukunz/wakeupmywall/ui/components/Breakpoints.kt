@@ -31,6 +31,13 @@ object Breakpoints {
     fun columns(available: Dp): Int = columnsFor(available.value.toInt())
 
     /**
+     * Dashboard 的栅格与 Monitor 不同：概念图 B 最宽的一行只有 3 张卡（天气 / 日历 / 任务），
+     * 5 列只出现在 Monitor 的指标行。主区再宽也不给 Dashboard 加到 5 列——
+     * 否则 3 张卡会被塞进 5 个名额里，每张只剩 1/5 宽（2026-09-20 实测把任务卡挤成逐字换行）。
+     */
+    fun dashboardColumns(available: Dp): Int = minOf(columnsFor(available.value.toInt()), 3)
+
+    /**
      * 只有概念图的 5 列布局能在固定高度里放得下；降到 3 列或 2 列时卡片会换行堆叠，
      * 必须允许纵向滚动，否则内容会被裁掉（实测踩到）。
      */

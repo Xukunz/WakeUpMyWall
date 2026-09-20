@@ -2,6 +2,7 @@ package com.xukunz.wakeupmywall.ui.dashboard
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -136,5 +137,46 @@ class HomeSurfaceTest {
         onNodeWithTag("monitor:identity").performClick()
 
         assertEquals(HomeMode.Dashboard, mode)
+    }
+
+    @Test
+    fun `monitor identity card carries the status line from the concept`() = runComposeUiTest {
+        setContent {
+            WakeUpMyWallTheme {
+                HomeSurface(
+                    mode = HomeMode.Monitor,
+                    dashboard = dashboardData,
+                    metrics = MockData.metrics,
+                    history = emptyMap(),
+                    style = WidgetStyle.Glass,
+                    onModeChange = {},
+                    identity = MockData.hardware,
+                )
+            }
+        }
+
+        onNodeWithTag("monitor:identity-name", useUnmergedTree = true).assertTextEquals("My PC")
+        onNodeWithTag("monitor:identity-state", useUnmergedTree = true).assertTextEquals("Online")
+        onNodeWithTag("monitor:identity-lastseen", useUnmergedTree = true).assertTextEquals("Last seen 1 min ago")
+    }
+
+    @Test
+    fun `standby shows the long date while the dashboard keeps the short one`() = runComposeUiTest {
+        setContent {
+            WakeUpMyWallTheme {
+                HomeSurface(
+                    mode = HomeMode.StandBy,
+                    dashboard = dashboardData,
+                    metrics = MockData.metrics,
+                    history = emptyMap(),
+                    style = WidgetStyle.Glass,
+                    onModeChange = {},
+                    identity = MockData.hardware,
+                )
+            }
+        }
+
+        // 权威规格 D 的长日期；同一份 dashboard.date 是规格 B2 的 `Tue, Apr 22`。
+        onNodeWithTag("standby:clock-date", useUnmergedTree = true).assertTextEquals("Tuesday, April 22")
     }
 }

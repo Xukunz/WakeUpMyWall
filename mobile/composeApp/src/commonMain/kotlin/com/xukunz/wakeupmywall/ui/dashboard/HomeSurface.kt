@@ -18,6 +18,7 @@ import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.ui.RailEvent
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.monitor.MonitorMode
+import com.xukunz.wakeupmywall.ui.monitor.PcStatusLine
 import com.xukunz.wakeupmywall.ui.standby.StandByMode
 
 enum class HomeMode { Dashboard, Monitor, StandBy }
@@ -93,9 +94,15 @@ fun HomeSurface(
                 style = style,
                 identity = identity,
                 onOpenDevice = { onModeChange(HomeMode.Dashboard) },
+                status = PcStatusLine(
+                    name = dashboard.pc.pcName,
+                    stateLabel = dashboard.pc.stateLabel,
+                    lastSeenLabel = dashboard.pcSummary.lastSeenLabel,
+                ),
             )
             HomeMode.StandBy -> StandByMode(
-                data = dashboard,
+                // 权威规格 D 的长日期与日历卡（B2）的短日期不是同一个字符串。
+                data = dashboard.copy(date = MockData.standbyDateLabel),
                 rail = dashboard.pc,
                 nextEvent = nextEvent,
                 onRailEvent = { event ->

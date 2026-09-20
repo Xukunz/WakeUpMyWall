@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +28,7 @@ import com.xukunz.wakeupmywall.core.theme.AppSizes
 import com.xukunz.wakeupmywall.core.theme.AppShapes
 import com.xukunz.wakeupmywall.core.theme.AppTypography
 import com.xukunz.wakeupmywall.core.theme.DarkSurface
+import com.xukunz.wakeupmywall.core.theme.LocalAccentPalette
 import com.xukunz.wakeupmywall.core.theme.Spacing
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.ui.components.Breakpoints
@@ -43,6 +45,13 @@ object MetricKeys {
     const val Network = "network"
 }
 
+/** Monitor 身份卡顶部的状态行（权威规格 C1：绿点 + 名称 + 在线状态 + 上次可见）。 */
+data class PcStatusLine(
+    val name: String,
+    val stateLabel: String,
+    val lastSeenLabel: String,
+)
+
 /** Quick Actions 的动作名（权威规格 C1）。**不内置任何第三方商标图标**，用几何字形 + 文字。 */
 private val quickActions = listOf("Browser", "Discord", "Steam", "Spotify")
 
@@ -58,6 +67,7 @@ fun MonitorMode(
     modifier: Modifier = Modifier,
     identity: com.xukunz.wakeupmywall.domain.model.HardwareIdentity? = null,
     onOpenDevice: (() -> Unit)? = null,
+    status: PcStatusLine? = null,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("monitor")) {
         // maxWidth 只能在 BoxWithConstraints 作用域直接读，进入 Column 的 content lambda 后就不是这个 receiver 了。
@@ -72,18 +82,18 @@ fun MonitorMode(
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                DeviceIdentityCard(identity, style, onOpenDevice, Modifier.weight(1.4f))
+                DeviceIdentityCard(identity, status, style, onOpenDevice, Modifier.weight(1.4f))
                 QuickActionsCard(style, Modifier.weight(1f))
             }
 
-            // 列数由断点决定：≥1000dp 才能按概念图排 5 列，否则 3 列 / 2 列（风险 R7）。
+            // 列数由断点决定：主区 ≥900dp 按概念图排 5 列（墙面屏 1280dp 的主区是 921dp），否则 3 列 / 2 列（风险 R7）。
             val metricSlots: List<@Composable (Modifier) -> Unit> = listOf(
                 { slot ->
                     MetricCard(
                         key = MetricKeys.Cpu,
                         label = "CPU",
                         percent = metrics.cpuPercent,
-                        modelLine = identity?.cpuName ?: "CPU",
+                        modelLine = identity?.cpuShortName ?: "CPU",
                         values = history[MetricKeys.Cpu].orEmpty(),
                         footerPrimary = "${metrics.cpuClockGhz} GHz",
                         footerSecondary = "${metrics.cpuCores} cores ${metrics.cpuThreads} threads",
@@ -96,7 +106,7 @@ fun MonitorMode(
                         key = MetricKeys.Gpu,
                         label = "GPU",
                         percent = metrics.gpuPercent,
-                        modelLine = identity?.gpuName ?: "GPU",
+                        modelLine = identity?.gpuShortName ?: "GPU",
                         values = history[MetricKeys.Gpu].orEmpty(),
                         footerPrimary = "${metrics.gpuTempC} °C",
                         footerSecondary = "${metrics.vramUsedGb} / ${metrics.vramTotalGb} GB VRAM",
@@ -139,11 +149,18 @@ fun MonitorMode(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                NetworkCard(metrics, history[MetricKeys.Network].orEmpty(), style, Modifier.weight(1f))
-                UptimeCard(metrics, style, Modifier.weight(1f))
-                ActivityCard(metrics, style, Modifier.weight(1f))
-                QuoteCard(Modifier.weight(1f).testTag("monitor:quote"))
+            // 第三行同样按断点排：576dp 下强排 4 列会把网络数值和引用卡挤到无法阅读（实测踩到）。
+            val bottomSlots: List<@Composable (Modifier) -> Unit> = listOf(
+                { slot -> NetworkCard(metrics, history[MetricKeys.Network].orEmpty(), style, slot) },
+                { slot -> UptimeCard(metrics, style, slot) },
+                { slot -> ActivityCard(metrics, style, slot) },
+                { slot -> QuoteCard(slot.testTag("monitor:quote")) },
+            )
+            bottomSlots.chunked(columns).forEach { bottomRow ->
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    bottomRow.forEach { slot -> slot(Modifier.weight(1f)) }
+                    repeat(columns - bottomRow.size) { Spacer(Modifier.weight(1f)) }
+                }
             }
         }
     }
@@ -152,6 +169,7 @@ fun MonitorMode(
 @Composable
 private fun DeviceIdentityCard(
     identity: com.xukunz.wakeupmywall.domain.model.HardwareIdentity?,
+    status: PcStatusLine?,
     style: WidgetStyle,
     onOpen: (() -> Unit)?,
     modifier: Modifier = Modifier,
@@ -163,6 +181,42 @@ private fun DeviceIdentityCard(
             .testTag("monitor:identity")
             .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier),
     ) {
+        if (status != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(AppSizes.statusDot)
+                            .clip(CircleShape)
+                            .background(LocalAccentPalette.current.onlineColor),
+                    )
+                    Text(
+                        text = status.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.testTag("monitor:identity-name"),
+                    )
+                    Text(
+                        text = status.stateLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = LocalAccentPalette.current.onlineColor,
+                        modifier = Modifier.testTag("monitor:identity-state"),
+                    )
+                }
+                Text(
+                    text = "Last seen ${status.lastSeenLabel}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("monitor:identity-lastseen"),
+                )
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -265,7 +319,7 @@ private fun NetworkCard(metrics: MetricsSnapshot, values: List<Float>, style: Wi
         Text("Network", style = MaterialTheme.typography.bodyMedium)
         Text(
             text = "↓${metrics.downloadMbps} Mbps",
-            style = AppTypography.metricValue,
+            style = AppTypography.metricReadout,
             modifier = Modifier.testTag("metric:network-down"),
         )
         Text(
@@ -284,7 +338,7 @@ private fun UptimeCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: M
         Text("Uptime", style = MaterialTheme.typography.bodyMedium)
         Text(
             text = formatUptime(metrics.uptimeSeconds),
-            style = AppTypography.metricValue,
+            style = AppTypography.metricReadout,
             modifier = Modifier.testTag("metric:uptime-value"),
         )
         Text(

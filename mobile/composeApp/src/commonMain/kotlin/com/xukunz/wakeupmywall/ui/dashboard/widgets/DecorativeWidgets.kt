@@ -46,7 +46,8 @@ fun PerspectiveMark(modifier: Modifier = Modifier) {
 fun QuoteCard(modifier: Modifier = Modifier) {
     WidgetSurface(style = WidgetStyle.Minimal, modifier = modifier.testTag("dashboard:quote")) {
         Text(
-            text = "Small steps,\nsteady light.",
+            // 概念图引用卡的实际文案（Task 15 逐屏比对时确认，替换掉 Task 6 的临时占位）。
+            text = "Better Tools\nA Calmer Mind",
             style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Serif),
         )
         HorizontalDivider(color = DarkSurface.outline)

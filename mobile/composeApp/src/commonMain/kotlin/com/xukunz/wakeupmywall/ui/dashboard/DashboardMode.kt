@@ -63,7 +63,8 @@ fun DashboardMode(
 
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("dashboard")) {
         val available = maxWidth
-        val columns = Breakpoints.columns(available)
+        // Dashboard 的概念栅格是 3 列（见 Breakpoints.dashboardColumns），与 Monitor 的 5 列分开。
+        val columns = Breakpoints.dashboardColumns(available)
         val scrollable = Breakpoints.requiresVerticalScroll(available)
 
         // 概念图的三行排布：Compact（2 列）放不下，此时把三行摊平再按 2 列排并允许滚动。

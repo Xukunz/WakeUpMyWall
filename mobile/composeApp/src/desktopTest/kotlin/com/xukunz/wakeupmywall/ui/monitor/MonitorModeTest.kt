@@ -49,6 +49,20 @@ class MonitorModeTest {
     }
 
     @Test
+    fun `metric cards use the short model names while the identity card keeps the full ones`() = runComposeUiTest {
+        setContent { WakeUpMyWallTheme { MonitorMode(MockData.metrics, history, WidgetStyle.Glass, identity = MockData.hardware) } }
+
+        // 权威规格 C2：卡片型号小字是 `Ryzen 7 7700X` / `RTX 4070 Ti`；全名只出现在身份卡（C1）。
+        onNodeWithTag("metric:cpu-model").assertTextEquals("Ryzen 7 7700X")
+        onNodeWithTag("metric:gpu-model").assertTextEquals("RTX 4070 Ti")
+        onNodeWithTag("metric:ram-model").assertTextEquals("32 GB DDR5")
+        onNodeWithTag("metric:storage-model").assertTextEquals("2 TB NVMe SSD")
+
+        onNodeWithTag("monitor:identity-cpu").assertTextEquals("AMD Ryzen 7 7700X")
+        onNodeWithTag("monitor:identity-gpu").assertTextEquals("NVIDIA GeForce RTX 4070 Ti")
+    }
+
+    @Test
     fun `cpu card shows percent value`() = runComposeUiTest {
         setContent { WakeUpMyWallTheme { MonitorMode(MockData.metrics, history, WidgetStyle.Glass, identity = MockData.hardware) } }
 
