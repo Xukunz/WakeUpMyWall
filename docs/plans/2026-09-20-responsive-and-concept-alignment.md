@@ -86,6 +86,7 @@
 | `phone-dashboard.png` / `phone-monitor.png` / `phone-settings.png` | 手机 20:9（412×915） |
 | `fold-outer.png` | 折叠外屏 21.1:9（412×965） |
 | `fold-inner.png` / `fold-inner-portrait.png` | 内屏 4:3.55（790×700 / 700×790） |
+| `fold-inner-portrait-monitor.png` / `fold-inner-portrait-settings.png` | 内屏竖放 700×790（第三批补，§7.1 已结） |
 
 新增守卫：
 
@@ -97,7 +98,65 @@
 
 ## 7. 遗留 / 可继续迭代
 
-1. 折叠屏的**内屏竖放**与**外屏**是两种窄窗口，但内屏竖放（~700dp 宽）仍用 3 列 Dashboard——
-   比手机宽松，符合预期，只是还没单独抓 Monitor/Settings 的竖屏帧，需要时补。
-2. Android 真机的刘海 / 手势条安全区目前靠 `safeDrawing` 统一处理，具体机型还需真机确认。
-3. `device-setup.png` 仍是历史遗留（`AppScreenshotTest` 不抓该屏，改用 `settings.png`）。
+1. ~~折叠屏内屏竖放还没单独抓 Monitor/Settings 的竖屏帧~~ → **已结**，见 §8.1：
+   `fold-inner-portrait-monitor.png` / `fold-inner-portrait-settings.png`（700×790）已入库。
+2. **Android 真机的刘海 / 手势条安全区仍未验证**（`safeDrawing` 只在代码层成立）。
+   2026-09-20 复检仍是同一阻塞：`/dev/kvm` 不存在，模拟器无法加速，见 §8.2。需要真机或恢复 KVM。
+3. ~~`device-setup.png` 仍是历史遗留~~ → **已结**，见 §8.3：该文件已删除（内容与 `settings.png` 重复）。
+
+## 8. 第三批（2026-09-20 收口）
+
+### 8.1 内屏竖放的 Monitor / Settings 帧
+
+内屏竖放是 700dp 宽，比手机（412dp）宽得多，但比横放的 790dp + 侧栏形态窄。700dp 撑满后
+主区约 668dp，两个阈值（`stackedRowsMaxWidth = 560dp`、`inlineNavMaxWidth = 620dp`）都**没到**，
+所以 Monitor 的身份卡/快捷动作**仍然并排**、Settings 左导航**仍然是 240dp 侧栏**——
+它既不是手机分支，也不是墙面屏分支。这正是"必须单独出帧"的理由：靠另外两种比例的帧推不出这一支。
+
+两张新帧都是 `AppScreenshotTest` 里新增的 `capture foldable inner screen portrait monitor/settings`，
+尺寸由测试断言（700×790）。**帧内容是滚动的第一屏**：Monitor 在列数 < 5 时开纵向滚动、
+Device Setup 表单同样可滚动（`Breakpoints.requiresVerticalScroll` / `DeviceSetupScreen` 的
+`verticalScroll`），所以底部卡片被视口切断是滚动视口的正常表现，与 `phone-monitor.png` 一致，不是裁剪缺陷。
+
+### 8.2 Android 侧复检（结论：仍被环境阻塞）
+
+逐条实测证据：
+
+| 检查 | 结果 |
+| --- | --- |
+| `ls /dev/kvm` | `No such file or directory` |
+| `emulator -accel-check` | `accel:` / `8` / `/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded` |
+| `emulator -avd wall -no-window -accel off` | 90 秒内 `FATAL \| A snapshot operation for 'wall' is pending and timeout has expired` 后退出 |
+| AVD 镜像 ABI | `abi.type=x86_64`（无 KVM = 纯软件模拟，不可用） |
+
+因此这一批**没有**新增 Android 帧；`android-dashboard.png` / `android-monitor.png` 已在
+[screenshots/README.md](screenshots/README.md) 标注为过期（2026-09-19 抓的，早于本批重写），
+StandBy 的 Android 帧依然缺。恢复路径见 [version-matrix.md](version-matrix.md) §6（宿主开 VT 或加载 KVM 模块）。
+
+### 8.3 过期证据 `device-setup.png`
+
+该文件是 00:22 那批的孤儿：当前 `AppScreenshotTest` 不抓它，而 Settings 工作空间默认就停在
+Device Setup 段，屏幕内容与 `settings.png` 重合。留着等于重演 `android-standby.png` 那次的错误
+（一张没人维护的图被当成当轮证据），故删除；git 历史里仍可取回。
+
+### 8.4 本轮新发现（待裁决，本批未改）
+
+**连接条有两行同文案**：规格 A5 的连接条是"图标 + 通道文案 + 箭头"一行；实现额外加了
+第二行 `statusLine = PcCapabilities.statusText`，而 ONLINE 的 `statusText` 恰好也是
+`Agent connected over LAN`、WOL_READY 的也是 `Wake-on-LAN Ready` —— 与第一行（`connectionLabel`）
+逐字相同，同一张卡里同一句话出现两次。证据：`monitor.png` 右栏连接条、
+`fold-inner-portrait-monitor.png` 底栏（顶行与最底行）。OFFLINE / WAKING 等状态两行内容不同，是有用的。
+
+两个方向都只改渲染，不改模型：(a) 第二行与第一行相同时不渲染（贴合概念图的单行）；
+(b) 保留双行，但把第二行换成补充信息（如 `Last seen 1 min ago`）。
+这会动到 `PowerRailUiTest` 里"每个元素都有 testTag"那条断言（`powerrail:status`），故留给你裁决。
+
+### 8.5 本批验证
+
+```bash
+env JAVA_HOME=<jdk-25> ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest --offline
+# BUILD SUCCESSFUL —— testDebugUnitTest 101 / desktopTest 186（+2 条新截图用例），0 failures
+```
+
+截图由同一次 `desktopTest` 产出并断言尺寸；其余 13 张帧的 MD5 与本批重跑完全一致
+（渲染可复现），只有两张新帧是新文件。

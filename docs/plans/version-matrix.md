@@ -167,6 +167,25 @@ adb emu kill                                                          # 收工
 - App 安装后 `topResumedActivity` 为 `com.xukunz.wakeupmywall/.MainActivity`，logcat 无 `FATAL`。
 - 屏幕取到的真实帧与桌面渲染一致（Aurora 壁纸 + Dashboard 占位页）。
 
+### 2026-09-20 复检：整套模拟器目前不可用
+
+本轮想重抓 Android 帧（含 StandBy）时复检了一次，阻塞点从"权限"变成了"设备就不在"：
+
+```text
+$ ls /dev/kvm
+ls: cannot access '/dev/kvm': No such file or directory
+$ "$ANDROID_SDK_ROOT/emulator/emulator" -accel-check
+accel:
+8
+/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded
+$ "$ANDROID_SDK_ROOT/emulator/emulator" -avd wall -no-window -no-audio -no-snapshot -accel off -gpu swiftshader_indirect
+FATAL        | A snapshot operation for 'wall' is pending and timeout has expired. Exiting...
+```
+
+`wall` AVD 的 `config.ini` 是 `abi.type=x86_64`，无 KVM 时退化成 TCG 软件模拟，90 秒内起不来。
+要恢复得在宿主机开 VT 或加载 `kvm` 模块（容器内无法自助，需要 `sudo`）。**在此之前，Android 侧
+只能靠桌面渲染管线 + 尺寸断言兜底，不能声称已在 Android 上验证。**
+
 ### 已知限制（不是 App 缺陷，但会影响后续阶段）
 
 1. **无头模拟器转不到横屏**：`settings put system user_rotation 1`、`cmd window user-rotation lock 1`、`adb emu rotate` 都试过，`mCurrentOrientation=1` 但显示设备始终 `rotation 0`——Android 12L+ 的大屏设备默认忽略旋转请求。截图因此是 1600×2560 竖屏。

@@ -116,6 +116,22 @@ class AppScreenshotTest {
         FoldInnerPortraitHeight,
     ) { App() }
 
+    // 内屏竖放比手机宽（700dp vs 412dp）：Dashboard 仍是 3 列，但 Monitor / Settings 的内部
+    // 重排（身份卡与快捷动作是否并排、左导航是否改横向条）与手机不是同一条分支，需要单独出帧。
+    @Test
+    fun `capture foldable inner screen portrait monitor`() = capture(
+        "fold-inner-portrait-monitor",
+        FoldInnerPortraitWidth,
+        FoldInnerPortraitHeight,
+    ) { App(navigator = AppNavigator().apply { goTo(Workspace.Monitor) }) }
+
+    @Test
+    fun `capture foldable inner screen portrait settings`() = capture(
+        "fold-inner-portrait-settings",
+        FoldInnerPortraitWidth,
+        FoldInnerPortraitHeight,
+    ) { App(navigator = AppNavigator().apply { goTo(Workspace.Settings) }) }
+
     @Test
     fun `capture dashboard at compact width`() =
         // 800dp 宽时主区约 576dp → Compact：2 列 + 纵向滚动（风险 R7 的兜底形态）。

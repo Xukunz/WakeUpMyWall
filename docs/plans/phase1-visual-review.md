@@ -72,7 +72,10 @@
 | 不出现 Power Rail | StandBy 用浮层卡，不渲染常驻 Rail | 同（`powerrail` 标签不存在，由测试守住） | 已还原 |
 | 底部状态条 | 显示器图标 + 绿点 + `My PC` + `Online` + `Last seen 1 min ago` + `>` | 同 | 已还原 |
 
-## 4. Device Setup 与 Personalization（`screenshots/device-setup.png`、`personalization.png`）
+## 4. Device Setup 与 Personalization（`screenshots/settings.png`、`personalization.png`）
+
+> 本节原先引的 `screenshots/device-setup.png` 已于 2026-09-20 删除（与 `settings.png` 同屏重复，
+> 且没有对应的抓取用例），比对基准改为 `settings.png` —— 它的内容就是 Settings 工作空间停在 Device Setup 段。
 
 基准 = 规格 E/F 表。
 
@@ -157,6 +160,10 @@
 3. **断点阈值 900dp 与计划 Global Constraints 的 1000dp 冲突**：我按概念图实测改成了 900dp（否则目标屏永远落在 3 列）。计划正文那句是估算，改的是令牌不是架构（72/28 未动）。**若你不认可，改回 1000dp 是一行的事**，代价是墙面屏上还原不出概念图的 5 列指标行。
 4. **两个"概念图没给数值、我按实测定的"值**：Glass α=0.6、StandBy `PM`=32sp。概念图只有像素，没有设计稿数值，这两处是换算结果，属于可推翻的判断。
 5. **Android StandBy 截图仍缺**：本次会话 `/dev/kvm` 对当前用户不可用（进程组列表里没有 `kvm`，`emulator -accel-check` 返回 `accel: 8`），恢复需交互式 `sudo`。因此"Android 上 StandBy 正常"这条**未验证**。
+   > **2026-09-20 复检（第三批）**：`/dev/kvm` 现在**根本不存在**（不是权限问题），`-accel off` 也起不来，
+   > `android-*.png` 两张旧帧因此被标注为过期。逐条证据见
+   > [2026-09-20-responsive-and-concept-alignment.md](2026-09-20-responsive-and-concept-alignment.md) §8.2 与
+   > [version-matrix.md](version-matrix.md) §6。**该项仍未结。**
 
 ### 7.5 本轮验证命令与结果
 
