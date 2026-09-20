@@ -209,6 +209,9 @@ setsid nohup "$EMU" -avd wall -no-window -no-audio -no-snapshot -no-boot-anim \
 - 新进程 `/proc/<pid>/status` 的 `Groups:` 含 `991`；`/proc/<pid>/fd` 有 6 个 kvm 句柄（`/dev/kvm`、`kvm-vm`、4 个 `kvm-vcpu`）。
 - `:composeApp:installDebug` 后 `topResumedActivity=com.xukunz.wakeupmywall/.MainActivity`，logcat 无 `FATAL`，
   `screencap` 出 2560×1600 真实帧（横屏，与桌面 1280×720 同属一个断点区间）。
+- **应用数据落点（Phase 2 起）**：设备列表与外观设置写在 `/data/data/com.xukunz.wakeupmywall/files/datastore/settings.preferences_pb`；
+  `adb shell run-as com.xukunz.wakeupmywall ls -l files/datastore` 直接可读（实测首启 1066 B，改一台设备后 1088 B），
+  `am force-stop` 后再 `am start` 设备列表与当前设备原样恢复。
 
 **便捷路径（启动者会话里没有 kvm 组时）：** 本机 cron 任务的进程带 kvm 组（实测 cron 起的进程
 `/proc/self/status` 含 `991`），可用一条带唯一标记的一次性 `crontab` 条目代组启动，起来后立刻删条目：
@@ -227,3 +230,4 @@ crontab -l | grep -v wakeupmywall-emulator-boot | crontab -
 
 1. **无头模拟器忽略旋转请求**：`settings put system user_rotation 1`、`cmd window user-rotation lock 1`、`adb emu rotate` 都试过，`mCurrentOrientation=1` 但显示设备始终 `rotation 0`——Android 12L+ 的大屏设备默认忽略旋转请求。二轮实测：显示设备原生形态是 2560×1600（横屏、rotation 0），新帧直接落在这个方向上；09-19 那批 1600×2560 竖屏帧来自旧实例，不是本条的必然结果。
 2. **App 目前没有声明屏幕方向**：`AndroidManifest.xml` 里没有 `android:screenOrientation`。Phase 1 全局约束要求"横屏锁定 72/28"，所以 Task 5/8 落地 AppShell 时需要决定是写入清单还是走运行时策略（Phase 8 的 Display & Reliability 也会碰这块）。
+3. **`10.0.2.2` 在这台宿主上不通向宿主服务（2026-09-20 实测）**：`adb shell ip route` 有 `10.0.2.0/24 dev eth0`，但从设备连 `10.0.2.2:9876/9877`（宿主确有 listener）一律 2 s 超时，SLIRP 的主机别名没有被送达；同端口从宿主 `curl 127.0.0.1` 正常。**要做"设备 → 宿主服务"的验证，用 `adb reverse tcp:<port> tcp:<port>` + 设备侧 `127.0.0.1`。** Phase 3/4 的 WOL / Agent 联调都吃这条。

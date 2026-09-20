@@ -6,22 +6,26 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 
 ## 项目状态
 
-当前处于 **Phase 2（设备系统）**：Phase 0（KMP 工程基础）与 Phase 1（Design System + Mock UI）已完成，Phase 2 的计划已就绪、待执行。已完成：
+当前处于 **Phase 2（设备系统）已完成、Phase 3（唤醒与守护）未开始**：Phase 0（KMP 工程基础）、Phase 1（Design System + Mock UI）与 Phase 2 均已交付。已完成：
 
 - Kotlin Multiplatform 工程骨架（`commonMain` 不依赖任何 Android API）
 - 领域模型与 PC 状态机（纯函数 + 单元测试）
-- 网络抽象（Ktor + 请求超时 + 统一错误映射）与存储抽象（内存实现，Phase 2 落到 DataStore）
+- 网络抽象（Ktor + 请求超时 + 统一错误映射）与存储抽象（内存实现 + DataStore 落盘）
 - 五个屏幕（Dashboard / Monitor / StandBy / Device Setup / Wallpaper & Personalization）、三工作空间导航、暗色主题与 6 套强调色
 - Power Rail 五态与连接条、60 秒指标 Ring Buffer、Settings 表单校验与 Live Preview
 - 响应式外壳：墙面屏/内屏走 72/28 侧栏，手机 20:9、折叠外屏 21.1:9 走底部常驻栏
 - 内置壁纸 7 张（默认 Dusk Lake）、11+1 类天气图标、3 张设备封面、电源发光环（代码绘制）
 - Android 真机证据：Dashboard / Monitor / StandBy 三张 2560×1600 帧 + 刘海安全区实测（见 [docs/plans/screenshots/](docs/plans/screenshots/)）
+- 设备系统：设备从 Mock 常量变成持久化数据 —— `KeyValueStore` → `JsonSettingsStorage`（bad data 退回默认值）→ `DeviceRepository`（增删改 + 唯一默认设备 + 首次播种），落盘在 DataStore Preferences
+- Device Setup 接真实设备：Port 步进器、Saved Computers 变成选择器（点行=切换当前设备、`✕`=删除、`+ Add Device`=新增），Rail / Dashboard / 表单都跟随仓库里的当前设备
+- `Test Connection` 给出具体失败原因：连不上 / 被拒 / 超时 / 返回 404（"这不是 WakeUpMyWall Agent"）/ 401 / 流中断，六类都有可读结论，没有静默 `Failed`
+- Android 真机验收：冷启动后设备列表与当前设备原样恢复（`files/datastore/settings.preferences_pb`）、删除当前设备后默认设备自动回落、四类连接结论实测（见 [Phase 2 计划](docs/superpowers/plans/2026-09-20-phase2-device-system.md) §4 验收实录）
 - GitHub Actions CI：单元测试 + Compose UI 测试 + Debug 组装
 
 计划与验收标准：
 
 - Phase 1：[2026-09-19-phase1-design-system-and-mock-ui.md](docs/superpowers/plans/2026-09-19-phase1-design-system-and-mock-ui.md)、视觉复核 [phase1-visual-review.md](docs/plans/phase1-visual-review.md)
-- Phase 2（计划已就绪，待执行）：[2026-09-20-phase2-device-system.md](docs/superpowers/plans/2026-09-20-phase2-device-system.md)
+- Phase 2（已完成）：[2026-09-20-phase2-device-system.md](docs/superpowers/plans/2026-09-20-phase2-device-system.md)
 - 全阶段路标：[2026-09-19-roadmap.md](docs/superpowers/plans/2026-09-19-roadmap.md)
 
 ## 技术栈
@@ -30,6 +34,7 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - Compose Multiplatform 1.10.3 / Material 3
 - Android Gradle Plugin 9.3.3 / Gradle 9.5.0
 - Ktor 3.6.0、kotlinx-serialization 1.11.0、kotlinx-coroutines 1.11.0、kotlinx-datetime 0.8.0
+- DataStore Preferences 1.2.1（仅 androidMain；设备列表与外观设置落盘）、JDK `java.net.Socket`（androidMain 的 TCP 探测）
 - Android：minSdk 30 / targetSdk 37 / compileSdk 37
 
 实测通过的完整版本矩阵与依据见 [docs/plans/version-matrix.md](docs/plans/version-matrix.md)。

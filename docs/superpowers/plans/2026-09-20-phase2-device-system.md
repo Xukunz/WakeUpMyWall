@@ -636,7 +636,7 @@ git commit -m "feat: add a device repository with persistence and default device
   - `sealed interface ConnectionReport { WolOnly(mac) / AgentOnline(hostname, version) / Failed(reason, message) }`
   - `enum class ConnectionFailure { MISSING_MAC, PORT_REFUSED, PORT_TIMEOUT, HOST_UNRESOLVED, PROBE_UNAVAILABLE, NOT_AN_AGENT, UNAUTHORIZED, AGENT_ERROR, NETWORK }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.connectivity
@@ -799,12 +799,12 @@ class AndroidTcpProbeTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:testDebugUnitTest --tests "*AndroidTcpProbeTest*" :composeApp:desktopTest --tests "*ConnectivityTesterTest*"`
 Expected: FAIL —— `Unresolved reference 'ConnectivityTester'` / `AndroidTcpProbe`
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 // core/connectivity/TcpProbe.kt
@@ -955,12 +955,12 @@ internal fun classifyTcpError(error: IOException): TcpProbeResult = when (error)
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest`
 Expected: BUILD SUCCESSFUL —— `ConnectivityTesterTest` 8 条 + `AndroidTcpProbeTest` 3 条全绿
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/core/connectivity \
@@ -983,7 +983,7 @@ git commit -m "feat: report explicit connection failures for a saved device"
 - Consumes: `DeviceSetupInput`、`DeviceSetupResult`、`ConnectionReport`（Task 4）
 - Produces: `DeviceSetupScreen(input, result, devices, report: ConnectionReport?, isTesting: Boolean, onInputChange, onSave, onTestConnection, onSelectDevice, onDeleteDevice, onAddDevice, modifier)`；新 testTag `device:connection`、`device:wolPort-increment`、`device:wolPort-decrement`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.ui.settings
@@ -1071,12 +1071,12 @@ class DeviceSetupFormTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*DeviceSetupFormTest*"`
 Expected: FAIL —— 新参数不存在 / 找不到 `device:wolPort-increment`
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 // ui/settings/ConnectionStatus.kt
@@ -1189,12 +1189,12 @@ private fun PortStepper(
 ConnectionStatus(report = report, isTesting = isTesting, modifier = Modifier.fillMaxWidth())
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest`
 Expected: BUILD SUCCESSFUL —— 新用例通过；既有的 `DeviceSetupScreenTest` / `AppScreenshotTest` 同步补齐新参数（渲染内容不变，`settings.png` 允许重出）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/settings mobile/composeApp/src/desktopTest/kotlin/com/xukunz/wakeupmywall/ui/settings
@@ -1213,7 +1213,7 @@ git commit -m "feat: bind the device setup form to a real device and surface tes
 - Consumes: `List<PcDevice>`、`onSelectDevice` / `onDeleteDevice` / `onAddDevice`（Task 5 已定签名）
 - Produces: 每行 `device:row:<id>`（整行可点 = 设为激活设备）、`device:delete:<id>`、`device:default:<id>`（Default 徽标）、`device:add`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.ui.settings
@@ -1275,12 +1275,12 @@ class SavedComputersTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*SavedComputersTest*"`
 Expected: FAIL —— 找不到 `device:row:study`（现在只是静态行，没有点击与删除）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 @Composable
@@ -1337,12 +1337,12 @@ private fun SavedComputers(
 
 > `AppIconKind.Close` 若在 `ui/icons/AppIcons.kt` 里还不存在，就按既有种类加一个代码绘制的叉号（不引图标库、不用第三方素材）。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest`
 Expected: BUILD SUCCESSFUL；把重出的 `settings.png` 复制进 `docs/plans/screenshots/`
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/settings mobile/composeApp/src/desktopTest docs/plans/screenshots
@@ -1362,7 +1362,7 @@ git commit -m "feat: turn saved computers into the device selector"
 - Consumes: `DeviceRepository`（Task 3）、`ConnectivityTester` + `TcpProbe`（Task 4）、`SettingsStorage`（Task 1/2）、`MockData.devices`（仅作首次播种）
 - Produces: `App(..., storage: SettingsStorage = remember { InMemorySettingsStorage() }, probe: TcpProbe = UnsupportedTcpProbe)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
     @Test
@@ -1391,12 +1391,12 @@ git commit -m "feat: turn saved computers into the device selector"
 > 标题节点的 tag 已存在：`powerrail:name`（`PowerRail.kt:65`、`PowerRailCompact.kt:131`，并已列在
 > `PowerRailUiTest` 的 tag 白名单里）。所以这里直接断言既有 tag，不给同一个 `Text` 挂第二个别名。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*AppUiTest*"`
 Expected: FAIL —— `App` 没有 `storage` 参数（编译失败），或标题仍是 `My PC`
 
-- [ ] **Step 3: 实现（App.kt 的三处改动）**
+- [x] **Step 3: 实现（App.kt 的三处改动）**
 
 ```kotlin
 @Composable
@@ -1482,12 +1482,12 @@ val storage = JsonSettingsStorage(DataStoreKeyValueStore(applicationContext))
 setContent { App(storage = storage, probe = AndroidTcpProbe()) }
 ```
 
-- [ ] **Step 4: 运行全量测试确认通过**
+- [x] **Step 4: 运行全量测试确认通过**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest :composeApp:assembleDebug`
 Expected: BUILD SUCCESSFUL —— 其余 `AppUiTest` 用例不受影响（默认参数仍是内存存储 + 同一份 Mock 播下的设备）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/app mobile/composeApp/src/androidMain mobile/composeApp/src/desktopTest/kotlin/com/xukunz/wakeupmywall/app
@@ -1505,7 +1505,7 @@ git commit -m "feat: drive the shell from the persisted active device"
 > 路标与 README 已在计划就绪时更新过（Phase 2 段指向本计划、项目状态推进到 Phase 2），
 > 执行阶段只需补 version-matrix 的依赖矩阵与验收实录。
 
-- [ ] **Step 1: 装机并验证"重启后数据还在"**
+- [x] **Step 1: 装机并验证"重启后数据还在"**
 
 ```bash
 JAVA_HOME=<jdk25> ./gradlew :composeApp:installDebug
@@ -1521,7 +1521,7 @@ ADB=/home/xukunz/.local/toolchain/android-sdk/platform-tools/adb
 ```
 Expected: 两张截图里设备列表一致（新设备还在），`files/datastore/settings.preferences_pb` 存在且非 0 字节。
 
-- [ ] **Step 2: 验证失败原因不是静默失败**
+- [x] **Step 2: 验证失败原因不是静默失败**
 
 ```bash
 # 场景 A：没有任何东西在监听 9876 → 期望 "Nothing is listening on <ip>:9876 — the PC may be asleep, ..."
@@ -1531,7 +1531,7 @@ python3 -m http.server 9876 --bind 0.0.0.0 &
 kill %1
 ```
 
-- [ ] **Step 3: 更新文档并提交**
+- [x] **Step 3: 更新文档并提交**
 
 ```bash
 git add docs README.md
@@ -1555,3 +1555,45 @@ git commit -m "docs: record the phase 2 acceptance run and update the roadmap"
 1. **Spec 覆盖**：spec §6 数据模型 → Task 1/3（字段与默认设备不变量）；§7.5 Device Setup（表单 + Saved Computers + Port 步进器）→ Task 5/6；§5 网络（短超时 + `GET /api/v1/status`）→ Task 4（TCP 2 s、HTTP 沿用既有的 2.5 s）；roadmap Phase 2 的四条完成标准 → §2 验收表。**刻意不做**：Agent 配对与 Token（Phase 4）、WOL 发包（Phase 3）、空设备列表的空状态 UI（Phase 3，本阶段用 `active ?: MockData.defaultDevice` 兜底并在 §0 记明）。
 2. **占位符扫描**：没有 TBD / "稍后补" / "类似 Task N"。每个 Step 要么给完整代码，要么给可运行命令与期望输出。Task 8 Step 1/2 里的 `adb input tap <坐标>` 是**已知需要现场量坐标的真机操作**，期望输出写死了，不算占位。
 3. **类型一致性**：`KeyValueStore.read/write` → `JsonSettingsStorage` → `SettingsStorage.readDevices/writeDevices/readAppearance/writeAppearance` → `DeviceRepository.load/add/update/delete/setDefault` + `devices/active` → UI 回调 `onSelectDevice/onDeleteDevice/onAddDevice/onTestConnection`；连接侧 `TcpProbeResult` → `ConnectionReport` → `ConnectionStatus`。测试与实现引用的名字逐处核对过（含 `DeviceSetupScreen` 的新参数顺序，Task 5 定义、Task 6/7 复用）。
+
+---
+
+## 4. 验收实录（2026-09-20，emulator-5554 / AVD `wall`，2560×1600）
+
+**环境**：`JAVA_HOME=/home/xukunz/.local/toolchain/jdk-25.0.4.1+1`；`./gradlew :composeApp:installDebug`；`adb -s emulator-5554`（无窗口 + swiftshader）；应用数据目录 `files/datastore/settings.preferences_pb`。
+
+### 4.1 冷启动后数据还在（Task 8 Step 1）
+
+| 步骤 | 操作 | 期望 | 实际 |
+| --- | --- | --- | --- |
+| 装机首启 | `installDebug` + `am start` | 列表 = 播种的 4 台设备，store 文件落盘 | ✅ 4 台种子设备；`settings.preferences_pb` 1066 B |
+| 新增 + 改名 + 保存 | Device Setup → `+ Add Device` → 改名 `Acceptance PC`、补 MAC → `Save` | 列表末行出现 `Acceptance PC`（带 `Default` 徽标），Rail 标题同步 | ✅ 落盘文件涨到 1088 B |
+| 冷启动 | `am force-stop` → `am start` | 列表与 Rail 仍是 `Acceptance PC`，Agent Host 仍是上一轮改过的值 | ✅ [phase2-form-sync-fixed.png](../../plans/screenshots/phase2-form-sync-fixed.png) |
+| 删除激活设备 | 点该行 `✕` | 行消失，默认设备与 Rail 回落到 `My PC` | ✅ [phase2-device-deleted.png](../../plans/screenshots/phase2-device-deleted.png) |
+
+### 4.2 失败原因不是静默失败（Task 8 Step 2）
+
+| 场景 | 对端是什么 | 设备侧输入 | 界面原文（结果块） |
+| --- | --- | --- | --- |
+| 连不上 | 该地址无路由 | `10.0.2.2:9877` | `10.0.2.2:9877 did not answer within 2 s — wrong IP, or the firewall is dropping it` |
+| 不是 Agent | 普通 HTTP 服务（任意路径 404） | `127.0.0.1:9877` | `127.0.0.1:9877 answers, but /api/v1/status returned 404 — this is not the WakeUpMyWall Agent` |
+| 连上但没答完 | 反向转发端口后面没有 listener | `127.0.0.1:9878` | `TCP connected but the status call failed (unexpected end of stream on http://127.0.0.1:9878/...)` |
+| 成功 | 假 Agent 返回 `{hostname, agentVersion, uptimeSeconds}` | `127.0.0.1:9876` | `Agent online · DESKTOP-ALPHA · v0.1.0` |
+
+截图：[404](../../plans/screenshots/phase2-connection-404.png)、[连上但没答完](../../plans/screenshots/phase2-connection-refused.png)、[成功](../../plans/screenshots/phase2-connection-online.png)。四句结论都带具体的 `host:port` 与原因，没有出现只有 `Failed` 的静默失败。
+
+**与 Step 2 原文的偏差（原因记录）**：计划写的是"宿主起 HTTP 服务 + 设备指向 `10.0.2.2`"。本机模拟器 `adb shell ip route` 里有 `10.0.2.0/24 dev eth0`，但从设备连 `10.0.2.2:9876/9877`（宿主确实在监听）一律 2 s 超时 —— SLIRP 的主机别名在本机没有被送达，与 App 无关（同端口从宿主 `curl` 正常）。改用 `adb reverse tcp:<port> tcp:<port>` + 设备侧 `127.0.0.1`（设备 loopback → 宿主）后，三条分支都能落地。
+
+### 4.3 全量验证命令
+
+```text
+./gradlew --offline :composeApp:testDebugUnitTest :composeApp:desktopTest :composeApp:assembleDebug
+BUILD SUCCESSFUL；desktopTest 220 / testDebugUnitTest 124，0 失败（含本轮新增的冷启动表单同步回归）
+```
+
+### 4.4 交付前发现并修掉的两个计划外问题
+
+1. **表单滞留（真机复现）**：`LaunchedEffect(device.id)` 在"种子设备与存储设备共用 id `desktop-alpha`、但字段值不同"时不触发，冷启动后表单停在 Mock 值（`192.168.1.10:9876`），而 `Test Connection` 用的是仓库值（`127.0.0.1:9877`）。修复：键改为整个 `device`；回归测试 `AppUiTest.a cold start syncs the form to the stored values when the id matches the seed`（先红后绿）。
+2. **`collectAsState` 订阅作用域 + 桌面 target 无 HTTP 引擎**：只在 Settings 分支读 `devices` 时 Dashboard 首帧不重组（侧栏停在兜底设备）；`ConnectivityTester` 在桌面 target eager 构造会因缺引擎崩。修复：首帧读一次 `devices`；测试器改为首次点测时才构造。两处都在代码里留了注释。
+
+**已知行为（本阶段不做，留给后续）**：`Test Connection` 测的是**仓库里已保存的那台设备**，不是表单里正在编辑的值 —— 所以"改完字段不 Save 直接测"会测到上一次保存的值（结论文案带 `host:port`，可自证测的是哪台）。计划 Task 7 的片段即如此，Phase 3/4 接配对流程时再决定要不要改成"测未保存的输入"。另外测试结束后结论块不会随表单改动清空，同样留到下一阶段。
