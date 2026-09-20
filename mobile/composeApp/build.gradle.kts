@@ -44,6 +44,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.datastore.preferences)
             implementation(libs.ktor.client.okhttp)
             implementation(compose.uiTooling)
         }

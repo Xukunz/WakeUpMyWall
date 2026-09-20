@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.theme.ThemeAccent
+import com.xukunz.wakeupmywall.core.storage.SettingsStorage
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
+import com.xukunz.wakeupmywall.data.settings.InMemorySettingsStorage
 import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.DashboardLayout
 import com.xukunz.wakeupmywall.domain.model.PcEvent
@@ -49,6 +51,8 @@ fun App(
     navigator: AppNavigator = remember { AppNavigator() },
     wallpaperId: String = BuiltInWallpapers.DefaultId,
     initialPcState: PcState = PcState.ONLINE,
+    // 平台实现在 MainActivity 注入（DataStore）；测试与桌面预览默认走内存实现。
+    storage: SettingsStorage = remember { InMemorySettingsStorage() },
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }

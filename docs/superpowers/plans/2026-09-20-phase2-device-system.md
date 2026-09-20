@@ -310,7 +310,7 @@ git commit -m "feat: add a json settings storage behind the platform key value s
 - Consumes: Task 1 的 `KeyValueStore` / `JsonSettingsStorage`
 - Produces: `class DataStoreKeyValueStore(context: Context) : KeyValueStore`；`App(..., storage: SettingsStorage = remember { InMemorySettingsStorage() })`
 
-- [ ] **Step 1: 加依赖与权限**
+- [x] **Step 1: 加依赖与权限**
 
 ```toml
 # gradle/libs.versions.toml
@@ -331,7 +331,7 @@ implementation(libs.androidx.datastore.preferences)
 <uses-permission android:name="android.permission.INTERNET" />
 ```
 
-- [ ] **Step 2: 写平台适配**
+- [x] **Step 2: 写平台适配**
 
 ```kotlin
 // androidMain/kotlin/com/xukunz/wakeupmywall/data/settings/DataStoreKeyValueStore.kt
@@ -383,12 +383,12 @@ fun App(
 )
 ```
 
-- [ ] **Step 3: 验证编译与既有测试**
+- [x] **Step 3: 验证编译与既有测试**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:assembleDebug :composeApp:testDebugUnitTest :composeApp:desktopTest`
 Expected: BUILD SUCCESSFUL（`assembleDebug` 证明 DataStore 依赖在 androidMain 可用）
 
-- [ ] **Step 4: 真机侧确认 store 文件会被创建**
+- [x] **Step 4: 真机侧确认 store 文件会被创建**
 
 ```bash
 JAVA_HOME=<jdk25> ./gradlew :composeApp:installDebug
@@ -398,7 +398,7 @@ adb -s emulator-5554 shell run-as com.xukunz.wakeupmywall ls -l files/datastore
 ```
 Expected: 出现 `settings.preferences_pb`（写入发生在 Task 3 接上仓库后；此步只要目录/文件存在或为空目录不报错即可，真正断言在 Task 8）
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add gradle/libs.versions.toml mobile/composeApp/build.gradle.kts mobile/composeApp/src/androidMain
