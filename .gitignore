@@ -25,3 +25,5 @@ captures/
 # OS files
 .DS_Store
 Thumbs.db
+agent/**/bin/
+agent/**/obj/

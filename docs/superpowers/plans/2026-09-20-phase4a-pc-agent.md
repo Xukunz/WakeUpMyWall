@@ -72,7 +72,7 @@
 **Interfaces:**
 - Produces: `GET /api/v1/status` → `200 {"hostname":…,"agentVersion":"0.1.0","uptimeSeconds":…,"paired":false}`；`public partial class Program;`；`ITokenStore`（`HasToken` / `Token` / `Matches` / `Save`）
 
-- [ ] **Step 1: 建工程骨架**
+- [x] **Step 1: 建工程骨架**
 
 ```bash
 export PATH="$HOME/.dotnet-local:$PATH"
@@ -95,7 +95,7 @@ printf 'agent/**/bin/\nagent/**/obj/\n' >> ../.gitignore
 <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 ```
 
-- [ ] **Step 2: 写失败测试**
+- [x] **Step 2: 写失败测试**
 
 ```csharp
 using System.Net;
@@ -127,12 +127,12 @@ public class StatusEndpointTests(WebApplicationFactory<Program> factory)
 }
 ```
 
-- [ ] **Step 3: 跑测试确认失败**
+- [x] **Step 3: 跑测试确认失败**
 
 Run: `export PATH="$HOME/.dotnet-local:$PATH"; cd agent && dotnet test`
 Expected: FAIL —— `/api/v1/status` 返回 404
 
-- [ ] **Step 4: 实现**
+- [x] **Step 4: 实现**
 
 ```csharp
 // src/WakeUpMyWall.Agent/Program.cs
@@ -203,7 +203,7 @@ public sealed class InMemoryTokenStore(string? token = null) : ITokenStore
 }
 ```
 
-- [ ] **Step 5: 跑测试确认通过并提交**
+- [x] **Step 5: 跑测试确认通过并提交**
 
 Run: `export PATH="$HOME/.dotnet-local:$PATH"; cd agent && dotnet test`
 Expected: PASS（1 条）
