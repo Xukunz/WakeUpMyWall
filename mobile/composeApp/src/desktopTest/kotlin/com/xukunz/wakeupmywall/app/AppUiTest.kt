@@ -2,6 +2,7 @@ package com.xukunz.wakeupmywall.app
 
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -17,6 +18,7 @@ import androidx.compose.runtime.setValue
 import com.xukunz.wakeupmywall.core.storage.InMemoryKeyValueStore
 import com.xukunz.wakeupmywall.core.storage.JsonSettingsStorage
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
+import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.MacAddress
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
@@ -123,6 +125,29 @@ class AppUiTest {
 
         // 标题必须来自存储里的激活设备，而不是 MockData 常量（"My PC"）。
         onNodeWithTag("powerrail:name", useUnmergedTree = true).assertTextEquals("Den PC")
+    }
+
+    @Test
+    fun `a cold start syncs the form to the stored values when the id matches the seed`() = runComposeUiTest {
+        // 种子设备与存储设备共用 id `desktop-alpha`：只按 id 判断"换设备了没有"就漏掉这一种，
+        // 表单会一直停在 Mock 值上，而 Test Connection 用的是仓库里的值（真机踩到过）。
+        val storage = JsonSettingsStorage(InMemoryKeyValueStore())
+        runBlocking {
+            storage.writeDevices(
+                listOf(MockData.defaultDevice.copy(agentHost = "127.0.0.1", agentPort = 9877)),
+            )
+        }
+        val navigator = AppNavigator().apply { goTo(Workspace.Settings) }
+
+        setContent { App(navigator = navigator, storage = storage) }
+
+        // 表单必须跟着仓库走：主机名与端口都来自存储，而不是 MockData 的 192.168.1.10 / 9876。
+        waitUntilExactlyOneExists(
+            hasTestTag("device:field:agentHost") and hasText("127.0.0.1"),
+            timeoutMillis = 5_000,
+        )
+        onNodeWithTag("device:field:agentHost").assert(hasText("127.0.0.1"))
+        onNodeWithTag("device:wolPort", useUnmergedTree = true).assertExists()
     }
 
     private fun navigateThroughAllWorkspaces(navigator: AppNavigator) {

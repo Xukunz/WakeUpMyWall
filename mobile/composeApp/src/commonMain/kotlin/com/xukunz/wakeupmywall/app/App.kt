@@ -109,8 +109,10 @@ fun App(
     val railModel = powerRailModel(pcState, device)
 
     LaunchedEffect(repository) { repository.load() }
-    // 激活设备换人时把表单切到新设备（否则表单还停在上一次的输入上）。
-    LaunchedEffect(device.id) { deviceInput = device.toSetupInput() }
+    // 表单跟着仓库里那台设备走。键必须是**整个 `device`**，不能只用 `device.id`：
+    // 首次播种的设备与存储里的设备共用同一个 id（`desktop-alpha`），只比 id 就漏掉了
+    // "同一台设备、值不一样"这一种，表单会一直停在 Mock 值上而 Test Connection 用的是仓库值。
+    LaunchedEffect(device) { deviceInput = device.toSetupInput() }
 
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
     LaunchedEffect(workspace) {
