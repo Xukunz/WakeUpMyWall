@@ -7,20 +7,33 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
+import com.xukunz.wakeupmywall.data.mock.MockData
+import com.xukunz.wakeupmywall.domain.model.PcEvent
+import com.xukunz.wakeupmywall.domain.model.PcState
+import com.xukunz.wakeupmywall.domain.usecase.PcStateMachine
+import com.xukunz.wakeupmywall.ui.AppShell
+import com.xukunz.wakeupmywall.ui.RailEvent
 import com.xukunz.wakeupmywall.ui.components.PlaceholderScreen
 import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
+import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 
 @Composable
 fun App(
     navigator: AppNavigator = remember { AppNavigator() },
     wallpaperId: String = BuiltInWallpapers.DefaultId,
+    initialPcState: PcState = PcState.ONLINE,
 ) {
     val workspace by navigator.current.collectAsState()
+    var pcState by remember { mutableStateOf(initialPcState) }
+    val device = MockData.defaultDevice
+
     WakeUpMyWallTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             WallpaperBackground(wallpaperId)
@@ -31,8 +44,29 @@ fun App(
                 contentColor = MaterialTheme.colorScheme.onBackground,
             ) {
                 when (workspace) {
-                    Workspace.Dashboard -> PlaceholderScreen("Dashboard")
-                    Workspace.Monitor -> PlaceholderScreen("PC Monitor")
+                    // Phase 1 只驱动本地状态机；真实 WOL / Agent 调用分别在 Phase 3 与 Phase 4。
+                    Workspace.Dashboard, Workspace.Monitor -> AppShell(
+                        rail = powerRailModel(pcState, device),
+                        onRailEvent = { event ->
+                            when (event) {
+                                RailEvent.Settings -> navigator.goTo(Workspace.Settings)
+                                RailEvent.Primary ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.WakeRequested)
+                                RailEvent.Sleep ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.SleepRequested)
+                                RailEvent.Shutdown ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.ShutdownRequested)
+                                RailEvent.Restart ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.RestartRequested)
+                            }
+                        },
+                    ) {
+                        if (workspace == Workspace.Dashboard) {
+                            PlaceholderScreen("Dashboard")
+                        } else {
+                            PlaceholderScreen("PC Monitor")
+                        }
+                    }
                     Workspace.Settings -> PlaceholderScreen("Settings")
                 }
             }
