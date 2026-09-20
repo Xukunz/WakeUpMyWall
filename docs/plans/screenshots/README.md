@@ -67,9 +67,16 @@ JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*AppScreenshotTest*
 >
 > 原来还有一张 `android-standby.png`，它与 `android-monitor.png` **逐字节相同**（同一 MD5），说明抓图时 App 还停在 Monitor 形态，是无效证据，2026-09-20 已删除。StandBy 在 Android 上的截图因此**仍缺**。
 >
-> 重抓被环境挡住（2026-09-20 复检，证据逐字如下）：`/dev/kvm` **不存在**（`ls /dev/kvm` → `No such file or directory`），
-> `emulator -accel-check` 输出 `accel:` / `8` / `/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded`；
-> 强行 `-accel off` 启动 `wall` AVD 在 90 秒内以 `FATAL | A snapshot operation for 'wall' is pending and timeout has expired` 退出。
-> AVD 镜像是 `abi.type=x86_64`，没有 KVM 就等于纯软件模拟，跑不动。恢复需要宿主机开 VT 或加载 KVM 模块（`sudo` 层操作，容器内无法自助）。
+> **更正（2026-09-20 二轮）：** 上面那批"环境挡住重抓"的证据全部无效——它们量自 Codex 沙箱，
+> 而沙箱的 `/dev` 是 bwrap 提供的私有 devtmpfs，看不到宿主机的 `/dev/kvm`。沙箱外 `/dev/kvm` 一直在
+> （`crw-rw----+ root kvm 10,232`），`kvm_amd` / `kvm` 模块也已加载；真正的两个阻塞是"启动者的会话没有 kvm 组"
+> 与"09-19 09:40 起的旧无头实例锁住了 `wall` AVD"。两条都已处理：模拟器 19.8 秒冷启动、装上当前 APK 后
+> `MainActivity` 正常前台、`screencap` 出 2560×1600 真实帧。逐条证据与恢复步骤见
+> [version-matrix.md](../version-matrix.md) §6。
 >
-> 另：无头模拟器转不到横屏（Android 12L+ 大屏忽略旋转请求），所以 Android 截图是 1600×2560 竖屏，与桌面 1280×720 的横屏形态不是同一个断点区间。详见 [version-matrix.md](../version-matrix.md) 第 6 节。
+> **这两张帧仍按过期标注**（内容早于本批素材接入与响应式重写）。重抓现在只是待办，不再是环境阻塞。
+>
+> 另（2026-09-20 二轮实测）：旧帧是 1600×2560 竖屏，本轮新实例出的是 **2560×1600 横屏**（Nexus 10 的
+> rotation 0 原生形态），与桌面 1280×720 落在同一个断点区间，因此 Android 帧不再需要"竖屏换算"才能对概念图。
+> 旋转*请求*仍然被忽略（`settings get system user_rotation` 读到 1，显示设备却一直是 2560×1600 / rotation 0），
+> 这条限制本身没变，只是不再妨碍出帧。详见 [version-matrix.md](../version-matrix.md) 第 6 节。

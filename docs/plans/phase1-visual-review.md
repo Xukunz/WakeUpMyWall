@@ -160,10 +160,10 @@
 3. **断点阈值 900dp 与计划 Global Constraints 的 1000dp 冲突**：我按概念图实测改成了 900dp（否则目标屏永远落在 3 列）。计划正文那句是估算，改的是令牌不是架构（72/28 未动）。**若你不认可，改回 1000dp 是一行的事**，代价是墙面屏上还原不出概念图的 5 列指标行。
 4. **两个"概念图没给数值、我按实测定的"值**：Glass α=0.6、StandBy `PM`=32sp。概念图只有像素，没有设计稿数值，这两处是换算结果，属于可推翻的判断。
 5. **Android StandBy 截图仍缺**：本次会话 `/dev/kvm` 对当前用户不可用（进程组列表里没有 `kvm`，`emulator -accel-check` 返回 `accel: 8`），恢复需交互式 `sudo`。因此"Android 上 StandBy 正常"这条**未验证**。
-   > **2026-09-20 复检（第三批）**：`/dev/kvm` 现在**根本不存在**（不是权限问题），`-accel off` 也起不来，
-   > `android-*.png` 两张旧帧因此被标注为过期。逐条证据见
-   > [2026-09-20-responsive-and-concept-alignment.md](2026-09-20-responsive-and-concept-alignment.md) §8.2 与
-   > [version-matrix.md](version-matrix.md) §6。**该项仍未结。**
+   > **2026-09-20 二轮更正**：本节与 §8.2 那次"`/dev/kvm` 不存在"的复检结论**是错的**——它量自 Codex 沙箱，
+   > 沙箱的 `/dev` 看不到宿主机设备。宿主 `/dev/kvm` 一直在、`kvm` 模块已加载；当时真正卡住的是"启动者会话
+   > 没有 kvm 组"与"09-19 09:40 起的旧无头实例锁住 AVD"。模拟器现已恢复（19.8 秒冷启动 + App 正常出帧）。
+   > 逐条证据见 [version-matrix.md](version-matrix.md) §6。**StandBy 在 Android 上的帧仍未抓，该项未结。**
 
 ### 7.5 本轮验证命令与结果
 

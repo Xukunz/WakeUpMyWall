@@ -101,7 +101,8 @@
 1. ~~折叠屏内屏竖放还没单独抓 Monitor/Settings 的竖屏帧~~ → **已结**，见 §8.1：
    `fold-inner-portrait-monitor.png` / `fold-inner-portrait-settings.png`（700×790）已入库。
 2. **Android 真机的刘海 / 手势条安全区仍未验证**（`safeDrawing` 只在代码层成立）。
-   2026-09-20 复检仍是同一阻塞：`/dev/kvm` 不存在，模拟器无法加速，见 §8.2。需要真机或恢复 KVM。
+   2026-09-20 复检记录的那条阻塞（`/dev/kvm` 不存在）**已被证伪**（见 §8.2 更正）：模拟器现已恢复，
+   19.8 秒冷启动、App 正常出帧。安全区本身仍要在真机（或带刘海的模拟器档位）上过目，请把它当成"待人工确认"，不是"环境不可用"。
 3. ~~`device-setup.png` 仍是历史遗留~~ → **已结**，见 §8.3：该文件已删除（内容与 `settings.png` 重复）。
 
 ## 8. 第三批（2026-09-20 收口）
@@ -118,7 +119,7 @@
 Device Setup 表单同样可滚动（`Breakpoints.requiresVerticalScroll` / `DeviceSetupScreen` 的
 `verticalScroll`），所以底部卡片被视口切断是滚动视口的正常表现，与 `phone-monitor.png` 一致，不是裁剪缺陷。
 
-### 8.2 Android 侧复检（结论：仍被环境阻塞）
+### 8.2 Android 侧复检（原结论已作废，见本节末尾更正）
 
 逐条实测证据：
 
@@ -128,6 +129,15 @@ Device Setup 表单同样可滚动（`Breakpoints.requiresVerticalScroll` / `Dev
 | `emulator -accel-check` | `accel:` / `8` / `/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded` |
 | `emulator -avd wall -no-window -accel off` | 90 秒内 `FATAL \| A snapshot operation for 'wall' is pending and timeout has expired` 后退出 |
 | AVD 镜像 ABI | `abi.type=x86_64`（无 KVM = 纯软件模拟，不可用） |
+
+> **2026-09-20 二轮更正：本节结论作废。** 上表四行全部量自 Codex 沙箱——沙箱的 `/dev` 是 bwrap 提供的
+> 私有 devtmpfs，看不到宿主机的 `/dev/kvm`，所以"设备不存在"是假象；"snapshot 下载超时"也来自沙箱无网络。
+> 沙箱外 `/dev/kvm` 一直在（`crw-rw----+ root kvm 10,232`，`kvm_amd` / `kvm` 模块已加载），真正的两个阻塞是
+> **启动者会话缺 kvm 组**（agent 的进程树来自 09-19 00:26 启动的 `codex app-server`，早于 09-19 09:30 的
+> `usermod -aG kvm`）与 **09-19 09:40 起的旧无头实例锁住 `wall` AVD**（新实例会立刻
+> `FATAL | Running multiple emulators with the same AVD`）。两条都已处理：收掉旧实例后在带 kvm 组的上下文重启，
+> 冷启动 19.8 秒、`installDebug` 后 `MainActivity` 正常前台、`screencap` 出 2560×1600 横屏真实帧。
+> 逐条证据与恢复步骤见 [version-matrix.md](version-matrix.md) §6。
 
 因此这一批**没有**新增 Android 帧；`android-dashboard.png` / `android-monitor.png` 已在
 [screenshots/README.md](screenshots/README.md) 标注为过期（2026-09-19 抓的，早于本批重写），

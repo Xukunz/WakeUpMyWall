@@ -167,26 +167,62 @@ adb emu kill                                                          # 收工
 - App 安装后 `topResumedActivity` 为 `com.xukunz.wakeupmywall/.MainActivity`，logcat 无 `FATAL`。
 - 屏幕取到的真实帧与桌面渲染一致（Aurora 壁纸 + Dashboard 占位页）。
 
-### 2026-09-20 复检：整套模拟器目前不可用
+### 2026-09-20 复检：**更正**旧结论，模拟器已恢复可用
 
-本轮想重抓 Android 帧（含 StandBy）时复检了一次，阻塞点从"权限"变成了"设备就不在"：
+本节早先写下的三条判断——"`/dev/kvm` 不存在""宿主机没开 VT""kvm 模块没加载"——**全部不成立**，
+它们是在 Codex 沙箱里量出来的假象。沙箱外（escalated）复测：
 
 ```text
-$ ls /dev/kvm
-ls: cannot access '/dev/kvm': No such file or directory
-$ "$ANDROID_SDK_ROOT/emulator/emulator" -accel-check
-accel:
-8
-/dev/kvm is not found: VT disabled in BIOS or KVM kernel module not loaded
-$ "$ANDROID_SDK_ROOT/emulator/emulator" -avd wall -no-window -no-audio -no-snapshot -accel off -gpu swiftshader_indirect
-FATAL        | A snapshot operation for 'wall' is pending and timeout has expired. Exiting...
+$ ls -l /dev/kvm
+crw-rw----+ 1 root kvm 10, 232 Sep 19 09:40 /dev/kvm
+$ getfacl /dev/kvm
+user::rw-  user:gdm-greeter:rw-  group::rw-  mask::rw-  other::---
+$ lsmod | grep -i kvm
+kvm_amd               262144  6
+kvm                  1527808  1 kvm_amd
 ```
 
-`wall` AVD 的 `config.ini` 是 `abi.type=x86_64`，无 KVM 时退化成 TCG 软件模拟，90 秒内起不来。
-要恢复得在宿主机开 VT 或加载 `kvm` 模块（容器内无法自助，需要 `sudo`）。**在此之前，Android 侧
-只能靠桌面渲染管线 + 尺寸断言兜底，不能声称已在 Android 上验证。**
+沙箱里的 `/dev` 是 bwrap 给的私有 devtmpfs（只有 `null` `zero` `full` `random` `urandom` `tty` `pts` `shm`），
+所以沙箱内 `ls /dev/kvm` 必然 `No such file`、`-accel-check` 必然 `accel: 8`；沙箱内也没有网络，
+那次 `-accel off` 的"snapshot 下载超时"同样与模拟器无关。**规则：模拟器与 adb 的启动、检查都必须在沙箱外执行，
+沙箱内量出的此类结论一律作废。**
+
+真正让"模拟器起不来"的是下面两条：
+
+| 层 | 现象 | 证据 | 处理 |
+| --- | --- | --- | --- |
+| 会话权限 | `-accel-check` → `accel:` / `11` / `This user doesn't have permissions to use KVM (/dev/kvm)` | `/etc/group` 里 `kvm:x:991:xukunz` 已生效（`/etc/group` mtime 09-19 09:30），但 agent 的进程树来自 09-19 00:26 启动的 `codex app-server`，补充组是登录时冻结的，没有 991 | 在带 kvm 组的会话里启动（新登录的 SSH / GDM 会话自带 991）；或一次性 `sudo setfacl -m u:$USER:rw /dev/kvm`（重启失效，持久要靠 udev 规则） |
+| 实例生命周期 | 新实例立刻 `FATAL \| Running multiple emulators with the same AVD is an experimental feature. Please use -read-only flag` | 09-19 09:40 起的 `-no-window` 实例一直活着（PID 94603，已跑 18h49m）并锁住 `wall` AVD | 先 `adb -s <serial> emu kill` 收掉旧实例；或显式加 `-read-only` |
+
+本轮恢复步骤与实测结果：
+
+```bash
+ADB="$ANDROID_SDK_ROOT/platform-tools/adb"; EMU="$ANDROID_SDK_ROOT/emulator/emulator"
+"$ADB" -s emulator-5554 emu kill        # 收掉 09-19 遗留的无头实例：它会 FATAL 掉任何新启动
+pgrep -f 'qemu-system-x86_64-headless -avd wa[l]l'   # 应无输出（模式里的 [w] 防止自匹配）
+setsid nohup "$EMU" -avd wall -no-window -no-audio -no-snapshot -no-boot-anim \
+  -gpu swiftshader_indirect > /tmp/emulator_wall.log 2>&1 < /dev/null &
+```
+
+- 冷启动到 `sys.boot_completed=1`：**19.8 秒**（KVM 生效；纯软件模拟不可能这么快）。
+- 新进程 `/proc/<pid>/status` 的 `Groups:` 含 `991`；`/proc/<pid>/fd` 有 6 个 kvm 句柄（`/dev/kvm`、`kvm-vm`、4 个 `kvm-vcpu`）。
+- `:composeApp:installDebug` 后 `topResumedActivity=com.xukunz.wakeupmywall/.MainActivity`，logcat 无 `FATAL`，
+  `screencap` 出 2560×1600 真实帧（横屏，与桌面 1280×720 同属一个断点区间）。
+
+**便捷路径（启动者会话里没有 kvm 组时）：** 本机 cron 任务的进程带 kvm 组（实测 cron 起的进程
+`/proc/self/status` 含 `991`），可用一条带唯一标记的一次性 `crontab` 条目代组启动，起来后立刻删条目：
+
+```bash
+crontab -l > /tmp/cron.bak
+echo '* * * * * pgrep -f "qemu-system-x86_64-headless -avd [w]all" >/dev/null || (setsid nohup '"$EMU"' -avd wall -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect >> /tmp/emulator_wall.log 2>&1 < /dev/null &) # wakeupmywall-emulator-boot' >> /tmp/cron.bak
+crontab /tmp/cron.bak
+# adb devices 出现 emulator-5554 之后：
+crontab -l | grep -v wakeupmywall-emulator-boot | crontab -
+```
+
+宿主重启、或换一个 usermod 之后新建的登录会话，都不再需要这条路径。
 
 ### 已知限制（不是 App 缺陷，但会影响后续阶段）
 
-1. **无头模拟器转不到横屏**：`settings put system user_rotation 1`、`cmd window user-rotation lock 1`、`adb emu rotate` 都试过，`mCurrentOrientation=1` 但显示设备始终 `rotation 0`——Android 12L+ 的大屏设备默认忽略旋转请求。截图因此是 1600×2560 竖屏。
+1. **无头模拟器忽略旋转请求**：`settings put system user_rotation 1`、`cmd window user-rotation lock 1`、`adb emu rotate` 都试过，`mCurrentOrientation=1` 但显示设备始终 `rotation 0`——Android 12L+ 的大屏设备默认忽略旋转请求。二轮实测：显示设备原生形态是 2560×1600（横屏、rotation 0），新帧直接落在这个方向上；09-19 那批 1600×2560 竖屏帧来自旧实例，不是本条的必然结果。
 2. **App 目前没有声明屏幕方向**：`AndroidManifest.xml` 里没有 `android:screenOrientation`。Phase 1 全局约束要求"横屏锁定 72/28"，所以 Task 5/8 落地 AppShell 时需要决定是写入清单还是走运行时策略（Phase 8 的 Display & Reliability 也会碰这块）。
