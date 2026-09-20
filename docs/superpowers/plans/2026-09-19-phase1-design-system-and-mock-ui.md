@@ -1951,7 +1951,7 @@ git commit -m "feat: add standby clock mode with compact pc card"
   - `enum class LayoutWidth { Compact, Medium, Expanded }`
   - `object Breakpoints { fun widthFor(availableDp: Int): LayoutWidth; fun columnsFor(availableDp: Int): Int }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 class BreakpointsTest {
@@ -1984,7 +1984,7 @@ class BreakpointsTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*BreakpointsTest*"
@@ -1992,7 +1992,7 @@ class BreakpointsTest {
 
 Expected: 编译失败，`Unresolved reference: Breakpoints`。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 package com.xukunz.wakeupmywall.ui.components
@@ -2017,11 +2017,11 @@ object Breakpoints {
 }
 ```
 
-- [ ] **Step 4: 接入 Dashboard 与 Monitor**
+- [x] **Step 4: 接入 Dashboard 与 Monitor**
 
 在 `DashboardMode` 与 `MonitorMode` 内用 `BoxWithConstraints` 取 `maxWidth`，按 `Breakpoints.columnsFor(maxWidth.value.toInt())` 决定每行卡片数量；`Compact` 时整屏改为 `Column` + `verticalScroll`。禁止用固定 `1f` 权重的 Row 强排。
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest

@@ -7,6 +7,39 @@ import kotlin.test.assertEquals
 class BreakpointsTest {
 
     @Test
+    fun `below six hundred dp is compact with two columns`() {
+        assertEquals(LayoutWidth.Compact, Breakpoints.widthFor(560))
+        assertEquals(2, Breakpoints.columnsFor(560))
+    }
+
+    @Test
+    fun `between six hundred and one thousand dp is medium with three columns`() {
+        assertEquals(LayoutWidth.Medium, Breakpoints.widthFor(600))
+        assertEquals(LayoutWidth.Medium, Breakpoints.widthFor(999))
+        assertEquals(3, Breakpoints.columnsFor(800))
+    }
+
+    @Test
+    fun `one thousand dp and above is expanded with concept columns`() {
+        assertEquals(LayoutWidth.Expanded, Breakpoints.widthFor(1000))
+        assertEquals(5, Breakpoints.columnsFor(1200))
+    }
+
+    @Test
+    fun `boundary values are inclusive on the lower edge`() {
+        assertEquals(LayoutWidth.Compact, Breakpoints.widthFor(599))
+        assertEquals(LayoutWidth.Medium, Breakpoints.widthFor(600))
+        assertEquals(LayoutWidth.Expanded, Breakpoints.widthFor(1000))
+    }
+
+    @Test
+    fun `dp and int forms agree`() {
+        listOf(320, 599, 600, 999, 1000, 1440).forEach { width ->
+            assertEquals(Breakpoints.columnsFor(width), Breakpoints.columns(width.dp))
+        }
+    }
+
+    @Test
     fun `wide screens keep the concept column count`() {
         assertEquals(5, Breakpoints.columns(1000.dp))
         assertEquals(5, Breakpoints.columns(1440.dp))

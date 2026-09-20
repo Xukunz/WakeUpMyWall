@@ -59,6 +59,17 @@ class AppScreenshotTest {
     }
 
     @Test
+    fun `capture dashboard at compact width`() = runComposeUiTest {
+        // 800dp 宽时主区约 576dp → Compact：2 列 + 纵向滚动（风险 R7 的兜底形态）。
+        setContent {
+            Box(Modifier.size(800.dp, 720.dp)) { App() }
+        }
+        val target = File("build/screenshots/dashboard-compact.png")
+        onRoot().captureToImage().writePng(target)
+        println("SCREENSHOT: ${target.absolutePath}")
+    }
+
+    @Test
     fun `capture standby mode`() = capture("standby-aurora") {
         WakeUpMyWallTheme {
             Box(Modifier.fillMaxSize()) {
