@@ -1073,7 +1073,7 @@ git commit -m "feat: add dashboard mode widgets with mock data"
 - Produces:
   - `class MetricRingBuffer(val capacity: Int = 60) { val size: Int; fun add(value: Float); fun values(): List<Float>; fun latest(): Float?; fun average(): Float?; fun min(): Float?; fun max(): Float? }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.metrics
@@ -1127,7 +1127,7 @@ class MetricRingBufferTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*MetricRingBufferTest*"
@@ -1135,7 +1135,7 @@ class MetricRingBufferTest {
 
 Expected: 编译失败，`Unresolved reference: MetricRingBuffer`。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.metrics
@@ -1160,7 +1160,7 @@ class MetricRingBuffer(val capacity: Int = 60) {
 }
 ```
 
-- [ ] **Step 4: 运行测试并提交**
+- [x] **Step 4: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*MetricRingBufferTest*"
