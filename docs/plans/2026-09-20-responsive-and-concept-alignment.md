@@ -102,7 +102,12 @@
    `fold-inner-portrait-monitor.png` / `fold-inner-portrait-settings.png`（700×790）已入库。
 2. **Android 真机的刘海 / 手势条安全区仍未验证**（`safeDrawing` 只在代码层成立）。
    2026-09-20 复检记录的那条阻塞（`/dev/kvm` 不存在）**已被证伪**（见 §8.2 更正）：模拟器现已恢复，
-   19.8 秒冷启动、App 正常出帧。安全区本身仍要在真机（或带刘海的模拟器档位）上过目，请把它当成"待人工确认"，不是"环境不可用"。
+   19.8 秒冷启动、App 正常出帧。
+   > **安全区已在模拟器上量过（2026-09-20 二轮）**：用 Android 自带的刘海模拟 overlay 在原生几何下造出 48dp 刘海，
+   > 内容顶边随之从 y=304 下移到 y=352（`SAME ROOM` 文案）/ y=101→149（StandBy 时钟），正好等于 safeDrawing
+   > 顶边从 24dp（状态栏）增到 48dp（刘海）的差值；手机几何下底栏文字（y=2265）与手势条（y=2364）不重叠。
+   > 帧与命令见 [screenshots/README.md](screenshots/README.md) 的 `android-notch-dashboard.png`。
+   > **尚未过目的只剩真机上非矩形挖孔 / 曲面屏这类形态**，不再是"只在代码层成立"。
 3. ~~`device-setup.png` 仍是历史遗留~~ → **已结**，见 §8.3：该文件已删除（内容与 `settings.png` 重复）。
 
 ## 8. 第三批（2026-09-20 收口）

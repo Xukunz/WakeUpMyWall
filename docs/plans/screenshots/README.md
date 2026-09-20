@@ -29,7 +29,7 @@ JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*AppScreenshotTest*
 | `fold-outer.png` | 412×965 | 折叠外屏 21.1:9（底部常驻控制栏） |
 | `fold-inner.png` / `fold-inner-portrait.png` | 790×700 / 700×790 | 内屏 4:3.55 横放 / 竖放 |
 | `fold-inner-portrait-monitor.png` / `fold-inner-portrait-settings.png` | 700×790 | 内屏竖放的 Monitor / Settings：内屏比手机宽（700dp vs 412dp），内部重排走的是另一条分支 |
-| `android-dashboard.png` / `android-monitor.png` / `android-standby.png` | 2560×1600 | 无头 Nexus 10 模拟器（API 37）上的真机帧，见下节 |
+| `android-dashboard.png` / `android-monitor.png` / `android-standby.png` / `android-notch-dashboard.png` | 2560×1600 | 无头 Nexus 10 模拟器（API 37）上的真机帧，见下节 |
 
 > `device-setup.png` 已于 2026-09-20 删除：它是 00:22 那一批留下的孤儿文件，没有对应的抓取用例，
 > 屏幕内容与 `settings.png`（Settings 工作空间默认就停在 Device Setup 段）重复。留两个同内容的文件
@@ -92,3 +92,18 @@ Codex 沙箱造成的假象（沙箱 `/dev` 是 bwrap 私有 devtmpfs，看不�
 真正的阻塞是"启动者会话没有 kvm 组"与"09-19 09:40 起的旧无头实例锁住 `wall` AVD"。逐条证据与恢复步骤见
 [version-matrix.md](../version-matrix.md) §6。旋转*请求*仍被忽略（`user_rotation` 读到 1，显示设备始终
 2560×1600 / rotation 0），但 Nexus 10 原生就是横屏，所以出帧方向与桌面 1280×720 落在同一个断点区间。
+
+**安全区旁证帧 `android-notch-dashboard.png`（刘海 / 手势条）：** 用 Android 自带的刘海模拟 overlay 在原生几何下
+造出 48dp 刘海，验证 `windowInsetsPadding(WindowInsets.safeDrawing)` 真的跟着系统 inset 走：
+
+```bash
+"$ADB" -s emulator-5554 shell cmd overlay enable-exclusive --category com.android.internal.display.cutout.emulation.tall
+"$ADB" -s emulator-5554 shell dumpsys window displays | grep -m1 mDisplayCutout   # insets=Rect(0, 96 - 0, 0)
+"$ADB" -s emulator-5554 exec-out screencap -p > android-notch-dashboard.png
+```
+
+- 无刘海时装饰文案 `SAME ROOM` 顶边在 y=304，48dp 刘海下移到 y=352 —— 正好是 safeDrawing 顶边从 24dp（状态栏）
+  增到 48dp（刘海）的差值（+24dp = +48px）。StandBy 的时钟同样下移 48px（101 → 149）。
+- 手机几何（`wm size 1080x2400` + `wm density 420`）下底栏最后一行文字在 y=2265、手势条在 y=2364，不重叠。
+- 反例记录：`wm size` 覆盖会把模拟刘海的 dp 高度一起缩放（41px@420dpi ≈ 15.6dp），小于状态栏的 24dp，
+  所以"手机几何 + 刘海"这一组量不出位移——有效的对比是原生几何下的一组，别的组合只会得到假阴性。
