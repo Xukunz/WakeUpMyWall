@@ -860,7 +860,7 @@ class ConnectivityTester(
     private val token: String? = null,
 ) {
     suspend fun test(device: PcDevice): ConnectionReport {
-        val mac = device.macAddress?.value
+        val mac = device.macAddress?.normalized
             ?: return failed(ConnectionFailure.MISSING_MAC, "Add a MAC address first — wake-on-LAN needs it")
 
         val host = device.agentHost ?: device.ipAddress
@@ -1305,7 +1305,7 @@ private fun SavedComputers(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(device.name, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        text = device.macAddress?.value ?: "No MAC yet",
+                        text = device.macAddress?.normalized ?: "No MAC yet",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1355,7 +1355,7 @@ git commit -m "feat: turn saved computers into the device selector"
 
 **Files:**
 - Modify: `mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/app/App.kt`
-- Modify: `mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/ui/powerrail/PowerRail.kt`（标题加 `powerrail:title` testTag，若已有则跳过）
+- Modify: 无需改动 —— `PowerRail.kt` / `PowerRailCompact.kt` 的标题已经有 `powerrail:name`，且在 `PowerRailUiTest` 的 tag 白名单里；本任务只**复用**它，不新增别名
 - Test: `mobile/composeApp/src/desktopTest/kotlin/com/xukunz/wakeupmywall/app/AppUiTest.kt`（追加）
 
 **Interfaces:**
@@ -1384,12 +1384,12 @@ git commit -m "feat: turn saved computers into the device selector"
         setContent { App(storage = storage) }
 
         // 标题必须来自存储里的激活设备，而不是 MockData 常量（"My PC"）。
-        onNodeWithTag("powerrail:title", useUnmergedTree = true).assertTextEquals("Den PC")
+        onNodeWithTag("powerrail:name", useUnmergedTree = true).assertTextEquals("Den PC")
     }
 ```
 
-> 执行时先 `rg -n "powerrail" mobile/composeApp/src/commonMain/.../ui/powerrail/PowerRail.kt` 确认标题节点的
-> 实际结构：若没有 `powerrail:title`，给 `My PC` 那个 `Text` 补上（这是本步要建立的可断言点）。
+> 标题节点的 tag 已存在：`powerrail:name`（`PowerRail.kt:65`、`PowerRailCompact.kt:131`，并已列在
+> `PowerRailUiTest` 的 tag 白名单里）。所以这里直接断言既有 tag，不给同一个 `Text` 挂第二个别名。
 
 - [ ] **Step 2: 运行测试确认失败**
 
@@ -1466,7 +1466,7 @@ DeviceSetupScreen(
 /** `PcDevice` → 表单输入。放在 App.kt 文件末尾的私有扩展里，避免 UI 组件知道模型细节。 */
 private fun PcDevice.toSetupInput() = DeviceSetupInput(
     name = name,
-    mac = macAddress?.value.orEmpty(),
+    mac = macAddress?.normalized.orEmpty(),
     ip = ipAddress.orEmpty(),
     broadcast = broadcastAddress,
     wolPort = wolPort.toString(),
