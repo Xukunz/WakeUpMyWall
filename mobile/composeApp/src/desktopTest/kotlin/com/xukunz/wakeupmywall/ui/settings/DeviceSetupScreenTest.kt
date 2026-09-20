@@ -33,7 +33,19 @@ class DeviceSetupScreenTest {
         val result = DeviceSetupValidator.validate(input)
         setContent {
             WakeUpMyWallTheme {
-                DeviceSetupScreen(input, result, devices = MockData.devices, onInputChange = {}, onSave = {}, onTestConnection = {})
+                DeviceSetupScreen(
+                    input = input,
+                    result = result,
+                    devices = MockData.devices,
+                    report = null,
+                    isTesting = false,
+                    onInputChange = {},
+                    onSave = {},
+                    onTestConnection = {},
+                    onSelectDevice = {},
+                    onDeleteDevice = {},
+                    onAddDevice = {},
+                )
             }
         }
 
@@ -49,9 +61,14 @@ class DeviceSetupScreenTest {
                     validInput,
                     DeviceSetupValidator.validate(validInput),
                     devices = MockData.devices,
+                    report = null,
+                    isTesting = false,
                     onInputChange = {},
                     onSave = {},
                     onTestConnection = {},
+                    onSelectDevice = {},
+                    onDeleteDevice = {},
+                    onAddDevice = {},
                 )
             }
         }
@@ -68,9 +85,14 @@ class DeviceSetupScreenTest {
                     validInput,
                     DeviceSetupValidator.validate(validInput),
                     devices = MockData.devices,
+                    report = null,
+                    isTesting = false,
                     onInputChange = {},
                     onSave = {},
                     onTestConnection = { tested = true },
+                    onSelectDevice = {},
+                    onDeleteDevice = {},
+                    onAddDevice = {},
                 )
             }
         }
@@ -88,9 +110,14 @@ class DeviceSetupScreenTest {
                     validInput,
                     DeviceSetupValidator.validate(validInput),
                     devices = MockData.devices,
+                    report = null,
+                    isTesting = false,
                     onInputChange = {},
                     onSave = {},
                     onTestConnection = {},
+                    onSelectDevice = {},
+                    onDeleteDevice = {},
+                    onAddDevice = {},
                 )
             }
         }

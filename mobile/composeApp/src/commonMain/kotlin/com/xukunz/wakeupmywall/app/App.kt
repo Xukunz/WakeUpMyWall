@@ -174,9 +174,16 @@ fun App(
                                     input = deviceInput,
                                     result = DeviceSetupValidator.validate(deviceInput),
                                     devices = MockData.devices,
+                                    // Task 7 之前这里还没有真实仓库与探测器：先如实传"没测过"，
+                                    // 不假装测过了。
+                                    report = null,
+                                    isTesting = false,
                                     onInputChange = { deviceInput = it },
                                     onSave = {},
                                     onTestConnection = {},
+                                    onSelectDevice = {},
+                                    onDeleteDevice = {},
+                                    onAddDevice = {},
                                 )
                                 SettingsSection.Appearance -> AppearanceScreen(
                                     state = appearance,

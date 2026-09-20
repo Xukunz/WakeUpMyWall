@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import com.xukunz.wakeupmywall.core.connectivity.ConnectionReport
 import com.xukunz.wakeupmywall.core.theme.Spacing
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupInput
@@ -44,9 +45,14 @@ fun DeviceSetupScreen(
     input: DeviceSetupInput,
     result: DeviceSetupResult,
     devices: List<PcDevice>,
+    report: ConnectionReport?,
+    isTesting: Boolean,
     onInputChange: (DeviceSetupInput) -> Unit,
     onSave: () -> Unit,
     onTestConnection: () -> Unit,
+    onSelectDevice: (String) -> Unit,
+    onDeleteDevice: (String) -> Unit,
+    onAddDevice: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("device:setup")) {
@@ -55,8 +61,17 @@ fun DeviceSetupScreen(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                WolForm(input, result, onInputChange, onSave, onTestConnection, Modifier.fillMaxWidth())
-                SavedComputers(devices, Modifier.fillMaxWidth())
+                WolForm(
+                    input = input,
+                    result = result,
+                    report = report,
+                    isTesting = isTesting,
+                    onInputChange = onInputChange,
+                    onSave = onSave,
+                    onTestConnection = onTestConnection,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SavedComputers(devices, onSelectDevice, onDeleteDevice, onAddDevice, Modifier.fillMaxWidth())
                 IntegratedServices(Modifier.fillMaxWidth())
             }
         } else {
@@ -64,12 +79,21 @@ fun DeviceSetupScreen(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                WolForm(input, result, onInputChange, onSave, onTestConnection, Modifier.weight(1f))
+                WolForm(
+                    input = input,
+                    result = result,
+                    report = report,
+                    isTesting = isTesting,
+                    onInputChange = onInputChange,
+                    onSave = onSave,
+                    onTestConnection = onTestConnection,
+                    modifier = Modifier.weight(1f),
+                )
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
-                    SavedComputers(devices, Modifier.fillMaxWidth())
+                    SavedComputers(devices, onSelectDevice, onDeleteDevice, onAddDevice, Modifier.fillMaxWidth())
                     IntegratedServices(Modifier.fillMaxWidth())
                 }
             }
@@ -81,6 +105,8 @@ fun DeviceSetupScreen(
 private fun WolForm(
     input: DeviceSetupInput,
     result: DeviceSetupResult,
+    report: ConnectionReport?,
+    isTesting: Boolean,
     onInputChange: (DeviceSetupInput) -> Unit,
     onSave: () -> Unit,
     onTestConnection: () -> Unit,
@@ -93,7 +119,15 @@ private fun WolForm(
         Field("MAC Address", input.mac, result.errors["mac"], "mac", "device:error:mac") { onInputChange(input.copy(mac = it)) }
         Field("IP Address", input.ip, result.errors["ip"], "ip", "device:error:ip") { onInputChange(input.copy(ip = it)) }
         Field("Broadcast IP", input.broadcast, result.errors["broadcast"], "broadcast", "device:error:broadcast") { onInputChange(input.copy(broadcast = it)) }
-        Field("WOL Port", input.wolPort, result.errors["wolPort"], "wolPort", "device:error:wolPort") { onInputChange(input.copy(wolPort = it)) }
+        // WOL Port 是用户会反复微调的旋钮（spec §7.5 写的是 "Port 步进器"），
+        // 用步进器替掉文本框；Agent Port 不是旋钮，保持文本框。
+        PortStepper(
+            label = "WOL Port",
+            value = input.wolPort,
+            error = result.errors["wolPort"],
+            tag = "wolPort",
+            onValueChange = { onInputChange(input.copy(wolPort = it)) },
+        )
         Field("Agent Port", input.agentPort, result.errors["agentPort"], "agentPort", "device:error:agentPort") { onInputChange(input.copy(agentPort = it)) }
         Field("Agent Host", input.agentHost, result.errors["agentHost"], "agentHost", "device:error:agentHost") { onInputChange(input.copy(agentHost = it)) }
 
@@ -109,17 +143,63 @@ private fun WolForm(
             }
         }
 
-        Text(
-            text = if (result.isValid) "WOL Ready" else "Fix the highlighted fields",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("device:status"),
-        )
+        // 原来是静态的 "WOL Ready / Fix the highlighted fields"：测试连接的真实结论落地后，
+        // 这里换成结论块，失败时给出具体原因（roadmap Phase 2 的验收要求）。
+        ConnectionStatus(report = report, isTesting = isTesting, modifier = Modifier.fillMaxWidth())
     }
 }
 
 @Composable
-private fun SavedComputers(devices: List<PcDevice>, modifier: Modifier) {
+private fun PortStepper(
+    label: String,
+    value: String,
+    error: String?,
+    tag: String,
+    onValueChange: (String) -> Unit,
+) {
+    val current = value.toIntOrNull() ?: 9
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = { onValueChange((current - 1).coerceAtLeast(1).toString()) },
+                modifier = Modifier.testTag("device:$tag-decrement"),
+            ) { Text("-") }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.testTag("device:$tag"),
+            )
+            OutlinedButton(
+                onClick = { onValueChange((current + 1).coerceAtMost(65535).toString()) },
+                modifier = Modifier.testTag("device:$tag-increment"),
+            ) { Text("+") }
+        }
+        if (error != null) {
+            Text(
+                text = error,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("device:error:$tag"),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SavedComputers(
+    devices: List<PcDevice>,
+    onSelectDevice: (String) -> Unit,
+    onDeleteDevice: (String) -> Unit,
+    onAddDevice: () -> Unit,
+    modifier: Modifier,
+) {
     WidgetSurface(style = WidgetStyle.Glass, modifier = modifier.testTag("device:saved")) {
         SectionHeader(title = "Saved Computers")
         devices.forEach { device ->
