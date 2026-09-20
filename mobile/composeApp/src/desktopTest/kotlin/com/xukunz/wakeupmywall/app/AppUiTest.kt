@@ -3,7 +3,10 @@ package com.xukunz.wakeupmywall.app
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,6 +31,24 @@ class AppUiTest {
         setContent { App(navigator) }
         // Monitor 也是真实形态（Task 8），不再是占位页。
         onNodeWithTag("monitor:identity").assertIsDisplayed()
+    }
+
+    @Test
+    fun `swiping left twice walks from dashboard to standby and back again`() = runComposeUiTest {
+        setContent { App() }
+
+        // Task 13 要求三形态可达：Dashboard → Monitor → StandBy，右滑逐级退回。
+        onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
+        onNodeWithTag("monitor:identity").assertIsDisplayed()
+
+        onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
+        onNodeWithTag("standby:clock", useUnmergedTree = true).assertIsDisplayed()
+
+        onNodeWithTag("home:surface").performTouchInput { swipeRight() }
+        onNodeWithTag("monitor:identity").assertIsDisplayed()
+
+        onNodeWithTag("home:surface").performTouchInput { swipeRight() }
+        onNodeWithTag("dashboard:greeting").assertIsDisplayed()
     }
 
     @Test

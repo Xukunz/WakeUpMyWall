@@ -9,6 +9,9 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.DashboardLayout
@@ -115,6 +118,31 @@ class HomeSurfaceTest {
         }
 
         onNodeWithTag("metric:cpu").assertExists()
+    }
+
+    @Test
+    fun `swiping left from monitor walks on to standby and back`() = runComposeUiTest {
+        var mode by mutableStateOf(HomeMode.Monitor)
+        setContent {
+            WakeUpMyWallTheme {
+                HomeSurface(
+                    mode = mode,
+                    dashboard = dashboardData,
+                    metrics = MockData.metrics,
+                    history = emptyMap(),
+                    style = WidgetStyle.Glass,
+                    onModeChange = { mode = it },
+                    identity = MockData.hardware,
+                )
+            }
+        }
+
+        // 三形态是"左滑前进、右滑后退、到边界停住"：Monitor 之下还有 StandBy，而不是直接回 Dashboard。
+        onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
+        assertEquals(HomeMode.StandBy, mode)
+
+        onNodeWithTag("home:surface").performTouchInput { swipeRight() }
+        assertEquals(HomeMode.Monitor, mode)
     }
 
     @Test

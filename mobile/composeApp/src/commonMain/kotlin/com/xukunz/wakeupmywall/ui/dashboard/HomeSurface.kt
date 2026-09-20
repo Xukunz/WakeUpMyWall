@@ -23,6 +23,13 @@ import com.xukunz.wakeupmywall.ui.standby.StandByMode
 
 enum class HomeMode { Dashboard, Monitor, StandBy }
 
+/** 三形态的步行顺序：Dashboard → Monitor → StandBy，两端停住。 */
+fun HomeMode.forward(): HomeMode =
+    HomeMode.entries[(ordinal + 1).coerceAtMost(HomeMode.entries.lastIndex)]
+
+fun HomeMode.backward(): HomeMode =
+    HomeMode.entries[(ordinal - 1).coerceAtLeast(0)]
+
 /** 主页三形态控制器：左滑前进、右滑后退，到边界停住。 */
 class HomeModeController {
     private val state = mutableStateOf(HomeMode.Dashboard)
@@ -34,23 +41,25 @@ class HomeModeController {
 
     /** `toggle` 与左滑同向：按 Dashboard → Monitor → StandBy → Dashboard 循环。 */
     fun toggle() {
-        val order = HomeMode.entries
-        state.value = order[(order.indexOf(state.value) + 1) % order.size]
+        state.value = when (state.value) {
+            HomeMode.Dashboard -> HomeMode.Monitor
+            HomeMode.Monitor -> HomeMode.StandBy
+            HomeMode.StandBy -> HomeMode.Dashboard
+        }
     }
 
     fun onSwipeLeft() {
-        val order = HomeMode.entries
-        state.value = order[(order.indexOf(state.value) + 1).coerceAtMost(order.lastIndex)]
+        state.value = state.value.forward()
     }
 
     fun onSwipeRight() {
-        val order = HomeMode.entries
-        state.value = order[(order.indexOf(state.value) - 1).coerceAtLeast(0)]
+        state.value = state.value.backward()
     }
 }
 
 /**
- * 左滑进 Monitor、右滑回 Dashboard（阈值 60dp，累计位移判定——单次拖拽事件远小于阈值）。
+ * 左滑前进一态、右滑后退一态（阈值 60dp，累计位移判定——单次拖拽事件远小于阈值）。
+ * 步子按 [forward] / [backward] 走，所以 Monitor 之下还能进 StandBy，而不是直接弹回 Dashboard。
  */
 @Composable
 fun HomeSurface(
@@ -68,12 +77,13 @@ fun HomeSurface(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(threshold) {
+            // mode 必须进 key：否则手势回调会一直捕获进入时的那个形态，第二次左滑就还在原地。
+            .pointerInput(mode, threshold) {
                 var travelled = 0f
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (travelled <= -threshold) onModeChange(HomeMode.Monitor)
-                        if (travelled >= threshold) onModeChange(HomeMode.Dashboard)
+                        if (travelled <= -threshold) onModeChange(mode.forward())
+                        if (travelled >= threshold) onModeChange(mode.backward())
                         travelled = 0f
                     },
                     onDragCancel = { travelled = 0f },

@@ -39,6 +39,7 @@ import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupValidator
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
 import com.xukunz.wakeupmywall.ui.dashboard.HomeMode
+import com.xukunz.wakeupmywall.ui.dashboard.HomeModeController
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
 import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
@@ -51,7 +52,10 @@ fun App(
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
-    var homeMode by remember { mutableStateOf(HomeMode.Dashboard) }
+    // 主页三形态的唯一状态源。Task 13 的三态切换（含 StandBy）靠它驱动，
+    // 所以 StandBy 必须是可到达的：左滑 Dashboard → Monitor → StandBy，右滑逐级退回。
+    val homeModeController = remember { HomeModeController() }
+    val homeMode by homeModeController.current
     var settingsSection by remember { mutableStateOf(SettingsSection.DeviceSetup) }
     val device = MockData.defaultDevice
     // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
@@ -85,8 +89,8 @@ fun App(
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
     LaunchedEffect(workspace) {
         when (workspace) {
-            Workspace.Monitor -> homeMode = HomeMode.Monitor
-            Workspace.Dashboard -> homeMode = HomeMode.Dashboard
+            Workspace.Monitor -> homeModeController.show(HomeMode.Monitor)
+            Workspace.Dashboard -> homeModeController.show(HomeMode.Dashboard)
             Workspace.Settings -> Unit
         }
     }
@@ -136,7 +140,7 @@ fun App(
                             metrics = MockData.metrics,
                             history = mockMetricHistory(MockData.metrics),
                             style = appearance.widgetStyle,
-                            onModeChange = { homeMode = it },
+                            onModeChange = homeModeController::show,
                             identity = MockData.hardware,
                         )
                     }
