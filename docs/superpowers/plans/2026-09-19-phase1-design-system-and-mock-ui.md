@@ -550,7 +550,7 @@ git commit -m "feat: add dashboard widget abstraction and mock data set"
   - `fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel`
   - `@Composable fun PowerRail(model: PowerRailModel, onPrimary: () -> Unit, onSleep: () -> Unit, onShutdown: () -> Unit, onRestart: () -> Unit, onSettings: () -> Unit, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 写失败测试（状态映射）**
+- [x] **Step 1: 写失败测试（状态映射）**
 
 ```kotlin
 package com.xukunz.wakeupmywall.ui.powerrail
@@ -611,7 +611,7 @@ class PowerRailStateTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*PowerRailStateTest*"
@@ -619,7 +619,7 @@ class PowerRailStateTest {
 
 Expected: 编译失败，`Unresolved reference: powerRailModel`。
 
-- [ ] **Step 3: 实现状态映射**
+- [x] **Step 3: 实现状态映射**
 
 ```kotlin
 package com.xukunz.wakeupmywall.ui.powerrail
@@ -654,7 +654,7 @@ fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
 }
 ```
 
-- [ ] **Step 4: 实现 Power Rail 骨架**
+- [x] **Step 4: 实现 Power Rail 骨架**
 
 先按可用性规则搭结构：`Column`（标题区 + 状态行 + 主按钮 + 三个次级按钮 + 连接条 + Settings 入口），每个可交互元素带 `testTag("powerrail:...")`；`enabled` 一律绑定模型字段；`Spacing` 只取令牌。**Step 4b 会把它升级为概念图的最终构成。**
 
@@ -689,7 +689,7 @@ fun PowerRail(
 }
 ```
 
-- [ ] **Step 4b: 升级为概念图构成（A1–A6）**
+- [x] **Step 4b: 升级为概念图构成（A1–A6）**
 
 替换 Step 4 的布局，得到标题区 + 状态行 + 环形主按钮 + 三枚双行次级按钮 + 连接条。为此新增模型字段与环形组件。
 
@@ -765,7 +765,7 @@ Column(modifier = modifier.fillMaxHeight().padding(Spacing.lg).testTag("powerrai
 
 `RailAction(label, caption, enabled, onClick, tag)` 是一个私有 Composable：`OutlinedButton` + 上下两行文字（标签 + 全大写副标）。
 
-- [ ] **Step 5: 写 UI 测试（逐状态断言）**
+- [x] **Step 5: 写 UI 测试（逐状态断言）**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -810,7 +810,7 @@ class PowerRailUiTest {
 
 > `powerrail:connection` 的文案由 `PowerRailModel.connectionLabel` 唯一决定；任何 `Connected via Wake-on-LAN` 文案都视为回归缺陷（规范 §3 术语规则）。
 
-- [ ] **Step 6: 运行测试并提交**
+- [x] **Step 6: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -831,7 +831,7 @@ git commit -m "feat: add state driven power rail with per-state ui tests"
 - Consumes: `PowerRail`、`PowerRailModel`
 - Produces: `@Composable fun AppShell(rail: PowerRailModel, onRailEvent: (RailEvent) -> Unit, content: @Composable BoxScope.() -> Unit)` 与 `enum class RailEvent { Primary, Sleep, Shutdown, Restart, Settings }`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -866,7 +866,7 @@ class AppShellTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*AppShellTest*"
@@ -874,7 +874,7 @@ class AppShellTest {
 
 Expected: 编译失败，`Unresolved reference: AppShell`。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 package com.xukunz.wakeupmywall.ui
@@ -913,11 +913,11 @@ fun AppShell(
 }
 ```
 
-- [ ] **Step 4: `App.kt` 接入 AppShell**
+- [x] **Step 4: `App.kt` 接入 AppShell**
 
 `App()` 改为：持有 `PcState`（Phase 1 用 `remember { mutableStateOf(PcState.ONLINE) }` 与 Mock 设备）、构造 `powerRailModel`、把 `RailEvent.Settings` 导航到 `Workspace.Settings`，其余事件暂时只更新本地状态（真实调用在 Phase 3/4）。
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*AppShellTest*"
@@ -2100,3 +2100,29 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 ### 新增的执行器（计划外，但服务于全局约束）
 
 `desktopTest/.../DesignTokenDisciplineTest.kt`：扫描 `ui/` 全部 Kotlin 源码，禁止字面量 `Color(0x…)`、裸 `dp`、裸 `sp`。它把"颜色/间距/圆角/字号只能取自 core/theme"从口头约定变成可执行规则，并用红-绿验证过（临时插入违规文件时确实失败，并精确报出文件:行号）。
+
+---
+
+## 执行记录：Task 4–5（2026-09-19）
+
+已完成 Task 4、Task 5（复选框已勾）。证据：`testDebugUnitTest` 51 + `desktopTest` 76 全绿；截图工具重新渲染，Power Rail 真实成帧见图。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| Task 4 Step 5 UI 测试 | 断言 `powerrail:primary` 的文字等于 `Wake PC` | 断言可用/不可用，并把 `Power On` 与 `WAKE YOUR PC` 放在独立的 `powerrail:primary-label` / `powerrail:primary-caption` 节点 | 该断言写在 Step 4b 之前；Step 4b 与权威规格 A3 都把主按钮定为环形（环内是电源字形，文案在环下方），环形按钮没有文字可断言 |
+| Task 4 的 `primaryLabel` / `primaryCaption` | 仅给出示例值 `Power On` / `Waking…` / `Setup PC` | 权威规格只钉死 WOL_READY（`Power On` + `WAKE YOUR PC`），其余状态由本任务补全成表 | 计划未给全表；这些文案属**我补写的 UI 文案，请在 Task 15 视觉复核时确认** |
+| Task 4 环形按钮尺寸 | `220.dp` / `3.dp` 写在 Composable 里 | 新增 `AppSizes` 令牌 | 全局约束禁止 `ui/` 出现裸 dp（由 `DesignTokenDisciplineTest` 强制） |
+| Task 4 状态点颜色 | 未指定 | 新增 `LocalAccentPalette`（`WakeUpMyWallTheme` 下发 palette），在线时用 `onlineColor` | Material3 的 colorScheme 拿不到"在线色"；Phase 7 的强调色切换也需要这个入口 |
+| Task 4 `statusLine` 与 `connectionLabel` | 两个字段都保留 | 两个都渲染：连接条主行 = `connectionLabel`，次行 = `statusLine` | 稳定状态下两者文案相同（都来自 Phase 0 的能力描述），过渡状态才分工（如"Wake-on-LAN Ready" + "Waiting for Agent"）。Task 15 可决定是否只留一行 |
+| Task 5 `AppShell` | `PowerRail(modifier = Modifier.weight(0.28f))` | 槽位标签放外层 `Box`，不复用 PowerRail 的 modifier 传 tag | 同一节点上链式 `testTag` 只有先写的生效，直接传 tag 会把 Rail 的 `powerrail` 标签顶掉（实测踩到） |
+| Task 5 App 接入 | 只更新本地状态 | 复用 Phase 0 的 `PcStateMachine.reduce`，把 4 个电源事件映射为 `PcEvent` | 计划说"暂时只更新本地状态"，状态机已经存在且可测，直接接上比再写一份映射好 |
+
+### 计划外新增的执行器
+
+`desktopTest/.../core/TerminologyDisciplineTest.kt`：扫描产品源码，禁止出现规范 §3 明令禁止的 `Connected via Wake-on-LAN`，落实 Phase 1 完成标准第 5 条。
+
+### 已知视觉缺陷（交给 Task 14 断点 / Task 15 视觉复核）
+
+在 1280dp 宽（= 2560×1600 @320dpi 的真实墙面屏尺寸）下，28% 的 Power Rail 只有约 358dp，A4 的三枚并排次级按钮被挤到每枚约 98dp：文字仍完整、但 `Shut Down` / `POWER OFF` 会各占两行，与概念图的一行排布有差距。计划风险 R7 已预见此类窄屏问题并安排在 Task 14 用断点解决（候选方案：Rail 宽度 < 400dp 时动作区改为纵向堆叠或缩短副标）。

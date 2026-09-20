@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -168,9 +169,19 @@ private fun RailAction(
     tag: String,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier.testTag(tag)) {
+    // 默认 24dp 横向内边距会把 1280dp 宽下的三枚并排按钮挤到换行，这里收紧到令牌最小值。
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        contentPadding = PaddingValues(horizontal = Spacing.xs, vertical = Spacing.sm),
+        modifier = modifier.testTag(tag),
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+            )
             Text(
                 text = caption,
                 style = MaterialTheme.typography.labelSmall,
