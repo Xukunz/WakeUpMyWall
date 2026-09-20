@@ -21,6 +21,19 @@ data class TodoItem(val id: String, val title: String, val done: Boolean = false
 
 data class ActivityEntry(val app: String, val whenLabel: String)
 
+/**
+ * 首页 PC 摘要卡的读数。权威规格 B3 给的是低负载读数（CPU 12% / Temp 42°C / RAM 38% /
+ * ↓12.4 ↑3.1 Mbps），与 Monitor 页的实时读数（C2）不是同一组数字，因此单独建模。
+ */
+data class PcSummarySnapshot(
+    val cpuPercent: Int,
+    val cpuTempC: Int,
+    val ramPercent: Int,
+    val downloadMbps: Float,
+    val uploadMbps: Float,
+    val lastSeenLabel: String,
+)
+
 /** 静态硬件身份（型号小字）。实时数值一律在 [MetricsSnapshot]，同一事实只存一处。 */
 data class HardwareIdentity(
     val hostname: String,

@@ -38,10 +38,12 @@ class DashboardWidgetTest {
     }
 
     @Test
-    fun `visible drops the disabled decorative widget`() {
+    fun `visible drops the widgets that are off by default`() {
         val visible = DashboardLayout.visible(DashboardLayout.default)
 
+        // 概念图首页既没有独立时钟卡、也没有几何装饰，两者默认关闭（见 Task 6 与权威规格 B）。
         assertTrue(visible.none { it.type == WidgetType.Decorative })
-        assertEquals(DashboardLayout.default.size - 1, visible.size)
+        assertTrue(visible.none { it.type == WidgetType.Clock })
+        assertEquals(DashboardLayout.default.size - 2, visible.size)
     }
 }

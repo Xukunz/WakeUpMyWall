@@ -35,6 +35,7 @@ object AppSizes {
     val ringDiameter = 220.dp
     val ringStroke = 3.dp
     val statusDot = 8.dp
+    val barHeight = 6.dp
 }
 
 object DarkSurface {

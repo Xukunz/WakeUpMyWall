@@ -17,7 +17,9 @@ class AppUiTest {
     @Test
     fun `dashboard renders first`() = runComposeUiTest {
         setContent { App() }
-        onNodeWithTag("screen:Dashboard").assertIsDisplayed()
+        // Dashboard 已是真实的 Dashboard 形态（Task 6），不再是占位页。
+        onNodeWithTag("dashboard:greeting").assertIsDisplayed()
+        onNodeWithTag("powerrail").assertIsDisplayed()
     }
 
     @Test

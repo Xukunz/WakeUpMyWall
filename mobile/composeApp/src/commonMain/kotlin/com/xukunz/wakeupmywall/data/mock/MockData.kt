@@ -7,6 +7,7 @@ import com.xukunz.wakeupmywall.domain.model.HourlyForecast
 import com.xukunz.wakeupmywall.domain.model.MacAddress
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.domain.model.PcDevice
+import com.xukunz.wakeupmywall.domain.model.PcSummarySnapshot
 import com.xukunz.wakeupmywall.domain.model.TodoItem
 import com.xukunz.wakeupmywall.domain.model.WeatherSnapshot
 
@@ -51,6 +52,11 @@ object MockData {
     /** PC 摘要卡与身份卡的相对时间文案。接入 Agent 后改为由 `PcDevice.lastSeen` 计算。 */
     val defaultDeviceLastSeenLabel: String = "1 min ago"
 
+    /** 首页文案（权威规格 B 行 1/2）。Phase 6/7 接入真实时钟与日历后由系统时间生成。 */
+    val greetingText: String = "Good Evening"
+    val clockTime: String = "21:04"
+    val calendarDateLabel: String = "Tue, Apr 22"
+
     val hardware = HardwareIdentity(
         hostname = "DESKTOP-ALPHA",
         os = "Windows 11 Pro",
@@ -75,17 +81,27 @@ object MockData {
     )
 
     val calendarEvents: List<CalendarEvent> = listOf(
-        CalendarEvent(time = "10:00 AM", title = "Team Sync"),
-        CalendarEvent(time = "1:30 PM", title = "Design Review"),
-        CalendarEvent(time = "6:00 PM", title = "Gym Session"),
+        CalendarEvent(time = "10:00", title = "Team sync"),
+        CalendarEvent(time = "1:00", title = "Lunch break"),
+        CalendarEvent(time = "4:00", title = "Plan next week"),
     )
 
     val todos: List<TodoItem> = listOf(
         TodoItem(id = "1", title = "Review pull request", done = true),
         TodoItem(id = "2", title = "Update wallpaper assets", done = true),
-        TodoItem(id = "3", title = "Wire WOL retry policy"),
+        TodoItem(id = "3", title = "Wire WOL retry policy", done = true),
         TodoItem(id = "4", title = "Draft Phase 2 device storage"),
         TodoItem(id = "5", title = "Trim fan curves"),
+    )
+
+    /** 首页摘要卡读数（权威规格 B3）。 */
+    val summaryMetrics = PcSummarySnapshot(
+        cpuPercent = 12,
+        cpuTempC = 42,
+        ramPercent = 38,
+        downloadMbps = 12.4f,
+        uploadMbps = 3.1f,
+        lastSeenLabel = defaultDeviceLastSeenLabel,
     )
 
     val metrics = MetricsSnapshot(

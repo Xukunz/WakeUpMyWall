@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.wallpaper.BuiltInWallpapers
 import com.xukunz.wakeupmywall.data.mock.MockData
+import com.xukunz.wakeupmywall.domain.model.DashboardLayout
 import com.xukunz.wakeupmywall.domain.model.PcEvent
 import com.xukunz.wakeupmywall.domain.model.PcState
 import com.xukunz.wakeupmywall.domain.usecase.PcStateMachine
@@ -22,6 +23,9 @@ import com.xukunz.wakeupmywall.ui.AppShell
 import com.xukunz.wakeupmywall.ui.RailEvent
 import com.xukunz.wakeupmywall.ui.components.PlaceholderScreen
 import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
+import com.xukunz.wakeupmywall.ui.components.WidgetStyle
+import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
+import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 
 @Composable
@@ -33,6 +37,7 @@ fun App(
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
     val device = MockData.defaultDevice
+    val railModel = powerRailModel(pcState, device)
 
     WakeUpMyWallTheme {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -46,7 +51,7 @@ fun App(
                 when (workspace) {
                     // Phase 1 只驱动本地状态机；真实 WOL / Agent 调用分别在 Phase 3 与 Phase 4。
                     Workspace.Dashboard, Workspace.Monitor -> AppShell(
-                        rail = powerRailModel(pcState, device),
+                        rail = railModel,
                         onRailEvent = { event ->
                             when (event) {
                                 RailEvent.Settings -> navigator.goTo(Workspace.Settings)
@@ -61,10 +66,23 @@ fun App(
                             }
                         },
                     ) {
-                        if (workspace == Workspace.Dashboard) {
-                            PlaceholderScreen("Dashboard")
-                        } else {
-                            PlaceholderScreen("PC Monitor")
+                        when (workspace) {
+                            Workspace.Dashboard -> DashboardMode(
+                                data = DashboardData(
+                                    greeting = MockData.greetingText,
+                                    time = MockData.clockTime,
+                                    date = MockData.calendarDateLabel,
+                                    weather = MockData.weather,
+                                    events = MockData.calendarEvents,
+                                    todos = MockData.todos,
+                                    pc = railModel,
+                                    pcSummary = MockData.summaryMetrics,
+                                    widgets = DashboardLayout.default,
+                                ),
+                                style = WidgetStyle.Glass,
+                                onPcSummaryClick = { navigator.goTo(Workspace.Monitor) },
+                            )
+                            else -> PlaceholderScreen("PC Monitor")
                         }
                     }
                     Workspace.Settings -> PlaceholderScreen("Settings")

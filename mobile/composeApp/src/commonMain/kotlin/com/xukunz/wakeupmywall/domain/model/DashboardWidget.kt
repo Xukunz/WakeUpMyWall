@@ -12,7 +12,8 @@ data class DashboardWidget(
 object DashboardLayout {
     val default: List<DashboardWidget> = listOf(
         DashboardWidget("greeting", WidgetType.Greeting, order = 0),
-        DashboardWidget("clock", WidgetType.Clock, order = 1),
+        // 概念图首页没有独立时钟卡（时钟只在 StandBy 出现），需要时可在 Appearance 打开。
+        DashboardWidget("clock", WidgetType.Clock, enabled = false, order = 1),
         DashboardWidget("weather", WidgetType.Weather, order = 2),
         DashboardWidget("calendar", WidgetType.Calendar, order = 3),
         DashboardWidget("todo", WidgetType.Todo, order = 4),

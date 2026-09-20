@@ -945,7 +945,7 @@ git commit -m "feat: add app shell with 72-28 main rail layout"
   - `@Composable fun DashboardMode(data: DashboardData, style: WidgetStyle, onPcSummaryClick: () -> Unit, modifier: Modifier = Modifier)`
   - `data class DashboardData(val greeting: String, val time: String, val date: String, val weather: WeatherSnapshot, val events: List<CalendarEvent>, val todos: List<TodoItem>, val pc: PowerRailModel, val widgets: List<DashboardWidget>)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -994,7 +994,7 @@ class DashboardModeTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*DashboardModeTest*"
@@ -1002,7 +1002,7 @@ class DashboardModeTest {
 
 Expected: 编译失败，`Unresolved reference: DashboardMode`。
 
-- [ ] **Step 3: 实现各卡片**
+- [x] **Step 3: 实现各卡片**
 
 每张卡片都是 `WidgetSurface` 内的独立 Composable，`testTag` 固定：
 
@@ -1020,7 +1020,7 @@ Expected: 编译失败，`Unresolved reference: DashboardMode`。
 
 > **与简报的差异：** 概念图首页**没有独立时钟卡**（时钟只在 StandBy 出现），因此 `WidgetType.Clock` 默认 `enabled = false`，不出现在默认布局；需要时可在 Appearance 中打开。
 
-- [ ] **Step 4: 实现 DashboardMode 布局**
+- [x] **Step 4: 实现 DashboardMode 布局**
 
 ```kotlin
 @Composable
@@ -1052,7 +1052,7 @@ fun DashboardMode(
 }
 ```
 
-- [ ] **Step 5: 运行测试并提交**
+- [x] **Step 5: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*DashboardModeTest*"
@@ -2126,3 +2126,25 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 ### 已知视觉缺陷（交给 Task 14 断点 / Task 15 视觉复核）
 
 在 1280dp 宽（= 2560×1600 @320dpi 的真实墙面屏尺寸）下，28% 的 Power Rail 只有约 358dp，A4 的三枚并排次级按钮被挤到每枚约 98dp：文字仍完整、但 `Shut Down` / `POWER OFF` 会各占两行，与概念图的一行排布有差距。计划风险 R7 已预见此类窄屏问题并安排在 Task 14 用断点解决（候选方案：Rail 宽度 < 400dp 时动作区改为纵向堆叠或缩短副标）。
+
+---
+
+## 执行记录：Task 6（2026-09-19）
+
+已完成 Task 6（复选框已勾）。证据：`testDebugUnitTest` 51 + `desktopTest` 82 全绿；Home Dashboard 真实成帧见 `build/screenshots/dashboard-aurora.png`（问候卡 / 透视装饰 / 天气 / 日历 / 任务 / PC 摘要 / 引用卡 / 品牌条全部到位）。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| PC 摘要卡的读数 | `PcSummaryWidget(data.pc, …)` 只传 `PowerRailModel` | 新增 `PcSummarySnapshot` + `MockData.summaryMetrics`，单独建模 | 权威规格 B3 的首页读数是 `CPU 12% / Temp 42°C / RAM 38% / ↓12.4 ↑3.1 Mbps`，与 Monitor（C2）的 `28% / 68°C / 124.3 / 31.7` 不是同一组数字；`PowerRailModel` 里没有指标字段 |
+| 日历事件文案 | 计划 Task 6 表格给 `10:00 Team sync` / `1:00 Lunch break` / `4:00 Plan next week` | 已按此覆盖 Task 3 的临时文案 | Task 3 时权威规格没给事件标题，Task 6 表格给了具体值，取更具体者 |
+| 任务卡计数 | 表格写死 `3 of 5` | 头衔改为按数据实算 `"${done} of ${size}"`，并把 Mock 数据调成 3 条已完成 | 写死字符串会在数据变化时立刻失真；实算 + Mock 对齐两者兼得 |
+| `WidgetType.Clock` | 表格注明"首页默认不显示时钟" | `DashboardLayout.default` 里 clock 改为 `enabled = false`，并同步修正 `DashboardWidgetTest` 的可见项断言 | 落实该条注记 |
+| `WidgetSurface` 结构 | 调用方 modifier 与内部 `surface:*` 标签同节点 | 外层加 `Box` 承载调用方 modifier，内层 `Column` 才是卡片 | 同节点链式 `testTag` 只有先写的生效，否则 `dashboard:*` 会把 `surface:*` 顶掉 |
+| PC 摘要卡的子节点断言 | — | UI 测试用 `useUnmergedTree = true` 读取卡内文字 | 整卡可点击会合并子节点语义（这对无障碍是正确的），断言需显式读未合并树 |
+| 引用卡文案 | 只规定"衬线两行 + 标语" | 两行正文写成 `Small steps, / steady light.` | 权威规格没给引用正文；**属我补写的 UI 文案，请在 Task 15 视觉复核时确认或替换** |
+
+### 已知视觉缺陷（交给 Task 14 / Task 15）
+
+天气卡的四列逐时在 1280dp 下被挤成 `10PM 17°1AM 16°…`（列间无呼吸空间）；任务卡标题行与首行任务贴得偏紧。二者都需要在断点任务里按可用宽度调整列数与间距。
