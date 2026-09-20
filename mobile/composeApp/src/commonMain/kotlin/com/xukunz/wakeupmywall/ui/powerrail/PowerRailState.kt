@@ -1,0 +1,76 @@
+package com.xukunz.wakeupmywall.ui.powerrail
+
+import com.xukunz.wakeupmywall.domain.model.PcDevice
+import com.xukunz.wakeupmywall.domain.model.PcState
+import com.xukunz.wakeupmywall.domain.model.capabilities
+
+/**
+ * Power Rail 的展示模型。可用性字段一律来自 `PcState.capabilities(device)`，
+ * UI 里不允许再写 `if (state == ONLINE)` 这类散落判断（Phase 1 全局约束）。
+ */
+data class PowerRailModel(
+    val pcName: String,
+    val subtitle: String,
+    val stateLabel: String,
+    val primaryLabel: String,
+    val primaryCaption: String,
+    val primaryEnabled: Boolean,
+    val canSleep: Boolean,
+    val canShutdown: Boolean,
+    val canRestart: Boolean,
+    val connectionLabel: String,
+    val statusLine: String,
+)
+
+/** Agent 可达（= 次级电源动作可用）。状态点用它决定是否用"在线色"。 */
+val PowerRailModel.agentReachable: Boolean get() = canSleep
+
+fun powerRailModel(state: PcState, device: PcDevice?): PowerRailModel {
+    val capabilities = state.capabilities(device)
+    return PowerRailModel(
+        pcName = device?.name ?: "My PC",
+        subtitle = "POWER CONTROL",
+        stateLabel = state.shortLabel(),
+        primaryLabel = state.primaryLabel(capabilities.primaryLabel),
+        primaryCaption = state.primaryCaption(),
+        primaryEnabled = capabilities.primaryEnabled,
+        canSleep = capabilities.canSleep,
+        canShutdown = capabilities.canShutdown,
+        canRestart = capabilities.canRestart,
+        // 唯一决定连接条文案的地方：在线走 Agent，其余一律是 WOL 通道（规范 §3 术语规则）。
+        connectionLabel = if (state == PcState.ONLINE) "Agent connected over LAN" else "Wake-on-LAN Ready",
+        statusLine = capabilities.statusText,
+    )
+}
+
+/** 权威规格 A2：状态行取能力描述的短形态。 */
+private fun PcState.shortLabel(): String = when (this) {
+    PcState.UNCONFIGURED -> "Not configured"
+    PcState.OFFLINE -> "Offline"
+    PcState.WOL_READY -> "Ready to wake"
+    PcState.WAKING -> "Waking PC…"
+    PcState.ONLINE -> "Online"
+    PcState.AGENT_UNAVAILABLE -> "Agent unavailable"
+    PcState.SLEEPING -> "Sleeping…"
+    PcState.RESTARTING -> "Restarting…"
+    PcState.SHUTTING_DOWN -> "Shutting down…"
+    PcState.ERROR -> "Needs attention"
+}
+
+/**
+ * 权威规格 A3 把 WOL_READY 的主标签钉为 `Power On`；其余状态沿用 Phase 0 的能力描述，
+ * 因为"Waking… / Setup PC / Retry"本来就是能力层给出的用户动作。
+ */
+private fun PcState.primaryLabel(capabilityLabel: String): String = when (this) {
+    PcState.WOL_READY -> "Power On"
+    else -> capabilityLabel
+}
+
+private fun PcState.primaryCaption(): String = when (this) {
+    PcState.UNCONFIGURED -> "ADD YOUR PC"
+    PcState.OFFLINE, PcState.WOL_READY -> "WAKE YOUR PC"
+    PcState.WAKING, PcState.SLEEPING, PcState.RESTARTING, PcState.SHUTTING_DOWN -> "WAITING FOR AGENT"
+    PcState.ONLINE -> "AGENT CONNECTED"
+    PcState.AGENT_UNAVAILABLE -> "CHECK THE AGENT"
+    PcState.ERROR -> "TRY AGAIN"
+}

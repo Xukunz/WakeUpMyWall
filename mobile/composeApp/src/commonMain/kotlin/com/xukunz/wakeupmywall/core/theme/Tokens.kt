@@ -30,6 +30,13 @@ object Spacing {
     val xl = 32.dp
 }
 
+/** 组件尺寸令牌（与间距分开，避免把"元素多大"和"元素之间多远"混成一个量表）。 */
+object AppSizes {
+    val ringDiameter = 220.dp
+    val ringStroke = 3.dp
+    val statusDot = 8.dp
+}
+
 object DarkSurface {
     val background = Color(0xFF0B0F17)
     val card = Color(0xFF151B26)
