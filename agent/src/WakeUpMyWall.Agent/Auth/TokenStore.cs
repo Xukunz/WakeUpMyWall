@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace WakeUpMyWall.Agent.Auth;
 
@@ -30,4 +31,37 @@ public sealed class InMemoryTokenStore(string? token = null) : ITokenStore
             Encoding.UTF8.GetBytes(candidate));
 
     public void Save(string token) => _token = token;
+}
+
+/**
+ * 落盘实现：配对成功后写入 AgentPaths（Windows 是 %ProgramData%\WakeUpMyWall\agent.json），
+ * 服务重启后 Token 仍然有效。文件只在配对时写一次。
+ */
+public sealed class FileTokenStore(string path) : ITokenStore
+{
+    private string? _token = Load(path);
+
+    public bool HasToken => _token is not null;
+
+    public string? Token => _token;
+
+    public bool Matches(string candidate) =>
+        _token is not null && CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(_token),
+            Encoding.UTF8.GetBytes(candidate));
+
+    public void Save(string token)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+        File.WriteAllText(path, JsonSerializer.Serialize(new Persisted(token)));
+        _token = token;
+    }
+
+    private static string? Load(string path) =>
+        File.Exists(path)
+            ? JsonSerializer.Deserialize<Persisted>(File.ReadAllText(path))?.Token
+            : null;
+
+    private sealed record Persisted(string Token);
 }

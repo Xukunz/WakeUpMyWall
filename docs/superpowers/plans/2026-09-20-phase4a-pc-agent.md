@@ -231,7 +231,7 @@ git commit -m "feat: add the pc agent skeleton with a status endpoint"
   - `BearerAuthFilter`：无 token / token 错 → `401`
   - `PairingService.CreateCode()`（6 位、5 分钟、一次性）、`TryRedeem(code, out token)`、`IsPaired`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```csharp
 using System.Net;
@@ -244,12 +244,16 @@ using Xunit;
 
 namespace WakeUpMyWall.Agent.Tests;
 
-public class AuthTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+// 每个测试一个 TestApp（Token 文件指向临时目录）：配对状态不能跨用例串味，
+// 也绝不能碰到真实的 %ProgramData%\WakeUpMyWall\agent.json。
+public class AuthTests
 {
     [Fact]
-    public async Task Power_endpoint_without_a_token_is_unauthorized()
+    public async Task A_protected_endpoint_without_a_token_is_unauthorized()
     {
-        var response = await factory.CreateClient().PostAsync("/api/v1/power/lock", content: null);
+        // A2 先落地鉴权，所以拿同批要映射的 /api/v1/system（501）当受保护端点来验；
+        // power 端点在 A3 才存在，那时 PowerEndpointTests 会再验一遍。
+        var response = await factory.CreateClient().GetAsync("/api/v1/system");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -267,7 +271,7 @@ public class AuthTests(WebApplicationFactory<Program> factory) : IClassFixture<W
         var authorized = factory.CreateClient();
         authorized.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        Assert.Equal(HttpStatusCode.OK, (await authorized.PostAsync("/api/v1/power/lock", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotImplemented, (await authorized.GetAsync("/api/v1/system")).StatusCode);
     }
 
     [Fact]
@@ -288,12 +292,12 @@ public class AuthTests(WebApplicationFactory<Program> factory) : IClassFixture<W
 }
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `export PATH="$HOME/.dotnet-local:$PATH"; cd agent && dotnet test`
 Expected: FAIL —— 401 用例拿到 404（端点还没映射）、`PairingService` 不存在
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```csharp
 // src/WakeUpMyWall.Agent/Auth/PairingService.cs
@@ -408,12 +412,12 @@ public sealed record PairingRequest(string Code);
 
 `AgentPaths.TokenFile` 的实现（`Auth/AgentPaths.cs`）：Windows 用 `%ProgramData%\WakeUpMyWall\agent.json`，其它平台用 `~/.wakeupmywall/agent.json`（这样本机测试与 Linux 冒烟也能跑）。
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `export PATH="$HOME/.dotnet-local:$PATH"; cd agent && dotnet test`
 Expected: PASS（A1 1 条 + A2 3 条）
 
-- [ ] **Step 5: 写 `docs/plans/agent-api.md` 并提交**
+- [x] **Step 5: 写 `docs/plans/agent-api.md` 并提交**
 
 文档写清：配对端点（本计划新增，spec §5 未冻结）、`/status` 免鉴权但只回最小信息、401/403/404/409 的语义、`/api/v1/system` 在 Phase 4 返回 501 的原因。
 

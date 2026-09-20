@@ -1,16 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace WakeUpMyWall.Agent.Tests;
 
-public class StatusEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public class StatusEndpointTests
 {
     [Fact]
     public async Task Status_reports_hostname_version_uptime_and_pairing_without_a_token()
     {
-        var client = factory.CreateClient();
+        using var app = new TestApp();
+        var client = app.CreateClient();
 
         var response = await client.GetAsync("/api/v1/status");
         var payload = await response.Content.ReadFromJsonAsync<StatusPayload>();
