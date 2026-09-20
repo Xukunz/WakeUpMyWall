@@ -26,10 +26,10 @@ object PcStateMachine {
 
         PcEvent.RestartRequested -> if (current == PcState.ONLINE) PcState.RESTARTING else current
 
-        PcEvent.AgentResponded -> when (current) {
-            PcState.UNCONFIGURED, PcState.OFFLINE, PcState.WOL_READY -> current
-            else -> PcState.ONLINE
-        }
+        // Agent 答得上就说明 PC 是开着的 —— 包括我们原以为它在关机状态（WOL_READY / OFFLINE）的时候：
+        // Phase 4B 的存在性轮询正是靠这一条把"刚被唤醒/被手动开机"的机器翻成 ONLINE。
+        // 唯一例外是 UNCONFIGURED：一台设备都没有时不许假装在线。
+        PcEvent.AgentResponded -> if (current == PcState.UNCONFIGURED) current else PcState.ONLINE
 
         PcEvent.AgentLost -> when (current) {
             PcState.UNCONFIGURED -> PcState.UNCONFIGURED
@@ -41,6 +41,13 @@ object PcStateMachine {
         PcEvent.DeviceConfigured -> if (device?.isWakeable == true) PcState.WOL_READY else PcState.OFFLINE
 
         PcEvent.DeviceRemoved -> PcState.UNCONFIGURED
+
+        // 主机答了但 Agent 不在（端口通、HTTP 语义不对/未授权）：只有"本来在线"才有意义，
+        // 其它状态保持不动，免得把 WAKING / RESTARTING 这类瞬态打断。
+        PcEvent.AgentUnavailable -> when (current) {
+            PcState.ONLINE, PcState.AGENT_UNAVAILABLE -> PcState.AGENT_UNAVAILABLE
+            else -> current
+        }
 
         PcEvent.CommandFailed -> PcState.ERROR
     }

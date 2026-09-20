@@ -64,6 +64,7 @@ import com.xukunz.wakeupmywall.ui.dashboard.HomeModeController
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
 import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -88,6 +89,10 @@ fun App(
      * 提前构造会让每一屏都起不来（Phase 2 实测）；只有真的要发请求时才建。
      */
     agentApiFactory: () -> AgentApi = { AgentApi(createAgentHttpClient()) },
+    /** 存在性轮询节奏：每 N 毫秒问一次 Agent"你在不在"。 */
+    agentPollMillis: Long = 5_000,
+    /** 测试注入用：直接给连接结论；默认 null = 用真实 TCP + HTTP 探测。 */
+    agentReportProbe: (suspend (PcDevice) -> ConnectionReport)? = null,
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
@@ -203,6 +208,35 @@ fun App(
     LaunchedEffect(device?.id, agentTokens) {
         pairingNote = null
         agentToken = device?.let { agentTokens.read(it.id) }
+    }
+
+    /**
+     * 存在性轮询：**这是"这台 PC 现在开着吗"的唯一来源**。
+     * 每 [agentPollMillis] 探一次：Agent 应答 → `ONLINE`；主机通但 Agent 不在 → `AGENT_UNAVAILABLE`；
+     * 连不上 → `AgentLost`（设备可唤醒则落 `WOL_READY`，否则 `OFFLINE`）。
+     * `WAKING` 期间跳过：那段等待由 `WakeSequence` 自己的预算负责，不能被这里的 5 秒节奏打断。
+     */
+    LaunchedEffect(device?.id, agentPollMillis, agentReportProbe, agentToken) {
+        val target = device ?: return@LaunchedEffect
+        while (true) {
+            if (pcState != PcState.WAKING) {
+                val report = runCatching {
+                    agentReportProbe?.invoke(target) ?: connectivity.test(target)
+                }.getOrNull()
+
+                val event = when {
+                    report == null -> null                       // 拿不到结论（异常）→ 不动状态
+                    report.isProbeUnavailable() -> null          // 桌面没有探测能力 → 不动状态
+                    report is ConnectionReport.AgentOnline -> PcEvent.AgentResponded
+                    report is ConnectionReport.WolOnly -> null   // 没配 Agent 主机，问不了
+                    report is ConnectionReport.Failed &&
+                        report.reason in unavailableReasons -> PcEvent.AgentUnavailable
+                    else -> PcEvent.AgentLost
+                }
+                if (event != null) pcState = PcStateMachine.reduce(pcState, event, device)
+            }
+            delay(agentPollMillis)
+        }
     }
 
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
@@ -451,3 +485,10 @@ private fun emptySetupInput() = DeviceSetupInput(
 private const val AGENT_NEEDED_SLEEP = "Sleep needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
 private const val AGENT_NEEDED_SHUTDOWN = "Shut down needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
 private const val AGENT_NEEDED_RESTART = "Restart needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
+
+/** 主机答了、但答话的不是我们的 Agent（或它拒绝了 Token）：算 `AGENT_UNAVAILABLE` 而不是"关机"。 */
+private val unavailableReasons = setOf(
+    ConnectionFailure.NOT_AN_AGENT,
+    ConnectionFailure.UNAUTHORIZED,
+    ConnectionFailure.AGENT_ERROR,
+)

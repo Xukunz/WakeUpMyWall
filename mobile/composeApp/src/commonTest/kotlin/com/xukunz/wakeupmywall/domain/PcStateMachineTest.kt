@@ -21,6 +21,15 @@ class PcStateMachineTest {
     }
 
     @Test
+    fun `an agent that answers while we thought the pc was off means it is on`() {
+        // 关机态假设下 Agent 突然答话：要么刚被 WOL 唤醒，要么被人手动开机
+        assertEquals(PcState.ONLINE, PcStateMachine.reduce(PcState.WOL_READY, PcEvent.AgentResponded))
+        assertEquals(PcState.ONLINE, PcStateMachine.reduce(PcState.OFFLINE, PcEvent.AgentResponded))
+        // 但"一台设备都没配"时不许假装在线
+        assertEquals(PcState.UNCONFIGURED, PcStateMachine.reduce(PcState.UNCONFIGURED, PcEvent.AgentResponded))
+    }
+
+    @Test
     fun `wake timeout falls back to wol ready`() {
         assertEquals(PcState.WOL_READY, PcStateMachine.reduce(PcState.WAKING, PcEvent.WakeTimedOut))
     }

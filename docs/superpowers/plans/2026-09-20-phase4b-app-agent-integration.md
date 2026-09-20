@@ -108,11 +108,11 @@ fun `pairing failure surfaces the reason instead of throwing`() = runTest {
 - Produces: `App(..., agentPollMillis: Long = 5_000, agentStatusProbe: (suspend (PcDevice, String?) -> ApiResult<AgentStatus>)? = null)`
 - 行为：每 `agentPollMillis` 探一次；成功 → `PcEvent.AgentResponded`，失败 → `PcEvent.AgentLost`；**瞬态期间照常轮询**，让状态机自己收敛（`RESTARTING` 掉线保持、重新应答回 `ONLINE`）。Agent 不可达且设备可唤醒 → `WOL_READY`（Phase 3 已实现），不可唤醒 → `OFFLINE`。
 
-- [ ] **Step 1: 写失败测试**（注入探针：先成功 → `Online`；后失败 → `Ready to wake`；重启过程中 Agent 回来 → `Online`）
-- [ ] **Step 2: 跑测试确认失败**
-- [ ] **Step 3: 实现**（`LaunchedEffect(device?.id) { while (true) { ...; delay(agentPollMillis) } }`，与 WakeSequence 的轮询互不干扰）
-- [ ] **Step 4: 跑全量测试确认通过**
-- [ ] **Step 5: 提交** `feat: detect whether the pc is on by polling the agent`
+- [x] **Step 1: 写失败测试**（注入探针：先成功 → `Online`；后失败 → `Ready to wake`；重启过程中 Agent 回来 → `Online`）
+- [x] **Step 2: 跑测试确认失败**
+- [x] **Step 3: 实现**（`LaunchedEffect(device?.id) { while (true) { ...; delay(agentPollMillis) } }`，与 WakeSequence 的轮询互不干扰）
+- [x] **Step 4: 跑全量测试确认通过**
+- [x] **Step 5: 提交** `feat: detect whether the pc is on by polling the agent`
 
 ### Task B4: 电源动作接到真实接口
 

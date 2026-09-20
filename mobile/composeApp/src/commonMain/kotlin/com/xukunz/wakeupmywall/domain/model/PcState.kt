@@ -13,6 +13,8 @@ sealed interface PcEvent {
     data object RestartRequested : PcEvent
     data object AgentResponded : PcEvent
     data object AgentLost : PcEvent
+    /** 主机在线（TCP 通）但 Agent 不回应：spec §4 的 `AGENT_UNAVAILABLE`。 */
+    data object AgentUnavailable : PcEvent
     /** 从"没有设备"变成"有设备"：按这台设备能不能唤醒落到 `WOL_READY` / `OFFLINE`。 */
     data object DeviceConfigured : PcEvent
     /** 设备列表被清空：回到 `UNCONFIGURED`（`AgentLost` 对 UNCONFIGURED 是自锁的，出不来）。 */
