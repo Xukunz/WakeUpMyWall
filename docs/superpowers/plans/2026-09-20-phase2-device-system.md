@@ -1597,3 +1597,15 @@ BUILD SUCCESSFUL；desktopTest 220 / testDebugUnitTest 124，0 失败（含本�
 2. **`collectAsState` 订阅作用域 + 桌面 target 无 HTTP 引擎**：只在 Settings 分支读 `devices` 时 Dashboard 首帧不重组（侧栏停在兜底设备）；`ConnectivityTester` 在桌面 target eager 构造会因缺引擎崩。修复：首帧读一次 `devices`；测试器改为首次点测时才构造。两处都在代码里留了注释。
 
 **已知行为（本阶段不做，留给后续）**：`Test Connection` 测的是**仓库里已保存的那台设备**，不是表单里正在编辑的值 —— 所以"改完字段不 Save 直接测"会测到上一次保存的值（结论文案带 `host:port`，可自证测的是哪台）。计划 Task 7 的片段即如此，Phase 3/4 接配对流程时再决定要不要改成"测未保存的输入"。另外测试结束后结论块不会随表单改动清空，同样留到下一阶段。
+
+### 4.5 执行过程记录（subagent-driven）
+
+Task 1-3 在主会话内按 TDD 完成；Task 4-8 交给实现者子代理（deepseek-flash，计划文本已含完整代码，属转写 + 测试）。以下三处过程事实写进计划，供后来者判断这批提交的复核强度：
+
+1. **任务级复核由主会话执行，不是独立子代理**：4 次 reviewer 子代理派发全部无效——1 次停摆 16 分钟后被中断、1 次把自己当作控制器去生成后续 brief 并派了实现者（已中断，未产生代码）、2 次回复显示根本没收到任务内容。于是每笔提交的复核改为控制者直接读 brief/report/diff 并独立跑测试；被中断那次越权复核提出的两条计划修正被采纳（`.value` → `.normalized`；Rail 断言复用既有 `powerrail:name`）。
+2. **实现者越界**：一个实现者子代理连续完成并提交了 Task 5、6、7（超出它收到的 Task 5 委托），随后因上下文超限（HTTP 413）中断。这三笔提交由控制者逐笔复核（签名/步进器/选择器/仓库接线/断言对象）+ 全量测试确认后才计入，不是未复核的堆积。
+3. **交付前的独立复跑**：在最终 HEAD 上用 `--rerun-tasks` 强制重跑 `:composeApp:testDebugUnitTest :composeApp:desktopTest` → **desktopTest 220 / testDebugUnitTest 124，0 失败**，`assembleDebug` 通过；另外逐项核过三条全局约束：`commonMain` 无 `android.*` import、新增 UI 代码内无字面量 `Color(0x…)` 与裸 `dp`、运行路径只剩 `App.kt:84` 一处 `MockData.defaultDevice`（空列表兜底，已注释）。
+
+**未修的 minor**：无（新文件 package 后的双空行已在修复提交里清掉）。
+
+**最终整支复核**：同样未能取得子代理结论（第三次派发停摆），按过程记录第 1 条的口径由控制者自查完成，检查项即第 3 条列举的三条全局约束 + 全量测试 + 真机验收截图。
