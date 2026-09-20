@@ -29,6 +29,7 @@ JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*AppScreenshotTest*
 | `fold-outer.png` | 412×965 | 折叠外屏 21.1:9（底部常驻控制栏） |
 | `fold-inner.png` / `fold-inner-portrait.png` | 790×700 / 700×790 | 内屏 4:3.55 横放 / 竖放 |
 | `fold-inner-portrait-monitor.png` / `fold-inner-portrait-settings.png` | 700×790 | 内屏竖放的 Monitor / Settings：内屏比手机宽（700dp vs 412dp），内部重排走的是另一条分支 |
+| `android-dashboard.png` / `android-monitor.png` / `android-standby.png` | 2560×1600 | 无头 Nexus 10 模拟器（API 37）上的真机帧，见下节 |
 
 > `device-setup.png` 已于 2026-09-20 删除：它是 00:22 那一批留下的孤儿文件，没有对应的抓取用例，
 > 屏幕内容与 `settings.png`（Settings 工作空间默认就停在 Device Setup 段）重复。留两个同内容的文件
@@ -60,23 +61,34 @@ JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*AppScreenshotTest*
 
 ## Android 侧
 
-`android-dashboard.png` / `android-monitor.png` 是无头 Nexus 10 模拟器（API 37）上的真实帧截图，用于"桌面渲染与 Android 真机均正常"这条验收标准。
+`android-dashboard.png` / `android-monitor.png` / `android-standby.png` 是无头 Nexus 10 模拟器（API 37，
+2560×1600 横屏）上的真实帧，用于"桌面渲染与 Android 真机均正常"这条验收标准。
 
-> **这两张帧现在标注为过期**：它们是 2026-09-19 23:30 抓的，早于 2026-09-20 的素材接入与响应式重写，
-> 不能作为当前代码在 Android 上的证据。重抓在 2026-09-20 复检时**仍然做不到**，原因见下。
->
-> 原来还有一张 `android-standby.png`，它与 `android-monitor.png` **逐字节相同**（同一 MD5），说明抓图时 App 还停在 Monitor 形态，是无效证据，2026-09-20 已删除。StandBy 在 Android 上的截图因此**仍缺**。
->
-> **更正（2026-09-20 二轮）：** 上面那批"环境挡住重抓"的证据全部无效——它们量自 Codex 沙箱，
-> 而沙箱的 `/dev` 是 bwrap 提供的私有 devtmpfs，看不到宿主机的 `/dev/kvm`。沙箱外 `/dev/kvm` 一直在
-> （`crw-rw----+ root kvm 10,232`），`kvm_amd` / `kvm` 模块也已加载；真正的两个阻塞是"启动者的会话没有 kvm 组"
-> 与"09-19 09:40 起的旧无头实例锁住了 `wall` AVD"。两条都已处理：模拟器 19.8 秒冷启动、装上当前 APK 后
-> `MainActivity` 正常前台、`screencap` 出 2560×1600 真实帧。逐条证据与恢复步骤见
-> [version-matrix.md](../version-matrix.md) §6。
->
-> **这两张帧仍按过期标注**（内容早于本批素材接入与响应式重写）。重抓现在只是待办，不再是环境阻塞。
->
-> 另（2026-09-20 二轮实测）：旧帧是 1600×2560 竖屏，本轮新实例出的是 **2560×1600 横屏**（Nexus 10 的
-> rotation 0 原生形态），与桌面 1280×720 落在同一个断点区间，因此 Android 帧不再需要"竖屏换算"才能对概念图。
-> 旋转*请求*仍然被忽略（`settings get system user_rotation` 读到 1，显示设备却一直是 2560×1600 / rotation 0），
-> 这条限制本身没变，只是不再妨碍出帧。详见 [version-matrix.md](../version-matrix.md) 第 6 节。
+**2026-09-20 二轮：三张帧已按当前代码重抓，"过期"标注撤销。** 抓帧时模拟器进程带 kvm 组（硬件加速，
+冷启动 19.8 秒），App 是提交 `1f5ab94` 的构建，帧由 `adb exec-out screencap -p` 直接取得：
+
+```bash
+ADB="$ANDROID_SDK_ROOT/platform-tools/adb"
+"$ADB" -s emulator-5554 shell am force-stop com.xukunz.wakeupmywall
+"$ADB" -s emulator-5554 shell am start -n com.xukunz.wakeupmywall/.MainActivity && sleep 8
+"$ADB" -s emulator-5554 exec-out screencap -p > android-dashboard.png
+"$ADB" -s emulator-5554 shell input swipe 1500 700 500 700 300   # 左滑前进一态 → Monitor
+sleep 3; "$ADB" -s emulator-5554 exec-out screencap -p > android-monitor.png
+"$ADB" -s emulator-5554 shell input swipe 1500 700 500 700 300   # 再前进一态 → StandBy
+sleep 3; "$ADB" -s emulator-5554 exec-out screencap -p > android-standby.png
+```
+
+三张帧 MD5 互不相同。历史上 `android-standby.png` 曾与 `android-monitor.png` **逐字节相同**（抓图时 App 还停在
+Monitor），那张无效证据已删除；**这次能拍出 StandBy 帧本身就说明三态切换修好了**——在此之前 App 的滑动手势
+只映射 Dashboard↔Monitor，`HomeModeController` 的三态逻辑只被测试调用、没接进应用，StandBy 在真机上不可达。
+修复见 `1f5ab94`（守卫：`AppUiTest` 的"两次左滑走到 StandBy、两次右滑退回"与 `HomeSurfaceTest` 的单步断言）。
+
+**已知偏差（不变）：** StandBy 帧里的 PC 浮层卡渲染的是 ONLINE 形态（`PC Online` / `AGENT CONNECTED`），
+概念图是 WOL_READY 形态（`Power On` / `WAKE YOUR PC` + 右上 `>`）。这条差异记在
+[phase1-visual-review.md](../phase1-visual-review.md) §7.3，属未打磨项，不影响"真机上能起来、能出帧"这条结论。
+
+**环境历史（供后来者避坑）：** 09-19 抓的旧帧是 1600×2560 竖屏；2026-09-20 早先记录的"模拟器不可用"结论是
+Codex 沙箱造成的假象（沙箱 `/dev` 是 bwrap 私有 devtmpfs，看不到宿主机 `/dev/kvm`）。宿主 `/dev/kvm` 一直在，
+真正的阻塞是"启动者会话没有 kvm 组"与"09-19 09:40 起的旧无头实例锁住 `wall` AVD"。逐条证据与恢复步骤见
+[version-matrix.md](../version-matrix.md) §6。旋转*请求*仍被忽略（`user_rotation` 读到 1，显示设备始终
+2560×1600 / rotation 0），但 Nexus 10 原生就是横屏，所以出帧方向与桌面 1280×720 落在同一个断点区间。

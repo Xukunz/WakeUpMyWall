@@ -159,11 +159,18 @@
 2. **图标方案**（原 §6-2，未变）：概念图大量用图标；Phase 1 约束"不引入图标库"，现在是 `⏻ ⚙ ▫ ●` 一类字形占位。
 3. **断点阈值 900dp 与计划 Global Constraints 的 1000dp 冲突**：我按概念图实测改成了 900dp（否则目标屏永远落在 3 列）。计划正文那句是估算，改的是令牌不是架构（72/28 未动）。**若你不认可，改回 1000dp 是一行的事**，代价是墙面屏上还原不出概念图的 5 列指标行。
 4. **两个"概念图没给数值、我按实测定的"值**：Glass α=0.6、StandBy `PM`=32sp。概念图只有像素，没有设计稿数值，这两处是换算结果，属于可推翻的判断。
-5. **Android StandBy 截图仍缺**：本次会话 `/dev/kvm` 对当前用户不可用（进程组列表里没有 `kvm`，`emulator -accel-check` 返回 `accel: 8`），恢复需交互式 `sudo`。因此"Android 上 StandBy 正常"这条**未验证**。
-   > **2026-09-20 二轮更正**：本节与 §8.2 那次"`/dev/kvm` 不存在"的复检结论**是错的**——它量自 Codex 沙箱，
-   > 沙箱的 `/dev` 看不到宿主机设备。宿主 `/dev/kvm` 一直在、`kvm` 模块已加载；当时真正卡住的是"启动者会话
-   > 没有 kvm 组"与"09-19 09:40 起的旧无头实例锁住 AVD"。模拟器现已恢复（19.8 秒冷启动 + App 正常出帧）。
-   > 逐条证据见 [version-matrix.md](version-matrix.md) §6。**StandBy 在 Android 上的帧仍未抓，该项未结。**
+5. ~~**Android StandBy 截图仍缺**~~ → **已结**（2026-09-20 二轮）。两条记录都要更正：
+   - "`/dev/kvm` 不存在、恢复需 `sudo`" 是**错的**——它量自 Codex 沙箱（bwrap 私有 `/dev` 看不到宿主机设备）。
+     宿主 `/dev/kvm` 一直在、`kvm` 模块已加载；真正卡住的是"启动者会话没有 kvm 组"与"09-19 09:40 起的旧无头
+     实例锁住 AVD"。证据见 [version-matrix.md](version-matrix.md) §6。
+   - 更关键的是**根因不是环境，而是功能缺陷**：App 的滑动手势只映射 Dashboard↔Monitor，
+     `HomeModeController` 的三态逻辑只被测试调用、从没接进应用，**StandBy 在真机上根本不可达**——这才是
+     09-19 那张 `android-standby.png` 与 `android-monitor.png` 逐字节相同的真正原因（抓图时 App 还停在 Monitor，
+     根本没有第三个形态可切）。
+   > 修复：`homeMode` 改由 `HomeModeController` 持有，滑动按 `HomeMode.forward()/backward()` 走，提交 `1f5ab94`；
+   > 守卫是 `AppUiTest`「两次左滑走到 StandBy、两次右滑退回」与 `HomeSurfaceTest` 的单步断言。
+   > 三张 Android 帧（2560×1600，含首次真正拍到的 StandBy）已按当前代码重抓，见
+   > [screenshots/README.md](screenshots/README.md) Android 侧。
 
 ### 7.5 本轮验证命令与结果
 

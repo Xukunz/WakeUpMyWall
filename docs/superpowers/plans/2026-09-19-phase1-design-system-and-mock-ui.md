@@ -1929,6 +1929,12 @@ fun StandByClock(time: String, meridiem: String, date: String, modifier: Modifie
 
 `HomeModeController` 由两态扩为三态：`Dashboard -(+1)-> Monitor -(+1)-> StandBy`，`onSwipeLeft()` 前进一态、`onSwipeRight()` 后退一态，到边界停住。Task 9 的两态测试需同步改为三态断言。
 
+> **2026-09-20 补记（事后发现的漏接）**：这一步当时只把*控制器*改成了三态，App 里仍用自己的两态 `homeMode`
+> 状态，滑动手势写死 `HomeMode.Monitor` / `HomeMode.Dashboard`——`HomeModeController` 只被测试调用。
+> 后果是 **StandBy 在真机上不可达**（也是 09-19 那张 `android-standby.png` 与 Monitor 帧逐字节相同的原因）。
+> 已修复：`homeMode` 改由 `HomeModeController` 持有、滑动按 `HomeMode.forward()/backward()` 走，提交 `1f5ab94`。
+> 教训：断言"状态机逻辑正确"不等于"应用接上了它"，需要一条 App 级可达性测试（`AppUiTest`）。
+
 - [x] **Step 6: 运行测试并提交**
 
 ```bash
