@@ -87,7 +87,7 @@
   - `SettingsStorage` 新增两个方法（**只播种一次的标记**，见 Task 3 的 `load()`）：
     `suspend fun isSeeded(): Boolean`、`suspend fun markSeeded()`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.storage
@@ -175,12 +175,12 @@ class JsonSettingsStorageTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:desktopTest --tests "*JsonSettingsStorageTest*"`
 Expected: FAIL —— `Unresolved reference 'JsonSettingsStorage'` / `KeyValueStore`
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 ```kotlin
 // core/storage/SettingsStorage.kt —— 在既有接口上补两个"只播种一次"的方法
@@ -282,12 +282,12 @@ class JsonSettingsStorage(private val store: KeyValueStore) : SettingsStorage {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `JAVA_HOME=<jdk25> ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest`
 Expected: BUILD SUCCESSFUL，`JsonSettingsStorageTest` 5 条全绿
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add mobile/composeApp/src/commonMain/kotlin/com/xukunz/wakeupmywall/core/storage mobile/composeApp/src/commonTest/kotlin/com/xukunz/wakeupmywall/core/storage

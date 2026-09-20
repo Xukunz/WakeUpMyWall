@@ -12,12 +12,20 @@ data class AppearanceSettings(
 )
 
 /**
- * 设置与设备的持久化边界。Phase 0 只提供内存实现，真实后端（Room / DataStore）
- * 留到 Phase 2 与设备管理一起选型，避免在架构尚未定型时引入未验证的依赖。
+ * 设置与设备的持久化边界。Phase 0 只有内存实现；Phase 2 定型为
+ * [KeyValueStore]（平台键值）→ [JsonSettingsStorage]（JSON + 坏数据兜底）这一条链，
+ * Android 侧由 DataStore Preferences 提供键值存储。
  */
 interface SettingsStorage {
     suspend fun readDevices(): List<PcDevice>
     suspend fun writeDevices(devices: List<PcDevice>)
     suspend fun readAppearance(): AppearanceSettings
     suspend fun writeAppearance(value: AppearanceSettings)
+
+    /**
+     * 设备列表是否已经写过一次。用于"首次运行播种 Mock 设备"这个过渡手段：
+     * 用户把设备全删光之后，下次冷启动不能再被种回来。
+     */
+    suspend fun isSeeded(): Boolean
+    suspend fun markSeeded()
 }
