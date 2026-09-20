@@ -1,6 +1,8 @@
 package com.xukunz.wakeupmywall.domain
 
 import com.xukunz.wakeupmywall.domain.model.PcEvent
+import com.xukunz.wakeupmywall.domain.model.MacAddress
+import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.model.PcState
 import com.xukunz.wakeupmywall.domain.usecase.PcStateMachine
 import kotlin.test.Test
@@ -38,6 +40,26 @@ class PcStateMachineTest {
     @Test
     fun `unconfigured device stays unconfigured when agent is lost`() {
         assertEquals(PcState.UNCONFIGURED, PcStateMachine.reduce(PcState.UNCONFIGURED, PcEvent.AgentLost))
+    }
+
+    @Test
+    fun `losing the agent lands on wake ready when the device can be woken`() {
+        val device = PcDevice(
+            id = "my-pc",
+            name = "My PC",
+            macAddress = MacAddress.parse("00:1A:2B:3C:4D:5E"),
+            broadcastAddress = "192.168.1.255",
+            isDefault = true,
+        )
+
+        assertEquals(PcState.WOL_READY, PcStateMachine.reduce(PcState.ONLINE, PcEvent.AgentLost, device))
+    }
+
+    @Test
+    fun `losing the agent lands on offline when the device has no mac`() {
+        val device = PcDevice(id = "new-pc", name = "New PC", broadcastAddress = "192.168.1.255", isDefault = true)
+
+        assertEquals(PcState.OFFLINE, PcStateMachine.reduce(PcState.ONLINE, PcEvent.AgentLost, device))
     }
 
     @Test

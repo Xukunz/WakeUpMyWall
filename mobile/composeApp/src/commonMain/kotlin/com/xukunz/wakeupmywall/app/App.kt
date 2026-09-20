@@ -94,10 +94,10 @@ fun App(
     // 空列表兜底：Phase 2 的界面还没有"一台设备都没有"的形态（Phase 3 补空状态）。
         ?: MockData.defaultDevice
     val scope = rememberCoroutineScope()
-    // HTTP 客户端**留到真正要测连接时再建**：`createAgentHttpClient()` 需要一个平台引擎，
-    // 桌面 target（只用于 UI 测试与设计预览）没有装引擎，提前建会让每一屏都起不来。
-    val connectivity by remember(probe) {
-        lazy { ConnectivityTester(probe, AgentApi(createAgentHttpClient())) }
+    // HTTP 客户端在真正要发请求时才建（`ConnectivityTester` 收的是工厂）：桌面 target
+    // 没有装引擎，提前构造会让每一屏都起不来（Phase 2 实测）。
+    val connectivity = remember(probe) {
+        ConnectivityTester(probe = probe, api = { AgentApi(createAgentHttpClient()) })
     }
     var connectionReport by remember { mutableStateOf<ConnectionReport?>(null) }
     var isTestingConnection by remember { mutableStateOf(false) }
@@ -137,6 +137,18 @@ fun App(
         )
     }
     val railModel = powerRailModel(pcState, device, wakeNote = wakeNote)
+
+    /**
+     * 探测结论 → 状态机事件（spec §4：在线与否一律由 Agent 判定）。
+     * Agent 答得上就 `AgentResponded`；否则算 `AgentLost`，具体落 `WOL_READY` 还是 `OFFLINE`
+     * 由状态机按"这台设备有没有 MAC/广播"决定。**只在用户点 Test Connection 时触发**：
+     * 启动即探测会把 Phase 1 视觉基线的 ONLINE 形态全部改掉，那属于 Phase 5 的自动轮询。
+     */
+    fun applyConnectionReport(report: ConnectionReport) {
+        connectionReport = report
+        val event = if (report is ConnectionReport.AgentOnline) PcEvent.AgentResponded else PcEvent.AgentLost
+        pcState = PcStateMachine.reduce(pcState, event, device)
+    }
 
     LaunchedEffect(repository) { repository.load() }
     // 表单跟着仓库里那台设备走。键必须是**整个 `device`**，不能只用 `device.id`：
@@ -244,13 +256,13 @@ fun App(
                                             }
                                         }
                                     },
-                                    onTestConnection = {
-                                        scope.launch {
-                                            isTestingConnection = true
-                                            connectionReport = connectivity.test(device)
-                                            isTestingConnection = false
-                                        }
-                                    },
+    onTestConnection = {
+        scope.launch {
+            isTestingConnection = true
+            applyConnectionReport(connectivity.test(device))
+            isTestingConnection = false
+        }
+    },
                                     onSelectDevice = { id -> scope.launch { repository.setDefault(id) } },
                                     onDeleteDevice = { id -> scope.launch { repository.delete(id) } },
                                     onAddDevice = {

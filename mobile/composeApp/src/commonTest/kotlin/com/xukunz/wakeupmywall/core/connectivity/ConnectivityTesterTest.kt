@@ -30,17 +30,20 @@ class ConnectivityTesterTest {
 
     private fun tester(probe: TcpProbeResult, status: HttpStatusCode = HttpStatusCode.OK) = ConnectivityTester(
         probe = FakeProbe(probe),
-        api = AgentApi(
-            createAgentHttpClient(
-                MockEngine {
-                    respond(
-                        content = """{"hostname":"Desktop-Alpha","agentVersion":"0.1.0","uptimeSeconds":42}""",
-                        status = status,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                    )
-                },
-            ),
-        ),
+        // 工厂：只有 TCP 真连上时才会被调用（桌面 target 没有 HTTP 引擎）。
+        api = {
+            AgentApi(
+                createAgentHttpClient(
+                    MockEngine {
+                        respond(
+                            content = """{"hostname":"Desktop-Alpha","agentVersion":"0.1.0","uptimeSeconds":42}""",
+                            status = status,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+                    },
+                ),
+            )
+        },
     )
 
     @Test

@@ -23,7 +23,12 @@ sealed interface ConnectionReport {
  */
 class ConnectivityTester(
     private val probe: TcpProbe,
-    private val api: AgentApi,
+    /**
+     * 取一个 AgentApi。**必须是工厂而不是实例**：`createAgentHttpClient()` 需要一个平台 HTTP
+     * 引擎，桌面 target（只用于 UI 测试与设计预览）没有装引擎；提前构造会让每一屏都起不来。
+     * 只有 TCP 真的连上了才会调用它。
+     */
+    private val api: () -> AgentApi,
     private val token: String? = null,
 ) {
     suspend fun test(device: PcDevice): ConnectionReport {
@@ -53,7 +58,7 @@ class ConnectivityTester(
     }
 
     private suspend fun checkAgent(host: String, port: Int): ConnectionReport =
-        when (val result = api.status("http://$host:$port", token)) {
+        when (val result = api().status("http://$host:$port", token)) {
             is ApiResult.Success -> ConnectionReport.AgentOnline(result.value.hostname, result.value.agentVersion)
             is ApiResult.Failure -> when (result.reason) {
                 ApiFailure.NOT_FOUND -> failed(

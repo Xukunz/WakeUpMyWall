@@ -18,3 +18,10 @@ data class PcDevice(
     val isDefault: Boolean = false,
     val lastSeen: Instant? = null,
 )
+
+/**
+ * 能不能靠魔包唤醒：spec §4 用这条区分 `WOL_READY`（Agent 不可达但能唤醒）与
+ * `OFFLINE`（连唤醒条件都不具备）。广播地址空着同样发不出包，所以一起算进来。
+ */
+val PcDevice.isWakeable: Boolean
+    get() = macAddress != null && broadcastAddress.isNotBlank()

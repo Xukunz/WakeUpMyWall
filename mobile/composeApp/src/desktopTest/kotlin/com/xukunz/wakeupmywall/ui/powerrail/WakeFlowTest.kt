@@ -2,11 +2,18 @@ package com.xukunz.wakeupmywall.ui.powerrail
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.waitUntilExactlyOneExists
+import com.xukunz.wakeupmywall.app.AppNavigator
 import com.xukunz.wakeupmywall.app.App
+import com.xukunz.wakeupmywall.app.Workspace
+import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
+import com.xukunz.wakeupmywall.core.connectivity.TcpProbeResult
 import com.xukunz.wakeupmywall.core.wol.WakeOnLanSender
 import com.xukunz.wakeupmywall.core.wol.WakeSendResult
 import com.xukunz.wakeupmywall.domain.model.PcState
@@ -68,4 +75,35 @@ class WakeFlowTest {
         onNodeWithTag("powerrail:wake-note", useUnmergedTree = true)
             .assertTextEquals("Sent 3 wake packets — no answer from the Agent within <1 s")
     }
+
+    @Test
+    fun `a refused test connection puts the rail into wake ready and the ring can then send`() =
+        runComposeUiTest {
+            val sender = FakeSender()
+            val refusingProbe = object : TcpProbe {
+                override suspend fun probe(host: String, port: Int, timeoutMillis: Long) = TcpProbeResult.Refused
+            }
+            val navigator = AppNavigator().apply { goTo(Workspace.Settings) }
+            setContent {
+                App(
+                    navigator = navigator,
+                    probe = refusingProbe,
+                    wakeSender = sender,
+                    wakePollMillis = 20,
+                    wakeBudgetMillis = 60_000,
+                    wakeAgentResponds = { false },
+                )
+            }
+
+            // PC 关机、Agent 不可达、但这台设备有 MAC → spec §4 的 WOL_READY
+            onNodeWithTag("device:test").performClick()
+            waitUntilExactlyOneExists(
+                hasTestTag("powerrail:state") and hasText("Ready to wake"),
+                timeoutMillis = 5_000,
+            )
+
+            // WOL_READY 下主按钮才可点，点了就真的发包（本用例注入的假发送器）
+            onNodeWithTag("powerrail:primary").performClick()
+            assertEquals(1, sender.sends)
+        }
 }
