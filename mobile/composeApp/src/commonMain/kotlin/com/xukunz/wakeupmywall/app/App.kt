@@ -25,6 +25,8 @@ import com.xukunz.wakeupmywall.ui.RailEvent
 import com.xukunz.wakeupmywall.ui.components.PlaceholderScreen
 import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
+import com.xukunz.wakeupmywall.ui.settings.SettingsSection
+import com.xukunz.wakeupmywall.ui.settings.SettingsWorkspace
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
 import com.xukunz.wakeupmywall.ui.dashboard.HomeMode
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
@@ -40,6 +42,7 @@ fun App(
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
     var homeMode by remember { mutableStateOf(HomeMode.Dashboard) }
+    var settingsSection by remember { mutableStateOf(SettingsSection.DeviceSetup) }
     val device = MockData.defaultDevice
     val railModel = powerRailModel(pcState, device)
 
@@ -99,7 +102,31 @@ fun App(
                             identity = MockData.hardware,
                         )
                     }
-                    Workspace.Settings -> PlaceholderScreen("Settings")
+                    Workspace.Settings -> AppShell(
+                        rail = railModel,
+                        onRailEvent = { event ->
+                            when (event) {
+                                RailEvent.Settings -> Unit
+                                RailEvent.Primary ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.WakeRequested)
+                                RailEvent.Sleep ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.SleepRequested)
+                                RailEvent.Shutdown ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.ShutdownRequested)
+                                RailEvent.Restart ->
+                                    pcState = PcStateMachine.reduce(pcState, PcEvent.RestartRequested)
+                            }
+                        },
+                    ) {
+                        SettingsWorkspace(
+                            section = settingsSection,
+                            onSectionChange = { settingsSection = it },
+                            onBackHome = { navigator.goTo(Workspace.Dashboard) },
+                        ) { current ->
+                            // Task 11/12 会替换为 Device Setup 表单与 Appearance。
+                            PlaceholderScreen(current.title)
+                        }
+                    }
                 }
             }
         }

@@ -1453,7 +1453,7 @@ git commit -m "feat: add dashboard monitor mode switching"
 
 **与概念图的差异（需知悉）：** 概念图方案 A（`image-gen-3(1)`）的左导航只有 6 项，没有 `Display & Behavior`；本任务保留 7 项，因为简报 §14 的显示/省电设置必须有入口。`Appearance` 条目即概念图的 `Wallpaper & Personalization`（Task 12）。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 class SettingsSectionTest {
@@ -1502,7 +1502,7 @@ class SettingsWorkspaceTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest --tests "*Settings*"
@@ -1510,11 +1510,11 @@ class SettingsWorkspaceTest {
 
 Expected: 编译失败，`Unresolved reference: SettingsWorkspace`。
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 左列固定宽度约 240dp 的 `Column` 放七个 `SettingsSection` 的 `NavigationDrawerItem` 风格按钮（`testTag("settings:nav:<name>")`）与底部 `ResetToDefaultRow`（`testTag("settings:reset")`）；右侧为 `content` 插槽。外层仍由 `AppShell` 提供 Power Rail。
 
-- [ ] **Step 4: 运行测试并提交**
+- [x] **Step 4: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest --tests "*Settings*"
@@ -2187,3 +2187,18 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 | `HomeSurface` 签名 | `(mode, dashboard, metrics, history, style, onModeChange, modifier)` | 追加 `identity: HardwareIdentity? = null` | 否则 Monitor 里的身份卡会丢掉主机名/系统/CPU/GPU（Task 8 已引入这些字段） |
 | Monitor 返回入口 | "MonitorMode 顶部提供返回 Dashboard 的入口" | 身份卡的 `>` 变成可点返回 | 复用既有 `onOpenDevice` 回调，避免再加一个按钮 |
 | App 接入 | 只写"用 HomeSurface" | 工作空间作为入口 + `LaunchedEffect(workspace)` 同步形态；形态由 HomeSurface 自己管 | 保留 Phase 0 的三工作空间导航语义（`Workspace.Monitor` 仍能直接落到 Monitor 形态），同时不让导航状态与主页形态互相打架 |
+
+---
+
+## 执行记录：Task 10（2026-09-19）
+
+已完成 Task 10。证据：`testDebugUnitTest` 70 + `desktopTest` 116 全绿；Settings 现在也走 `AppShell`，因此常驻 Power Rail 在三工作空间里保持一致。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| 返回入口 | 未提；概念图左导航"固定为 6 项" | 在导航列表**之上**加一行 `← Home`（`settings:back`），列表本身仍严格是 7 项 | 否则 Settings 是死路：Rail 的齿轮只能进不能出。放在列表之外可以同时满足"列表固定"和"能回去" |
+| `ResetToDefaultRow` 参数顺序 | `(onReset, modifier)` | `(modifier, onReset)` | Compose 约定 modifier 为首个可选参数；计划自带的测试用尾随 lambda `ResetToDefaultRow { }`，原顺序会把 lambda 绑到 modifier 上（实测编译失败） |
+| Settings 内容 | 由 Task 11/12 填充 | 当前每个 section 渲染占位页（`screen:<title>`） | 本任务只交付外壳，符合"Task 11/12 替换"的排期 |
+| `AppUiTest` 断言 | 断言 `screen:Settings` 占位页 | 改为断言 `settings:nav` | Settings 不再是占位页 |

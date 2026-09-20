@@ -44,7 +44,8 @@ class AppUiTest {
         navigateThroughAllWorkspaces(navigator)
 
         onNodeWithTag("wallpaper:aurora").assertIsDisplayed()
-        onNodeWithTag("screen:Settings").assertIsDisplayed()
+        // Settings 已是真实工作空间（Task 10），不再是占位页。
+        onNodeWithTag("settings:nav").assertIsDisplayed()
     }
 
     @Test

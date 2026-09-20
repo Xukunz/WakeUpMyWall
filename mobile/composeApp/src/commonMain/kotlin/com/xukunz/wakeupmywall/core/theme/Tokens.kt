@@ -45,6 +45,7 @@ object AppSizes {
     val threeColumnMinWidth = 600.dp
     /** 主页形态切换的水平滑动阈值。 */
     val swipeThreshold = 60.dp
+    val settingsNavWidth = 240.dp
 }
 
 object DarkSurface {
