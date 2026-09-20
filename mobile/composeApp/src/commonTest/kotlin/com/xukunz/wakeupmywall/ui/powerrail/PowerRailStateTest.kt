@@ -59,7 +59,8 @@ class PowerRailStateTest {
         val model = powerRailModel(PcState.UNCONFIGURED, null)
 
         assertEquals("Setup PC", model.primaryLabel)
-        assertEquals("My PC", model.pcName)
+        // 没有设备时不能借 Mock 的名字（"My PC" 会让人以为已经配好了一台）。
+        assertEquals("No PC yet", model.pcName)
     }
 
     @Test

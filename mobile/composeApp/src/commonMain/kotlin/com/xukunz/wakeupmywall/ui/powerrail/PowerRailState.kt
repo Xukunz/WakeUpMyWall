@@ -43,7 +43,8 @@ val PowerRailModel.showsStatusLine: Boolean get() = statusLine != connectionLabe
 fun powerRailModel(state: PcState, device: PcDevice?, wakeNote: String? = null): PowerRailModel {
     val capabilities = state.capabilities(device)
     return PowerRailModel(
-        pcName = device?.name ?: "My PC",
+        // 一台设备都没配时不要借 Mock 的名字：那会让人以为"有台叫 My PC 的机器"。
+        pcName = device?.name ?: "No PC yet",
         deviceId = device?.id,
         subtitle = "POWER CONTROL",
         stateLabel = state.shortLabel(),

@@ -13,6 +13,10 @@ sealed interface PcEvent {
     data object RestartRequested : PcEvent
     data object AgentResponded : PcEvent
     data object AgentLost : PcEvent
+    /** 从"没有设备"变成"有设备"：按这台设备能不能唤醒落到 `WOL_READY` / `OFFLINE`。 */
+    data object DeviceConfigured : PcEvent
+    /** 设备列表被清空：回到 `UNCONFIGURED`（`AgentLost` 对 UNCONFIGURED 是自锁的，出不来）。 */
+    data object DeviceRemoved : PcEvent
     data object CommandFailed : PcEvent
 }
 

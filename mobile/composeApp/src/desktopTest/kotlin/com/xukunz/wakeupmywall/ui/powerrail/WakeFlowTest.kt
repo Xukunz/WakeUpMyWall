@@ -14,6 +14,9 @@ import com.xukunz.wakeupmywall.app.App
 import com.xukunz.wakeupmywall.app.Workspace
 import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
 import com.xukunz.wakeupmywall.core.connectivity.TcpProbeResult
+import com.xukunz.wakeupmywall.core.storage.InMemoryKeyValueStore
+import com.xukunz.wakeupmywall.core.storage.JsonSettingsStorage
+import kotlinx.coroutines.runBlocking
 import com.xukunz.wakeupmywall.core.wol.WakeOnLanSender
 import com.xukunz.wakeupmywall.core.wol.WakeSendResult
 import com.xukunz.wakeupmywall.domain.model.PcState
@@ -106,4 +109,46 @@ class WakeFlowTest {
             onNodeWithTag("powerrail:primary").performClick()
             assertEquals(1, sender.sends)
         }
+
+    /** 用户实测反馈的核心缺陷：不点 Test Connection 就永远是 Mock 的 `PC Online`，电源环按不动。 */
+    @Test
+    fun `a real probe decides the rail state at startup without any tap`() = runComposeUiTest {
+        val refusingProbe = object : TcpProbe {
+            override suspend fun probe(host: String, port: Int, timeoutMillis: Long) = TcpProbeResult.Refused
+        }
+        setContent {
+            App(probe = refusingProbe, wakeSender = FakeSender(), wakeAgentResponds = { false })
+        }
+
+        // 启动时探测一次：Agent 不可达 + 设备有 MAC → WOL_READY，不需要用户先去 Settings 点一下
+        waitUntilExactlyOneExists(
+            hasTestTag("powerrail:state") and hasText("Ready to wake"),
+            timeoutMillis = 5_000,
+        )
+    }
+
+    @Test
+    fun `with no saved device the rail asks for setup instead of pretending to be online`() =
+        runComposeUiTest {
+            val storage = JsonSettingsStorage(InMemoryKeyValueStore())
+            runBlocking { storage.markSeeded() }   // 已播种过但列表为空 = 用户把设备都删了
+
+            setContent { App(storage = storage) }
+
+            waitUntilExactlyOneExists(
+                hasTestTag("powerrail:state") and hasText("Not configured"),
+                timeoutMillis = 5_000,
+            )
+            onNodeWithTag("powerrail:primary-label", useUnmergedTree = true).assertTextEquals("Setup PC")
+        }
+
+    @Test
+    fun `the energy actions explain that they need the agent`() = runComposeUiTest {
+        setContent { App() }
+
+        onNodeWithTag("powerrail:sleep").performClick()
+
+        onNodeWithTag("powerrail:wake-note", useUnmergedTree = true)
+            .assertTextEquals("Sleep needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today")
+    }
 }

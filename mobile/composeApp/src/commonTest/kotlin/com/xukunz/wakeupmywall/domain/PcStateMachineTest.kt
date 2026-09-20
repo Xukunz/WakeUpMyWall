@@ -63,6 +63,44 @@ class PcStateMachineTest {
     }
 
     @Test
+    fun `an unconfigured app leaves unconfigured once a device exists`() {
+        val wakeable = PcDevice(
+            id = "my-pc",
+            name = "My PC",
+            macAddress = MacAddress.parse("00:1A:2B:3C:4D:5E"),
+            broadcastAddress = "192.168.1.255",
+            isDefault = true,
+        )
+        val withoutMac = PcDevice(id = "new-pc", name = "New PC", isDefault = true)
+
+        // AgentLost 对 UNCONFIGURED 是自锁的：必须先来 DeviceConfigured 才出得来
+        assertEquals(
+            PcState.UNCONFIGURED,
+            PcStateMachine.reduce(PcState.UNCONFIGURED, PcEvent.AgentLost, wakeable),
+        )
+        assertEquals(
+            PcState.WOL_READY,
+            PcStateMachine.reduce(PcState.UNCONFIGURED, PcEvent.DeviceConfigured, wakeable),
+        )
+        assertEquals(
+            PcState.OFFLINE,
+            PcStateMachine.reduce(PcState.UNCONFIGURED, PcEvent.DeviceConfigured, withoutMac),
+        )
+    }
+
+    @Test
+    fun `removing every device goes back to unconfigured`() {
+        assertEquals(
+            PcState.UNCONFIGURED,
+            PcStateMachine.reduce(PcState.WOL_READY, PcEvent.DeviceRemoved),
+        )
+        assertEquals(
+            PcState.UNCONFIGURED,
+            PcStateMachine.reduce(PcState.ONLINE, PcEvent.DeviceRemoved),
+        )
+    }
+
+    @Test
     fun `restart keeps restarting until agent returns`() {
         val restarting = PcStateMachine.reduce(PcState.ONLINE, PcEvent.RestartRequested)
         assertEquals(PcState.RESTARTING, restarting)

@@ -37,6 +37,11 @@ object PcStateMachine {
             else -> if (device?.isWakeable == true) PcState.WOL_READY else PcState.OFFLINE
         }
 
+        // "没有设备"与"有设备但连不上"是两回事：前者靠 DeviceRemoved 进、靠 DeviceConfigured 出。
+        PcEvent.DeviceConfigured -> if (device?.isWakeable == true) PcState.WOL_READY else PcState.OFFLINE
+
+        PcEvent.DeviceRemoved -> PcState.UNCONFIGURED
+
         PcEvent.CommandFailed -> PcState.ERROR
     }
 }

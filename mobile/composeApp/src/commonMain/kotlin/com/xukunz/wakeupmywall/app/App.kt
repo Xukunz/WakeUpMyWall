@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import com.xukunz.wakeupmywall.core.connectivity.ConnectionFailure
 import com.xukunz.wakeupmywall.core.connectivity.ConnectionReport
 import com.xukunz.wakeupmywall.core.connectivity.ConnectivityTester
 import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
@@ -91,8 +92,6 @@ fun App(
     // 那个重组作用域"上。只在 Settings 分支里读，Dashboard 首帧就不会因为它变化而重组，
     // 侧栏会一直停在兜底设备上（实测过）。
     val device = remember(devices) { repository.active }
-    // 空列表兜底：Phase 2 的界面还没有"一台设备都没有"的形态（Phase 3 补空状态）。
-        ?: MockData.defaultDevice
     val scope = rememberCoroutineScope()
     // HTTP 客户端在真正要发请求时才建（`ConnectivityTester` 收的是工厂）：桌面 target
     // 没有装引擎，提前构造会让每一屏都起不来（Phase 2 实测）。
@@ -116,9 +115,7 @@ fun App(
             ),
         )
     }
-    var deviceInput by remember {
-        mutableStateOf(device.toSetupInput())
-    }
+    var deviceInput by remember { mutableStateOf(device?.toSetupInput() ?: emptySetupInput()) }
     val wakeSequence = remember(wakeSender, wakePollMillis, wakeBudgetMillis, wakeAgentResponds, device) {
         WakeSequence(
             sender = wakeSender,
@@ -150,11 +147,41 @@ fun App(
         pcState = PcStateMachine.reduce(pcState, event, device)
     }
 
-    LaunchedEffect(repository) { repository.load() }
+    /**
+     * 启动/换设备时自己探测一次：**这是唤醒能不能用的关键**。以前必须手动点一次
+     * `Test Connection` 才能从 Mock 的 `ONLINE` 走到 `WOL_READY`，用户按不动电源环就会
+     * 以为 WOL 没生效。桌面没有 TCP 能力（`PROBE_UNAVAILABLE`）时保持初始状态不动，
+     * 这样设计预览与截图基线也不受影响。
+     */
+    // 首帧 `devices` 还是空的：必须等仓库读完再判断"是不是真的没有设备"，
+    // 否则会在加载完成前把状态判成 UNCONFIGURED（并把 Mock 的 ONLINE 覆盖掉）。
+    var devicesLoaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(device?.id, probe, devicesLoaded) {
+        if (!devicesLoaded) return@LaunchedEffect
+        // 换设备/设备被删时，上一条唤醒解释行不再适用。
+        wakeNote = null
+        if (device == null) {
+            pcState = PcStateMachine.reduce(pcState, PcEvent.DeviceRemoved)
+            return@LaunchedEffect
+        }
+        val report = connectivity.test(device)
+        if (report.isProbeUnavailable()) return@LaunchedEffect
+        // 先"承认有设备了"（把 UNCONFIGURED 解开），再让真实探测结论决定最终状态。
+        val configured = PcStateMachine.reduce(pcState, PcEvent.DeviceConfigured, device)
+        connectionReport = report
+        val event = if (report is ConnectionReport.AgentOnline) PcEvent.AgentResponded else PcEvent.AgentLost
+        pcState = PcStateMachine.reduce(configured, event, device)
+    }
+
+    LaunchedEffect(repository) {
+        repository.load()
+        devicesLoaded = true
+    }
     // 表单跟着仓库里那台设备走。键必须是**整个 `device`**，不能只用 `device.id`：
     // 首次播种的设备与存储里的设备共用同一个 id（`desktop-alpha`），只比 id 就漏掉了
     // "同一台设备、值不一样"这一种，表单会一直停在 Mock 值上而 Test Connection 用的是仓库值。
-    LaunchedEffect(device) { deviceInput = device.toSetupInput() }
+    LaunchedEffect(device) { device?.let { deviceInput = it.toSetupInput() } }
 
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
     LaunchedEffect(workspace) {
@@ -186,15 +213,19 @@ fun App(
                                 // 唤醒是"发 3 次魔包 + 轮询 Agent"的多步流程，交给 WakeSequence；
                                 // 状态依旧只由状态机决定（它收到 WakeRequested/AgentResponded/WakeTimedOut）。
                                 RailEvent.Primary -> {
-                                    wakeNote = null
-                                    scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
+                                    if (device == null) {
+                                        // 一台设备都没配：主按钮是 `Setup PC`，直接送到 Device Setup。
+                                        navigator.goTo(Workspace.Settings)
+                                    } else {
+                                        wakeNote = null
+                                        scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
+                                    }
                                 }
-                                RailEvent.Sleep ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.SleepRequested)
-                                RailEvent.Shutdown ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.ShutdownRequested)
-                                RailEvent.Restart ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.RestartRequested)
+                                // 睡眠/关机/重启要由 PC 上的 Agent 执行（Phase 4）。本阶段点它们
+                                // 只能给一句实话，不能假装 PC 已经在睡眠。
+                                RailEvent.Sleep -> wakeNote = AGENT_NEEDED_SLEEP
+                                RailEvent.Shutdown -> wakeNote = AGENT_NEEDED_SHUTDOWN
+                                RailEvent.Restart -> wakeNote = AGENT_NEEDED_RESTART
                             }
                         },
                     ) {
@@ -224,15 +255,16 @@ fun App(
                             when (event) {
                                 RailEvent.Settings -> Unit
                                 RailEvent.Primary -> {
-                                    wakeNote = null
-                                    scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
+                                    if (device == null) {
+                                        navigator.goTo(Workspace.Settings)
+                                    } else {
+                                        wakeNote = null
+                                        scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
+                                    }
                                 }
-                                RailEvent.Sleep ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.SleepRequested)
-                                RailEvent.Shutdown ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.ShutdownRequested)
-                                RailEvent.Restart ->
-                                    pcState = PcStateMachine.reduce(pcState, PcEvent.RestartRequested)
+                                RailEvent.Sleep -> wakeNote = AGENT_NEEDED_SLEEP
+                                RailEvent.Shutdown -> wakeNote = AGENT_NEEDED_SHUTDOWN
+                                RailEvent.Restart -> wakeNote = AGENT_NEEDED_RESTART
                             }
                         },
                     ) {
@@ -250,19 +282,24 @@ fun App(
                                     isTesting = isTestingConnection,
                                     onInputChange = { deviceInput = it },
                                     onSave = {
+                                        // 没有设备时 Save 不管用（表单是空的、校验也过不了）；新增走 `+ Add Device`。
+                                        val target = device
                                         DeviceSetupValidator.validate(deviceInput).device?.let { edited ->
-                                            scope.launch {
-                                                repository.update(device.id, edited.copy(isDefault = device.isDefault))
+                                            if (target != null) {
+                                                scope.launch {
+                                                    repository.update(target.id, edited.copy(isDefault = target.isDefault))
+                                                }
                                             }
                                         }
                                     },
-    onTestConnection = {
-        scope.launch {
-            isTestingConnection = true
-            applyConnectionReport(connectivity.test(device))
-            isTestingConnection = false
-        }
-    },
+                                    onTestConnection = {
+                                        val target = device
+                                        scope.launch {
+                                            isTestingConnection = true
+                                            if (target != null) applyConnectionReport(connectivity.test(target))
+                                            isTestingConnection = false
+                                        }
+                                    },
                                     onSelectDevice = { id -> scope.launch { repository.setDefault(id) } },
                                     onDeleteDevice = { id -> scope.launch { repository.delete(id) } },
                                     onAddDevice = {
@@ -335,3 +372,22 @@ private fun formatWaited(millis: Long): String {
     val seconds = millis / 1_000
     return if (seconds < 1) "<1 s" else "$seconds s"
 }
+
+/** 桌面 `UnsupportedTcpProbe` 之类"这条平台没有探测能力"的结论：不要拿它改状态。 */
+private fun ConnectionReport.isProbeUnavailable(): Boolean =
+    this is ConnectionReport.Failed && reason == ConnectionFailure.PROBE_UNAVAILABLE
+
+/** 一台设备都没配时的空表单（字段留空，保存按钮会被校验挡住）。 */
+private fun emptySetupInput() = DeviceSetupInput(
+    name = "",
+    mac = "",
+    ip = "",
+    broadcast = "192.168.1.255",
+    wolPort = "9",
+    agentPort = "9876",
+    agentHost = "",
+)
+
+private const val AGENT_NEEDED_SLEEP = "Sleep needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
+private const val AGENT_NEEDED_SHUTDOWN = "Shut down needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
+private const val AGENT_NEEDED_RESTART = "Restart needs the PC Agent — it lands in Phase 4; only Wake reaches the PC today"
