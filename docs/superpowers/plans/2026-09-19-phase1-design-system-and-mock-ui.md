@@ -1540,7 +1540,7 @@ git commit -m "feat: add settings workspace shell"
   - `object DeviceSetupValidator { fun validate(input: DeviceSetupInput): DeviceSetupResult }`
   - `@Composable fun DeviceSetupScreen(input: DeviceSetupInput, result: DeviceSetupResult, onInputChange: (DeviceSetupInput) -> Unit, onSave: () -> Unit, onTestConnection: () -> Unit, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 class DeviceSetupValidatorTest {
@@ -1604,7 +1604,7 @@ class DeviceSetupValidatorTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest --tests "*DeviceSetupValidatorTest*"
@@ -1612,7 +1612,7 @@ class DeviceSetupValidatorTest {
 
 Expected: 编译失败，`Unresolved reference: DeviceSetupValidator`。
 
-- [ ] **Step 3: 实现校验器**
+- [x] **Step 3: 实现校验器**
 
 规则（写死为可读常量，供 UI 复用）：
 
@@ -1667,11 +1667,11 @@ object DeviceSetupValidator {
 
 注意：`isValidHost` 的两个条件必须用括号明确优先级，写成 `!value.any { ... } && (isValidIpv4(value) || value.matches(...))`。
 
-- [ ] **Step 4: 实现表单 UI**
+- [x] **Step 4: 实现表单 UI**
 
 六个输入框（PC Name / MAC / IP / Broadcast / WOL Port / Agent Port / Agent Host），每个下方在其 `errors` 非空时显示错误文案；底部两个按钮 `Save`（`testTag("device:save")`，`enabled = result.isValid`）与 `Test Connection`（`testTag("device:test")`）。
 
-- [ ] **Step 5: 写 UI 测试**
+- [x] **Step 5: 写 UI 测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -1695,7 +1695,7 @@ class DeviceSetupScreenTest {
 }
 ```
 
-- [ ] **Step 6: 运行测试并提交**
+- [x] **Step 6: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -2202,3 +2202,20 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 | `ResetToDefaultRow` 参数顺序 | `(onReset, modifier)` | `(modifier, onReset)` | Compose 约定 modifier 为首个可选参数；计划自带的测试用尾随 lambda `ResetToDefaultRow { }`，原顺序会把 lambda 绑到 modifier 上（实测编译失败） |
 | Settings 内容 | 由 Task 11/12 填充 | 当前每个 section 渲染占位页（`screen:<title>`） | 本任务只交付外壳，符合"Task 11/12 替换"的排期 |
 | `AppUiTest` 断言 | 断言 `screen:Settings` 占位页 | 改为断言 `settings:nav` | Settings 不再是占位页 |
+
+---
+
+## 执行记录：Task 11（2026-09-19）
+
+已完成 Task 11。证据：`testDebugUnitTest` 79 + `desktopTest` 129 全绿；Device Setup 真实成帧见 `build/screenshots/settings-aurora.png`。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| `isValidHost` | 计划给出的实现后附警告"两个条件必须用括号明确优先级" | 用提前 return 拆成三段，不用依赖 `&&`/`||` 优先级 | 计划自己也标了这是个坑；拆开后读起来不需要记忆优先级 |
+| 屏幕内容范围 | Task 11 只描述表单（7 个输入 + Save/Test） | 同时实现权威规格 E 的 Saved Computers 与 Integrated Services 两块（数据取自 `MockData`） | 规格 E 是整屏的权威描述，只做表单会让该屏缺两块内容；Mock 数据本来就有 4 台设备 |
+| 表单按钮排布 | 两枚按钮并排 | 纵向堆叠且各自 `fillMaxWidth` | 实测两栏布局下表单列只有约 300dp，并排会把 `Test Connection` 挤成三行 |
+| Saved Computers 行 | 未指定排布 | 名称 + MAC 竖排，"Default" 作为右侧徽标 | 实测横向排会把 MAC 拆成逐字符换行 |
+| `ip` 字段 | 校验器里要求"非空时必须合法" | 补了一条测试固定该行为 | 计划只有实现没有测试覆盖，容易在重构时丢失 |
+| App 接线 | 未指定初值 | 用 `MockData.defaultDevice` 预填表单 | 概念图 E 显示的就是一台已配置好、处于 `WOL Ready` 的设备 |

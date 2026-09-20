@@ -27,6 +27,9 @@ import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.settings.SettingsSection
 import com.xukunz.wakeupmywall.ui.settings.SettingsWorkspace
+import com.xukunz.wakeupmywall.ui.settings.DeviceSetupScreen
+import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupInput
+import com.xukunz.wakeupmywall.domain.usecase.DeviceSetupValidator
 import com.xukunz.wakeupmywall.ui.dashboard.DashboardData
 import com.xukunz.wakeupmywall.ui.dashboard.HomeMode
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
@@ -44,6 +47,19 @@ fun App(
     var homeMode by remember { mutableStateOf(HomeMode.Dashboard) }
     var settingsSection by remember { mutableStateOf(SettingsSection.DeviceSetup) }
     val device = MockData.defaultDevice
+    var deviceInput by remember {
+        mutableStateOf(
+            DeviceSetupInput(
+                name = device.name,
+                mac = device.macAddress?.normalized.orEmpty(),
+                ip = device.ipAddress.orEmpty(),
+                broadcast = device.broadcastAddress,
+                wolPort = device.wolPort.toString(),
+                agentPort = device.agentPort.toString(),
+                agentHost = device.agentHost.orEmpty(),
+            ),
+        )
+    }
     val railModel = powerRailModel(pcState, device)
 
     // 工作空间是入口，主页形态在 HomeSurface 内部切换：导航到 Monitor 时同步过去形态。
@@ -123,8 +139,18 @@ fun App(
                             onSectionChange = { settingsSection = it },
                             onBackHome = { navigator.goTo(Workspace.Dashboard) },
                         ) { current ->
-                            // Task 11/12 会替换为 Device Setup 表单与 Appearance。
-                            PlaceholderScreen(current.title)
+                            when (current) {
+                                SettingsSection.DeviceSetup -> DeviceSetupScreen(
+                                    input = deviceInput,
+                                    result = DeviceSetupValidator.validate(deviceInput),
+                                    devices = MockData.devices,
+                                    onInputChange = { deviceInput = it },
+                                    onSave = {},
+                                    onTestConnection = {},
+                                )
+                                // Task 12 会替换为 Appearance 与 Live Preview。
+                                else -> PlaceholderScreen(current.title)
+                            }
                         }
                     }
                 }
