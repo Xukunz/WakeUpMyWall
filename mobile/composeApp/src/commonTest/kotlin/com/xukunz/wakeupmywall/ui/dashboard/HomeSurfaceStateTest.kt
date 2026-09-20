@@ -22,14 +22,29 @@ class HomeSurfaceStateTest {
     }
 
     @Test
-    fun `toggle alternates`() {
+    fun `toggle cycles through all three modes`() {
         val controller = HomeModeController()
 
         controller.toggle()
         assertEquals(HomeMode.Monitor, controller.current.value)
 
         controller.toggle()
+        assertEquals(HomeMode.StandBy, controller.current.value)
+
+        controller.toggle()
         assertEquals(HomeMode.Dashboard, controller.current.value)
+    }
+
+    @Test
+    fun `swipe left walks forward and clamps at standby`() {
+        val controller = HomeModeController()
+
+        controller.onSwipeLeft()
+        assertEquals(HomeMode.Monitor, controller.current.value)
+        controller.onSwipeLeft()
+        assertEquals(HomeMode.StandBy, controller.current.value)
+        controller.onSwipeLeft()
+        assertEquals(HomeMode.StandBy, controller.current.value)
     }
 
     @Test

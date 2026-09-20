@@ -13,6 +13,16 @@ data class WeatherSnapshot(
     val highC: Int,
     val lowC: Int,
     val nextHours: List<HourlyForecast>,
+    /** StandBy 天气卡上的一句话天气（权威规格 D）。 */
+    val summary: String = "",
+)
+
+/** StandBy 的下一场日程（权威规格 D：In 1 hr 19 min / Team sync / 11:00 PM – 12:00 AM / Microsoft Teams）。 */
+data class NextEvent(
+    val countdownLabel: String,
+    val title: String,
+    val timeRange: String,
+    val source: String,
 )
 
 data class CalendarEvent(val time: String, val title: String)

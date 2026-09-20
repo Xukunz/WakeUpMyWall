@@ -1852,7 +1852,7 @@ git commit -m "feat: add appearance screen with live preview"
   - `@Composable fun StandByMode(data: DashboardData, rail: PowerRailModel, onRailEvent: (RailEvent) -> Unit, onOpenMonitor: () -> Unit, modifier: Modifier = Modifier)`
   - `@Composable fun StandByClock(time: String, meridiem: String, date: String, modifier: Modifier = Modifier)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```kotlin
 @OptIn(ExperimentalTestApi::class)
@@ -1890,7 +1890,7 @@ class StandByModeTest {
 }
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 ```bash
 ./gradlew :composeApp:desktopTest --tests "*StandByModeTest*"
@@ -1898,7 +1898,7 @@ class StandByModeTest {
 
 Expected: 编译失败，`Unresolved reference: StandByMode`。
 
-- [ ] **Step 3: 实现 StandByClock**
+- [x] **Step 3: 实现 StandByClock**
 
 ```kotlin
 @Composable
@@ -1919,17 +1919,17 @@ fun StandByClock(time: String, meridiem: String, date: String, modifier: Modifie
 
 同时在 `core/theme/Typography.kt` 增加 `val hugeClock = TextStyle(fontSize = 120.sp, fontWeight = FontWeight.Light)`。
 
-- [ ] **Step 4: 实现 StandByMode**
+- [x] **Step 4: 实现 StandByMode**
 
 按权威规格 D 表：全屏壁纸 + 左上品牌条 + 右上 `SAME ROOM / DIFFERENT / PERSPECTIVE`；主区左 `StandByClock`、中排 Weather 卡（含 `Clearer skies later tonight.`）与 Next Event 卡（`In 1 hr 19 min` / `Team sync` / `11:00 PM – 12:00 AM` / `Microsoft Teams`）；右侧 PC 浮层卡（`standby:pc-card`）：标题 + `PowerRingButton` + `Power On` + `WAKE YOUR PC` + 两个开关按钮 `standby:night-mode`（`Night Mode` / `ON`）与 `standby:auto-dim`（`Auto-Dim` / `ACTIVE`）；底部通栏条 `standby:status-bar`（显示器图标 + 绿点 + `My PC` + `Online` + `Last seen 1 min ago` + `>`）。
 
 **注意：** StandBy 不渲染 `PowerRail`，因此不得出现 `powerrail:*` 标签；这一点由 Step 1 的第三个测试守住。
 
-- [ ] **Step 5: 接入三态切换**
+- [x] **Step 5: 接入三态切换**
 
 `HomeModeController` 由两态扩为三态：`Dashboard -(+1)-> Monitor -(+1)-> StandBy`，`onSwipeLeft()` 前进一态、`onSwipeRight()` 后退一态，到边界停住。Task 9 的两态测试需同步改为三态断言。
 
-- [ ] **Step 6: 运行测试并提交**
+- [x] **Step 6: 运行测试并提交**
 
 ```bash
 ./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest
@@ -2244,3 +2244,20 @@ git commit -m "docs: add phase 1 visual parity review and calibrated tokens"
 | `AppearanceScreen` 签名 | `(state, onStateChange, preview, modifier)` | `(state, onStateChange, modifier, selectedSection, onSectionChange, preview)` | 左导航需要受控选中态；`preview` 放最后以便尾随 lambda |
 | Appearance 的作用域 | 只描述"Live Preview 会跟着变" | **Accent / Wallpaper / WidgetStyle 现在是全应用外观的唯一来源**：`WakeUpMyWallTheme(accent=…)`、`WallpaperBackground(appearance.wallpaperId)`、`HomeSurface(style=appearance.widgetStyle)` 全部读它 | 否则用户在 Appearance 里改完，回到主页发现没变——那不叫外观设置，只是预览器 |
 | 截图组合 | — | 截图测试补上壁纸底层 | 首次截图是白底：`AppearanceScreen` 本身不铺背景，真实 App 里它浮在壁纸上 |
+
+---
+
+## 执行记录：Task 13（2026-09-19）
+
+已完成 Task 13。证据：`testDebugUnitTest` 87 + `desktopTest` 152 全绿；StandBy 真实成帧见 `build/screenshots/standby-aurora.png`（超大时钟、天气、下一场日程、右侧 PC 浮层卡、底部状态条）。
+
+### 偏差
+
+| 位置 | 计划原文 | 实际做法 | 原因 |
+| --- | --- | --- | --- |
+| `HomeMode` 所在文件 | "Modify `app/AppNavigator.kt`（HomeMode 增加第三态）" | 改的是 `ui/dashboard/HomeSurface.kt`（`HomeMode` 实际定义处） | `AppNavigator` 管的是工作空间（含 Settings），`HomeMode` 是主页形态，两者不是一回事；Task 9 已经把 `HomeMode` 落在 HomeSurface.kt |
+| `toggle()` 语义 | Task 9 测试要求"两态交替" | 三态下改为按 `Dashboard → Monitor → StandBy → Dashboard` 循环，并同步改 Task 9 的断言 | 三态下"交替"没有定义；循环 + 边界钳制最符合左滑前进的直觉 |
+| 超大时钟 | `120.sp` | `104.sp` + 显式 `lineHeight` | 实测 120sp 且不指定行高时，行盒小于字形墨迹范围，数字顶部被裁掉 |
+| PC 浮层卡宽度 | 未指定 | 占宽 34%（`AppSizes.standbyCardWidthFraction`） | 首次实现铺满整行，与"右侧浮层卡"不符 |
+| `nextEvent` 数据 | 只给了文案 | 新增 `NextEvent` 数据类 + `MockData.nextEvent`；`WeatherSnapshot` 增加 `summary` 字段 | 权威规格 D 的下一场日程与一句话天气在既有模型里无处安放 |
+| `HomeSurface` 参数 | `(mode, dashboard, metrics, history, style, onModeChange, modifier)` | 追加 `nextEvent`（默认取 `MockData.nextEvent`） | StandBy 需要日程数据；给默认值可以少改调用方，代价是 `ui/dashboard` 引用了 `data/mock`（纯 Mock 阶段的临时耦合，Phase 2 接真实数据源时一起清掉） |

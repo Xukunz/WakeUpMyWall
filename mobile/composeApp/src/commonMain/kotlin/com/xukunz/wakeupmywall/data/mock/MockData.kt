@@ -6,6 +6,7 @@ import com.xukunz.wakeupmywall.domain.model.HardwareIdentity
 import com.xukunz.wakeupmywall.domain.model.HourlyForecast
 import com.xukunz.wakeupmywall.domain.model.MacAddress
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
+import com.xukunz.wakeupmywall.domain.model.NextEvent
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.model.PcSummarySnapshot
 import com.xukunz.wakeupmywall.domain.model.TodoItem
@@ -78,6 +79,15 @@ object MockData {
             HourlyForecast("4AM", 15),
             HourlyForecast("7AM", 16),
         ),
+        summary = "Clearer skies later tonight.",
+    )
+
+    /** StandBy 的下一场日程（权威规格 D）。 */
+    val nextEvent = NextEvent(
+        countdownLabel = "In 1 hr 19 min",
+        title = "Team sync",
+        timeRange = "11:00 PM – 12:00 AM",
+        source = "Microsoft Teams",
     )
 
     val calendarEvents: List<CalendarEvent> = listOf(

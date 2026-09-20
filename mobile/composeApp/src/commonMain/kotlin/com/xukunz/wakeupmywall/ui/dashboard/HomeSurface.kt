@@ -13,12 +13,16 @@ import androidx.compose.ui.platform.testTag
 import com.xukunz.wakeupmywall.core.theme.AppSizes
 import com.xukunz.wakeupmywall.domain.model.HardwareIdentity
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
+import com.xukunz.wakeupmywall.domain.model.NextEvent
+import com.xukunz.wakeupmywall.data.mock.MockData
+import com.xukunz.wakeupmywall.ui.RailEvent
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.monitor.MonitorMode
+import com.xukunz.wakeupmywall.ui.standby.StandByMode
 
-enum class HomeMode { Dashboard, Monitor }
+enum class HomeMode { Dashboard, Monitor, StandBy }
 
-/** 主页形态控制器。Task 13 会扩成三态（加 StandBy）。 */
+/** 主页三形态控制器：左滑前进、右滑后退，到边界停住。 */
 class HomeModeController {
     private val state = mutableStateOf(HomeMode.Dashboard)
     val current: State<HomeMode> get() = state
@@ -27,16 +31,20 @@ class HomeModeController {
         state.value = mode
     }
 
+    /** `toggle` 与左滑同向：按 Dashboard → Monitor → StandBy → Dashboard 循环。 */
     fun toggle() {
-        state.value = if (state.value == HomeMode.Dashboard) HomeMode.Monitor else HomeMode.Dashboard
+        val order = HomeMode.entries
+        state.value = order[(order.indexOf(state.value) + 1) % order.size]
     }
 
     fun onSwipeLeft() {
-        state.value = HomeMode.Monitor
+        val order = HomeMode.entries
+        state.value = order[(order.indexOf(state.value) + 1).coerceAtMost(order.lastIndex)]
     }
 
     fun onSwipeRight() {
-        state.value = HomeMode.Dashboard
+        val order = HomeMode.entries
+        state.value = order[(order.indexOf(state.value) - 1).coerceAtLeast(0)]
     }
 }
 
@@ -53,6 +61,7 @@ fun HomeSurface(
     onModeChange: (HomeMode) -> Unit,
     modifier: Modifier = Modifier,
     identity: HardwareIdentity? = null,
+    nextEvent: NextEvent = MockData.nextEvent,
 ) {
     val threshold = with(LocalDensity.current) { AppSizes.swipeThreshold.toPx() }
     Box(
@@ -84,6 +93,15 @@ fun HomeSurface(
                 style = style,
                 identity = identity,
                 onOpenDevice = { onModeChange(HomeMode.Dashboard) },
+            )
+            HomeMode.StandBy -> StandByMode(
+                data = dashboard,
+                rail = dashboard.pc,
+                nextEvent = nextEvent,
+                onRailEvent = { event ->
+                    if (event == RailEvent.Primary) onModeChange(HomeMode.Dashboard)
+                },
+                onOpenMonitor = { onModeChange(HomeMode.Monitor) },
             )
         }
     }

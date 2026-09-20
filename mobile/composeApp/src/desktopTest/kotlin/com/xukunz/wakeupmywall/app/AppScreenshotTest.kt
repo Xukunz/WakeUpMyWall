@@ -26,6 +26,7 @@ import com.xukunz.wakeupmywall.ui.dashboard.DashboardMode
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 import com.xukunz.wakeupmywall.ui.settings.AppearanceScreen
 import com.xukunz.wakeupmywall.ui.settings.AppearanceState
+import com.xukunz.wakeupmywall.ui.standby.StandByMode
 import com.xukunz.wakeupmywall.ui.components.WallpaperBackground
 import kotlin.test.Test
 
@@ -55,6 +56,32 @@ class AppScreenshotTest {
     @Test
     fun `capture dashboard with minimal wallpaper`() = capture("dashboard-minimal") {
         App(wallpaperId = "minimal")
+    }
+
+    @Test
+    fun `capture standby mode`() = capture("standby-aurora") {
+        WakeUpMyWallTheme {
+            Box(Modifier.fillMaxSize()) {
+                WallpaperBackground(BuiltInWallpapers.DefaultId)
+                StandByMode(
+                    data = DashboardData(
+                        greeting = MockData.greetingText,
+                        time = MockData.clockTime,
+                        date = MockData.calendarDateLabel,
+                        weather = MockData.weather,
+                        events = MockData.calendarEvents,
+                        todos = MockData.todos,
+                        pc = powerRailModel(PcState.ONLINE, MockData.defaultDevice),
+                        pcSummary = MockData.summaryMetrics,
+                        widgets = DashboardLayout.default,
+                    ),
+                    rail = powerRailModel(PcState.ONLINE, MockData.defaultDevice),
+                    nextEvent = MockData.nextEvent,
+                    onRailEvent = {},
+                    onOpenMonitor = {},
+                )
+            }
+        }
     }
 
     @Test
