@@ -3,6 +3,8 @@ package com.xukunz.wakeupmywall.ui.monitor
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.runComposeUiTest
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.data.mock.MockData
@@ -97,5 +99,23 @@ class MonitorMetricsTest {
 
         onNodeWithTag("monitor:metrics-note", useUnmergedTree = true)
             .assertTextEquals("missing or invalid token")
+    }
+
+    @Test
+    fun `the storage card pages through every disk`() = runComposeUiTest {
+        // MockData 有两块盘：C: 与 D:（用户反馈"只能看 C 盘"）。
+        setContent {
+            WakeUpMyWallTheme {
+                MonitorMode(MockData.metrics, history, WidgetStyle.Glass, identity = MockData.hardware)
+            }
+        }
+
+        onNodeWithTag("metric:storage-page", useUnmergedTree = true).assertTextEquals("C:\\ · 1/2")
+        onNodeWithTag("metric:storage-disk-0", useUnmergedTree = true).assertTextEquals("2 TB NVMe SSD")
+
+        onNodeWithTag("metric:storage-pager").performTouchInput { swipeLeft() }
+
+        onNodeWithTag("metric:storage-page", useUnmergedTree = true).assertTextEquals("D:\\ · 2/2")
+        onNodeWithTag("metric:storage-disk-1", useUnmergedTree = true).assertTextEquals("4 TB Data")
     }
 }

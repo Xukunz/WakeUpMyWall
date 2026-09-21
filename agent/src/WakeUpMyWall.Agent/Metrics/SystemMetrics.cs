@@ -11,6 +11,8 @@ public sealed record SystemMetricsPayload(
     GpuMetricsPayload Gpu,
     MemoryMetricsPayload Memory,
     StorageMetricsPayload Storage,
+    /** 每块**固定磁盘**一条（系统盘是其中一条）。手机端的 Storage 卡片按这个列表左右翻页。 */
+    IReadOnlyList<DiskPayload> Disks,
     ThermalMetricsPayload Thermal,
     NetworkMetricsPayload Network,
     long UptimeSeconds,
@@ -49,6 +51,10 @@ public sealed record MemoryMetricsPayload(double? UsagePercent, double? UsedGb, 
 public sealed record StorageMetricsPayload(
     double? UsagePercent, double? UsedTb, double? TotalTb, double? FreeGb, double? TempC);
 
+/** 单块磁盘。`mount` 是盘符（`C:\`），`tempC` 只在能确定归属时给（当前只有系统盘）。 */
+public sealed record DiskPayload(
+    string Name, string Mount, double? UsagePercent, double? UsedGb, double? TotalGb, double? FreeGb, double? TempC);
+
 public sealed record ThermalMetricsPayload(double? MotherboardTempC, int? CaseFanRpm);
 
 public sealed record NetworkMetricsPayload(double? DownloadMbps, double? UploadMbps);
@@ -69,7 +75,14 @@ public sealed record MachineFacts(
     double? VramTotalGb,
     double? StorageTotalGb,
     double? StorageFreeGb,
+    /** 系统盘盘符（`C:\`）：只有它能确定地对应 LHM 的存储温度传感器。 */
+    string SystemDiskMount,
+    /** 固定磁盘清单（盘符 / 名称 / 容量），由提供者从 DriveInfo 枚举。 */
+    IReadOnlyList<DiskFact> Disks,
     /** 处理器标称主频（MHz）：LHM 读不到实时频率时的兜底，来源是注册表 `~MHz`。 */
     double? NominalClockMhz,
     long UptimeSeconds,
     string BootedAtUtc);
+
+/** 提供者能直接问到的磁盘事实（容量来自 DriveInfo）。 */
+public sealed record DiskFact(string Name, string Mount, double TotalGb, double FreeGb);

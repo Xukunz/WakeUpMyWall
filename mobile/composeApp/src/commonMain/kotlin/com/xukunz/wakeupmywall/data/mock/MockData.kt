@@ -2,6 +2,7 @@ package com.xukunz.wakeupmywall.data.mock
 
 import com.xukunz.wakeupmywall.domain.model.ActivityEntry
 import com.xukunz.wakeupmywall.domain.model.CalendarEvent
+import com.xukunz.wakeupmywall.domain.model.DiskSnapshot
 import com.xukunz.wakeupmywall.domain.model.HardwareIdentity
 import com.xukunz.wakeupmywall.domain.model.HourlyForecast
 import com.xukunz.wakeupmywall.domain.model.MacAddress
@@ -153,6 +154,11 @@ object MockData {
         uploadMbps = 31.7f,
         uptimeSeconds = 3 * 24 * 3600L + 6 * 3600L + 24 * 60L,
         bootDateLabel = "Since Apr 18, 2025",
+        // 两块盘：Storage 卡片的左右翻页在预览/测试里都可见。
+        disks = listOf(
+            DiskSnapshot("2 TB NVMe SSD", "C:\\", 54f, 1105f, 2048f, 554f, 38),
+            DiskSnapshot("4 TB Data", "D:\\", 61f, 2498f, 4096f, 1580f, 41),
+        ),
         recentActivity = listOf(
             ActivityEntry(app = "Microsoft Edge", whenLabel = "5 min ago"),
             ActivityEntry(app = "Steam", whenLabel = "12 min ago"),

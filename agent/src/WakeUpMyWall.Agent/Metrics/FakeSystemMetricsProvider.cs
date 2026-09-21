@@ -55,6 +55,14 @@ public sealed class FakeSystemMetricsProvider(TimeProvider clock) : ISystemMetri
             VramTotalGb: 12,
             StorageTotalGb: 2048,
             StorageFreeGb: 102,
+            SystemDiskMount: "C:\\",
+            // 假数据也给多盘，手机端的横滑 Storage 卡片才有东西可翻。
+            Disks:
+            [
+                new DiskFact("NVMe 2 TB", "C:\\", 2048, 102),
+                new DiskFact("Data 4 TB", "D:\\", 4096, 1580),
+                new DiskFact("Archive 8 TB", "E:\\", 8192, 5120),
+            ],
             NominalClockMhz: 4200,
             UptimeSeconds: (long)(now - BootedAt).TotalSeconds,
             BootedAtUtc: BootedAt.ToString("o"));

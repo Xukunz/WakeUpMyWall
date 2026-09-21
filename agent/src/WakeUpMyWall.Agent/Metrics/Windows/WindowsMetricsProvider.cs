@@ -127,6 +127,7 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
         var storageHardware = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
 
         var (storageTotalGb, storageFreeGb, driveRoot) = ReadSystemDrive();
+        var disks = ReadFixedDisks();
 
         return new MachineFacts(
             Hostname: Environment.MachineName,
@@ -144,6 +145,8 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
             VramTotalGb: ReadVramTotalGb(),
             StorageTotalGb: storageTotalGb,
             StorageFreeGb: storageFreeGb,
+            SystemDiskMount: driveRoot,
+            Disks: disks,
             NominalClockMhz: ReadNominalClockMhz(),
             UptimeSeconds: Environment.TickCount64 / 1000,
             BootedAtUtc: now.AddSeconds(-Environment.TickCount64 / 1000.0).ToString("o"));
@@ -197,6 +200,38 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
             // 取不到容量不是错误：字段给 null（MetricsMapper 会如实留空）。
             return (null, null, root);
         }
+    }
+
+    /**
+     * 所有**固定**磁盘（排除光驱/可移动盘/未就绪的网络盘）。
+     * 读取失败（盘正在弹出、权限问题）就跳过这一块，不让整页指标读不出来。
+     */
+    private static List<DiskFact> ReadFixedDisks()
+    {
+        var disks = new List<DiskFact>();
+        foreach (var drive in DriveInfo.GetDrives())
+        {
+            try
+            {
+                if (drive.DriveType != DriveType.Fixed || !drive.IsReady) continue;
+
+                var label = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? drive.Name : drive.VolumeLabel;
+                disks.Add(new DiskFact(
+                    Name: label,
+                    Mount: drive.Name,
+                    TotalGb: drive.TotalSize / 1024.0 / 1024.0 / 1024.0,
+                    FreeGb: drive.AvailableFreeSpace / 1024.0 / 1024.0 / 1024.0));
+            }
+            catch (IOException)
+            {
+                // 单块盘读不到就跳过。
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // 同上：权限不足不该让整页指标失败。
+            }
+        }
+        return disks;
     }
 
     /** 显存容量只在注册表里（LHM 不暴露总量）。读不到就是 null。 */

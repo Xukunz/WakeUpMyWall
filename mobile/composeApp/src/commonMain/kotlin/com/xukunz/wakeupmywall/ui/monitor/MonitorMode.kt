@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.xukunz.wakeupmywall.core.theme.AppSizes
 import com.xukunz.wakeupmywall.core.theme.AppShapes
 import com.xukunz.wakeupmywall.core.theme.AppTypography
@@ -171,18 +175,13 @@ fun MonitorMode(
                     )
                 },
                 { slot ->
-                    MetricCard(
-                        key = MetricKeys.Storage,
-                        label = "Storage",
-                        percent = metrics.storagePercent,
+                    StorageCard(
+                        disks = metrics.disks,
+                        metrics = metrics,
                         modelLine = identity?.storageModule ?: "Storage",
                         values = history[MetricKeys.Storage].orEmpty(),
-                        footerPrimary = "${metrics.storageUsedTb.number()} / ${metrics.storageTotalTb.number()} TB",
-                        footerSecondary = "${metrics.storageFreeGb.number()} GB free",
                         style = style,
                         modifier = slot,
-                        icon = AppIconKind.Storage,
-                        color = MetricColors.storage,
                     )
                 },
                 { slot -> TempsAndFansCard(metrics, style, slot) },
@@ -429,6 +428,135 @@ private fun QuickActionsCard(
         }
     }
 }
+
+/**
+ * Storage 卡片：**每块磁盘一页**，左右滑动翻页（用户反馈"只能看 C 盘"）。
+ *
+ * 页数 = 磁盘数；老 Agent（没有 disks 字段）或只有一块盘时就是单页，行为与原来一致。
+ * 页脚给这一页盘符/名称、已用/总量、剩余空间与温度；顶部小字给出 `第 n/m 块` 便于知道还有别的盘。
+ */
+@Composable
+private fun StorageCard(
+    disks: List<com.xukunz.wakeupmywall.domain.model.DiskSnapshot>,
+    metrics: MetricsSnapshot,
+    modelLine: String,
+    values: List<Float>,
+    style: WidgetStyle,
+    modifier: Modifier = Modifier,
+) {
+    val pages = disks.ifEmpty {
+        listOf(
+            com.xukunz.wakeupmywall.domain.model.DiskSnapshot(
+                name = modelLine,
+                mount = "—",
+                usagePercent = metrics.storagePercent,
+                usedGb = metrics.storageUsedTb?.times(1024f),
+                totalGb = metrics.storageTotalTb?.times(1024f),
+                freeGb = metrics.storageFreeGb?.toFloat(),
+                tempC = metrics.ssdTempC,
+            )
+        )
+    }
+    val pagerState = rememberPagerState(pageCount = { pages.size })
+
+    WidgetSurface(style = style, modifier = modifier.testTag("metric:storage")) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AppIcon(kind = AppIconKind.Storage, tint = MetricColors.storage, size = AppSizes.iconLarge)
+                Column {
+                    Text("Storage", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = modelLine,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag("metric:storage-model"),
+                    )
+                    if (pages.size > 1) {
+                        // 翻页提示（`C:\ · 1/2`）：让人知道旁边还有别的盘。
+                        Text(
+                            text = "${pages[pagerState.currentPage].mount} · ${pagerState.currentPage + 1}/${pages.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MetricColors.storage,
+                            modifier = Modifier.testTag("metric:storage-page"),
+                        )
+                    }
+                }
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth().testTag("metric:storage-pager"),
+        ) { page ->
+            val disk = pages[page]
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    ProgressRing(
+                        percent = disk.usagePercent,
+                        tag = "metric:storage-ring-$page",
+                        color = MetricColors.storage,
+                        modifier = Modifier.size(AppSizes.progressRing),
+                    )
+                }
+                MetricSparkline(values = if (page == 0) values else emptyList(), modifier = Modifier.fillMaxWidth().height(Spacing.lg))
+                Text(
+                    text = disk.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("metric:storage-disk-$page"),
+                )
+                Text(
+                    text = "${gb(disk.usedGb)} / ${gb(disk.totalGb)} GB",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.testTag("metric:storage-used-$page"),
+                )
+                Text(
+                    text = buildString {
+                        append("${gb(disk.freeGb)} GB free")
+                        if (disk.tempC != null) append(" · ${disk.tempC}°C")
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("metric:storage-footer-$page"),
+                )
+            }
+        }
+
+        if (pages.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                pages.indices.forEach { index ->
+                    val active = index == pagerState.currentPage
+                    Box(
+                        Modifier
+                            .padding(horizontal = Spacing.hairline)
+                            .size(if (active) Spacing.sm else Spacing.xs)
+                            .clip(CircleShape)
+                            .background(if (active) MetricColors.storage else DarkSurface.outline),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 磁盘容量：GB 保留一位小数，整数不拖 `.0`。 */
+private fun gb(value: Float?): String = value?.number() ?: UnknownReading
 
 @Composable
 private fun TempsAndFansCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: Modifier = Modifier) {

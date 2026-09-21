@@ -103,6 +103,19 @@ data class AgentStorageMetrics(
     val totalTb: Float? = null,
     val freeGb: Float? = null,
     val tempC: Float? = null,
+    /** 每块固定磁盘一条（0.4.0 起）：手机端按这个列表左右翻页。老 Agent 没有这个字段就是空列表。 */
+    val disks: List<AgentDisk> = emptyList(),
+)
+
+@Serializable
+data class AgentDisk(
+    val name: String,
+    val mount: String,
+    val usagePercent: Float? = null,
+    val usedGb: Float? = null,
+    val totalGb: Float? = null,
+    val freeGb: Float? = null,
+    val tempC: Float? = null,
 )
 
 @Serializable

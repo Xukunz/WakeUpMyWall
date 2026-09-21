@@ -85,6 +85,7 @@ public static class MetricsMapper
                 TotalTb: Round(storageTotalGb / 1024.0, 1),
                 FreeGb: Round(storageFreeGb, 1),
                 TempC: Round(Positive(Value(storage, SensorKind.Temperature, "Temperature")), 1)),
+            Disks: facts.Disks.Select(disk => ToDisk(disk, facts, storage)).ToList(),
             Thermal: new ThermalMetricsPayload(
                 MotherboardTempC: Round(Positive(Value(motherboard, SensorKind.Temperature, "Temperature #1")), 1),
                 CaseFanRpm: Rpm(Positive(CaseFans(motherboard)))),
@@ -132,6 +133,21 @@ public static class MetricsMapper
         value is null ? null : Math.Round(value.Value, digits);
 
     private static int? Rpm(double? value) => value is null ? null : (int)Math.Round(value.Value);
+
+    /** 单块磁盘：容量来自 DriveInfo；温度只有系统盘能确定归属（多盘与 LHM 存储硬件的对应关系不可靠）。 */
+    private static DiskPayload ToDisk(DiskFact disk, MachineFacts facts, List<SensorReading> storage)
+    {
+        var usedGb = disk.TotalGb - disk.FreeGb;
+        var isSystemDisk = string.Equals(disk.Mount, facts.SystemDiskMount, StringComparison.OrdinalIgnoreCase);
+        return new DiskPayload(
+            Name: disk.Name,
+            Mount: disk.Mount,
+            UsagePercent: Round(Percent(usedGb, disk.TotalGb), 1),
+            UsedGb: Round(usedGb, 1),
+            TotalGb: Round(disk.TotalGb, 1),
+            FreeGb: Round(disk.FreeGb, 1),
+            TempC: isSystemDisk ? Round(Positive(Value(storage, SensorKind.Temperature, "Temperature")), 1) : null);
+    }
 
     /** 0 值的温度/转速等于"读不到"（没有 0 ℃ 的 CPU）；用 0 冒充会被当成真实读数。 */
     private static double? Positive(double? value) => value is > 0 ? value : null;

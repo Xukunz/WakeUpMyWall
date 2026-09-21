@@ -86,7 +86,7 @@ public class MetricsImprovementTests
         CpuName: "AMD Ryzen 7 7700X", CpuShortName: "Ryzen 7 7700X",
         GpuName: "NVIDIA GeForce RTX 4070 Ti", GpuShortName: "RTX 4070 Ti",
         RamModule: "32 GB", StorageModule: "NVMe 2 TB",
-        VramTotalGb: 12, StorageTotalGb: 2048, StorageFreeGb: 102, NominalClockMhz: null,
+        VramTotalGb: 12, StorageTotalGb: 2048, StorageFreeGb: 102, SystemDiskMount: "C:\\", Disks: [new DiskFact("NVMe 2 TB", "C:\\", 2048, 102)], NominalClockMhz: null,
         UptimeSeconds: 100, BootedAtUtc: "2025-04-18T12:00:00Z");
 }
 

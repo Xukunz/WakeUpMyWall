@@ -2,6 +2,7 @@ package com.xukunz.wakeupmywall.domain.usecase
 
 import com.xukunz.wakeupmywall.core.network.AgentMetrics
 import com.xukunz.wakeupmywall.domain.model.HardwareIdentity
+import com.xukunz.wakeupmywall.domain.model.DiskSnapshot
 import com.xukunz.wakeupmywall.domain.model.LiveMetrics
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.domain.model.PcSummarySnapshot
@@ -56,6 +57,7 @@ object LiveMetricsMapper {
             bootDateLabel = bootDateLabel(metrics.bootedAtUtc, timeZone),
             // spec §8：最近应用是 P2，真实数据接入前保持空列表（UI 显示 —）。
             recentActivity = emptyList(),
+            disks = mapDisks(metrics),
         )
 
         val identity = HardwareIdentity(
@@ -89,6 +91,40 @@ object LiveMetricsMapper {
 
     /** 1 位小数：Agent 已经四舍五入过，这里再收一次防止 `33.599998` 这种浮点尾巴进 UI。 */
     private fun round1(value: Float?): Float? = value?.let { (it * 10f).roundToInt() / 10f }
+
+    /**
+     * 磁盘列表：优先用 Agent 报的多盘清单；老 Agent（0.4.0 之前）没有这个字段，
+     * 就用系统盘那几个字段合成一条，UI 不会因此空掉。
+     */
+    private fun mapDisks(metrics: AgentMetrics): List<DiskSnapshot> {
+        val storage = metrics.storage
+        if (storage.disks.isNotEmpty()) {
+            return storage.disks.map { disk ->
+                DiskSnapshot(
+                    name = disk.name,
+                    mount = disk.mount,
+                    usagePercent = round1(disk.usagePercent),
+                    usedGb = round1(disk.usedGb),
+                    totalGb = round1(disk.totalGb),
+                    freeGb = round1(disk.freeGb),
+                    tempC = disk.tempC?.roundToInt(),
+                )
+            }
+        }
+
+        if (storage.totalTb == null && storage.freeGb == null && storage.usagePercent == null) return emptyList()
+        return listOf(
+            DiskSnapshot(
+                name = metrics.identity.storageModule,
+                mount = "C:\\",
+                usagePercent = round1(storage.usagePercent),
+                usedGb = round1(storage.usedTb?.times(1024f)),
+                totalGb = round1(storage.totalTb?.times(1024f)),
+                freeGb = round1(storage.freeGb),
+                tempC = storage.tempC?.roundToInt(),
+            )
+        )
+    }
 
     private fun formatTime(iso: String, timeZone: TimeZone): String? = runCatching {
         val local = Instant.parse(iso).toLocalDateTime(timeZone)

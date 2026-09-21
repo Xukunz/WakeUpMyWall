@@ -115,6 +115,8 @@ data class MetricsSnapshot(
     val bootDateLabel: String?,
     /** spec §8 把"最近应用"列为 P2：真实数据未接入前是空列表，UI 显示 `—`。 */
     val recentActivity: List<ActivityEntry> = emptyList(),
+    /** 每块固定磁盘一条；空列表表示"这台 Agent 只报了系统盘"（UI 会退回单页）。 */
+    val disks: List<DiskSnapshot> = emptyList(),
 ) {
     companion object {
         /**
@@ -150,6 +152,17 @@ data class MetricsSnapshot(
         )
     }
 }
+
+/** 单块磁盘（Storage 卡片的一页）。 */
+data class DiskSnapshot(
+    val name: String,
+    val mount: String,
+    val usagePercent: Float?,
+    val usedGb: Float?,
+    val totalGb: Float?,
+    val freeGb: Float?,
+    val tempC: Int?,
+)
 
 /**
  * 一次成功的指标采样：Monitor 需要的三份模型 + 采样时刻。
