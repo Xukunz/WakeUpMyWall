@@ -29,6 +29,9 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - 手机端接入 Agent：Keystore AES-GCM 存 Token（明文不落盘）、Device Setup 的 `Advanced / Agent` 配对区、每 5 秒探一次 `/api/v1/status` 判断"PC 是否开着"、三种电源动作走真实接口（未配对时给出可读提示）
 - **指标端点（Phase 5A）**：`GET /api/v1/system` 返回 spec §8 的全部指标（CPU 使用率/温度/频率/核心、GPU 使用率/温度/显存/风扇、内存、系统盘、主板与 SSD 温度、机箱风扇、上下行 Mbps、Uptime），字段名与单位见 [agent-api.md](docs/plans/agent-api.md)；取不到的传感器给 `null` 而不是 0；Windows 走 LibreHardwareMonitor 0.9.6，非 Windows 走 `--fake-metrics` 合成读数（契约一致，端到端可验）
 - **Monitor 实时化（Phase 5B）**：手机端每 2 秒取一次指标，Monitor 的身份卡/四张指标卡/温度风扇/网络/运行时长全部接真数据，60 点 Ring Buffer 喂 sparkline；**取不到的读数显示 `—`（不是 0）**，掉线 3 次后标注 `Last update …` + `No fresh metrics` 并给出原因，未配对时明确提示且不发请求
+- **卡片自定义（Monitor）**：Settings → Appearance → `Monitor cards` 可调整九张卡的顺序（↑/↓）、显示隐藏（保留至少一张）与每张指标卡的信息类别（如 CPU 在 频率/核心数/温度 之间切换）；默认布局与 Phase 1 完全一致，不动设置就零变化
+- **多磁盘 Storage**：Storage 卡片改成每块固定磁盘一页的横滑视图（`C:\ · 1/2` + 翻页点），Agent 用 `DriveInfo` 枚举全部固定盘；单块盘读失败只跳过那一块
+- **多语言**：界面支持 English / 简体中文（Settings → Appearance → Language）。领域层产出的状态词用“英文词 → 译文”对照表翻译，因此英文逐字不变、既有视觉基线不受影响
 - **流式通道（Phase 5C）**：`WS /ws/v1/metrics` 每秒推一帧（握手 Bearer 鉴权），手机端 1 Hz 收帧、**ACTIVE 1s / IDLE 5s** 自适应（60 秒无触摸转 IDLE），掉线指数退避重连（1→8 秒封顶）并在断流期间用 HTTP 轮询兜底；老 Agent（没有该端点）自动降级为 60 秒一探
 - GitHub Actions CI：单元测试 + Compose UI 测试 + Debug 组装
 
