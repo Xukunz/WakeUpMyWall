@@ -13,6 +13,16 @@ using Microsoft.Extensions.Hosting.WindowsServices;
 var builder = WebApplication.CreateBuilder(args);
 
 #if WINDOWS
+// 诊断开关：把 LHM 实际枚举到的传感器写成清单后退出，用来定位"温度/风扇/网络读不到"。
+if (args.Contains("--dump-sensors"))
+{
+    var dumpPath = Path.Combine(AgentPaths.BaseDirectory, "sensors.txt");
+    Console.WriteLine($"传感器清单已写入：{SensorDump.Write(dumpPath)}");
+    return;
+}
+#endif
+
+#if WINDOWS
 // 装成 Windows 服务时要真的向 SCM 报到（否则 sc.exe start 报 1053）；
 // 在控制台里手动运行同样的 exe 时，这个方法什么都不做（IsWindowsService() 为 false）。
 builder.Host.UseWindowsService(options => options.ServiceName = "WakeUpMyWallAgent");

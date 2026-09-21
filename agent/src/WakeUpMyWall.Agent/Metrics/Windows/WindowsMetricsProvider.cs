@@ -122,8 +122,9 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
     private MachineFacts ReadFacts(DateTimeOffset now)
     {
         var cpuHardware = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-        var gpuHardware = _computer.Hardware.FirstOrDefault(h =>
-            h.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel);
+        // 名字也必须跟读数用**同一块**主显卡：以前这里是"枚举到的第一块"，
+        // 于是读数来自独显、卡片型号字却写着核显（用户实测指出）。
+        var gpuHardware = PickPrimaryGpu();
         var storageHardware = _computer.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Storage);
 
         var (storageTotalGb, storageFreeGb, driveRoot) = ReadSystemDrive();
