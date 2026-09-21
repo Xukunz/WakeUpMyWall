@@ -38,6 +38,7 @@ import com.xukunz.wakeupmywall.core.theme.DarkSurface
 import com.xukunz.wakeupmywall.core.theme.LocalAccentPalette
 import com.xukunz.wakeupmywall.core.theme.MetricColors
 import com.xukunz.wakeupmywall.core.theme.Spacing
+import com.xukunz.wakeupmywall.core.i18n.LocalStrings
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.ui.components.Breakpoints
 import com.xukunz.wakeupmywall.ui.components.PcCover
@@ -132,12 +133,12 @@ fun MonitorMode(
                 { slot ->
                     MetricCard(
                         key = MetricKeys.Cpu,
-                        label = "CPU",
+                        label = LocalStrings.current.cpu,
                         percent = metrics.cpuPercent,
                         modelLine = identity?.cpuShortName ?: "CPU",
                         values = history[MetricKeys.Cpu].orEmpty(),
                         footerPrimary = "${metrics.cpuClockGhz.number()} GHz",
-                        footerSecondary = "${metrics.cpuCores.number()} cores ${metrics.cpuThreads.number()} threads",
+                        footerSecondary = "${metrics.cpuCores.number()} ${LocalStrings.current.cores} ${metrics.cpuThreads.number()} ${LocalStrings.current.threads}",
                         style = style,
                         modifier = slot,
                         icon = AppIconKind.Cpu,
@@ -147,7 +148,7 @@ fun MonitorMode(
                 { slot ->
                     MetricCard(
                         key = MetricKeys.Gpu,
-                        label = "GPU",
+                        label = LocalStrings.current.gpu,
                         percent = metrics.gpuPercent,
                         modelLine = identity?.gpuShortName ?: "GPU",
                         values = history[MetricKeys.Gpu].orEmpty(),
@@ -162,12 +163,12 @@ fun MonitorMode(
                 { slot ->
                     MetricCard(
                         key = MetricKeys.Ram,
-                        label = "RAM",
+                        label = LocalStrings.current.ram,
                         percent = metrics.ramPercent,
                         modelLine = identity?.ramModule ?: "RAM",
                         values = history[MetricKeys.Ram].orEmpty(),
                         footerPrimary = "${metrics.ramUsedGb.number()} / ${metrics.ramTotalGb.number()} GB",
-                        footerSecondary = "Working set",
+                        footerSecondary = LocalStrings.current.workingSet,
                         style = style,
                         modifier = slot,
                         icon = AppIconKind.Ram,
@@ -277,7 +278,7 @@ private fun DeviceIdentityCard(
                     )
                 }
                 Text(
-                    text = "Last seen ${status.lastSeenLabel}",
+                    text = "${LocalStrings.current.lastSeen} ${status.lastSeenLabel}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("monitor:identity-lastseen"),
@@ -288,7 +289,7 @@ private fun DeviceIdentityCard(
         // 刻意放在 status 判断之外——没有状态行时（设计预览）同样需要说明数据是什么时候采的。
         if (capturedLabel != null) {
             Text(
-                text = if (isStale) "Last update $capturedLabel" else "Updated $capturedLabel",
+                text = if (isStale) "${LocalStrings.current.lastUpdate} $capturedLabel" else "${LocalStrings.current.updated} $capturedLabel",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("monitor:captured"),
@@ -296,7 +297,7 @@ private fun DeviceIdentityCard(
         }
         if (isStale) {
             Text(
-                text = "No fresh metrics",
+                text = LocalStrings.current.noFreshMetrics,
                 style = MaterialTheme.typography.labelSmall,
                 color = LocalAccentPalette.current.onlineColor,
                 modifier = Modifier.testTag("monitor:stale"),
@@ -378,7 +379,7 @@ private fun QuickActionsCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Quick Actions", style = MaterialTheme.typography.bodyMedium)
+            Text(LocalStrings.current.quickActions, style = MaterialTheme.typography.bodyMedium)
             AppIcon(
                 kind = AppIconKind.Plus,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -471,7 +472,7 @@ private fun StorageCard(
             ) {
                 AppIcon(kind = AppIconKind.Storage, tint = MetricColors.storage, size = AppSizes.iconLarge)
                 Column {
-                    Text("Storage", style = MaterialTheme.typography.bodyMedium)
+                    Text(LocalStrings.current.storage, style = MaterialTheme.typography.bodyMedium)
                     Text(
                         text = modelLine,
                         style = MaterialTheme.typography.labelSmall,
@@ -524,7 +525,7 @@ private fun StorageCard(
                 )
                 Text(
                     text = buildString {
-                        append("${gb(disk.freeGb)} GB free")
+                        append("${gb(disk.freeGb)} GB ${LocalStrings.current.free}")
                         if (disk.tempC != null) append(" · ${disk.tempC}°C")
                     },
                     style = MaterialTheme.typography.labelSmall,
@@ -561,7 +562,7 @@ private fun gb(value: Float?): String = value?.number() ?: UnknownReading
 @Composable
 private fun TempsAndFansCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: Modifier = Modifier) {
     WidgetSurface(style = style, modifier = modifier.testTag("metric:temps")) {
-        SectionLine(icon = AppIconKind.Thermometer, tint = MetricColors.temperatureWarm, title = "System Temps")
+        SectionLine(icon = AppIconKind.Thermometer, tint = MetricColors.temperatureWarm, title = LocalStrings.current.systemTemps)
         MetricRow("CPU", metrics.cpuTempC.celsiusText(), temperatureFraction(metrics.cpuTempC), "metric:temps-cpu", MetricColors.temperature)
         MetricRow("GPU", metrics.gpuTempC.celsiusText(), temperatureFraction(metrics.gpuTempC), "metric:temps-gpu", MetricColors.temperatureWarm)
         MetricRow(
@@ -577,7 +578,7 @@ private fun TempsAndFansCard(metrics: MetricsSnapshot, style: WidgetStyle, modif
             modifier = Modifier.fillMaxWidth().testTag("metric:fans"),
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
-            SectionLine(icon = AppIconKind.Fan, tint = MetricColors.fan, title = "Fans")
+            SectionLine(icon = AppIconKind.Fan, tint = MetricColors.fan, title = LocalStrings.current.fans)
             // 概念图里风扇也是"点 + 名称 + 数值 + 细条"，转速按 2000 RPM 满刻度换算。
             MetricRow("CPU Fan", "${metrics.cpuFanRpm.rpmText()} RPM", fanFraction(metrics.cpuFanRpm), "metric:fans-cpu", MetricColors.fan)
             MetricRow("GPU Fan", "${metrics.gpuFanRpm.rpmText()} RPM", fanFraction(metrics.gpuFanRpm), "metric:fans-gpu", MetricColors.fan)
@@ -606,7 +607,7 @@ private fun SectionLine(icon: AppIconKind, tint: Color, title: String) {
 @Composable
 private fun NetworkCard(metrics: MetricsSnapshot, values: List<Float>, style: WidgetStyle, modifier: Modifier = Modifier) {
     WidgetSurface(style = style, modifier = modifier.testTag("metric:network")) {
-        SectionLine(icon = AppIconKind.Wifi, tint = MetricColors.networkIcon, title = "Network")
+        SectionLine(icon = AppIconKind.Wifi, tint = MetricColors.networkIcon, title = LocalStrings.current.network)
         Text(
             text = "↓${metrics.downloadMbps.number()} Mbps",
             style = AppTypography.metricReadout,
@@ -625,7 +626,7 @@ private fun NetworkCard(metrics: MetricsSnapshot, values: List<Float>, style: Wi
 @Composable
 private fun UptimeCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: Modifier = Modifier) {
     WidgetSurface(style = style, modifier = modifier.testTag("metric:uptime")) {
-        SectionLine(icon = AppIconKind.Clock, tint = MetricColors.uptimeIcon, title = "Uptime")
+        SectionLine(icon = AppIconKind.Clock, tint = MetricColors.uptimeIcon, title = LocalStrings.current.uptime)
         Text(
             text = metrics.uptimeSeconds.uptimeText(),
             style = AppTypography.metricReadout,
@@ -642,7 +643,7 @@ private fun UptimeCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: M
 @Composable
 private fun ActivityCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: Modifier = Modifier) {
     WidgetSurface(style = style, modifier = modifier.testTag("monitor:activity")) {
-        SectionLine(icon = AppIconKind.List, tint = MetricColors.activityIcon, title = "Recent Activity")
+        SectionLine(icon = AppIconKind.List, tint = MetricColors.activityIcon, title = LocalStrings.current.recentActivity)
         if (metrics.recentActivity.isEmpty()) {
             // spec §8 把"最近应用"列为 P2：还没有真实数据时如实显示 —，不编四条假记录。
             Text(

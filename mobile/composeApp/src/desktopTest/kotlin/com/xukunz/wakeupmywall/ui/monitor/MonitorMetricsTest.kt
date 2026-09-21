@@ -7,6 +7,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.runComposeUiTest
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
+import com.xukunz.wakeupmywall.core.i18n.ChineseSimplifiedStrings
+import com.xukunz.wakeupmywall.core.i18n.LocalStrings
 import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
@@ -117,5 +119,26 @@ class MonitorMetricsTest {
 
         onNodeWithTag("metric:storage-page", useUnmergedTree = true).assertTextEquals("D:\\ · 2/2")
         onNodeWithTag("metric:storage-disk-1", useUnmergedTree = true).assertTextEquals("4 TB Data")
+    }
+
+    @Test
+    fun `the monitor speaks chinese when the string table says so`() = runComposeUiTest {
+        setContent {
+            WakeUpMyWallTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalStrings provides ChineseSimplifiedStrings,
+                ) {
+                    MonitorMode(
+                        metrics = MockData.metrics,
+                        history = history,
+                        style = WidgetStyle.Glass,
+                        identity = MockData.hardware,
+                        status = PcStatusLine("Desk PC", "在线", "21:04"),
+                    )
+                }
+            }
+        }
+
+        onNodeWithTag("monitor:identity-lastseen", useUnmergedTree = true).assertTextEquals("最后可见 21:04")
     }
 }

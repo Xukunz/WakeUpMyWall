@@ -3,6 +3,9 @@ package com.xukunz.wakeupmywall.ui.powerrail
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.model.PcState
 import com.xukunz.wakeupmywall.domain.model.capabilities
+import com.xukunz.wakeupmywall.core.i18n.AppStrings
+import com.xukunz.wakeupmywall.core.i18n.EnglishStrings
+import com.xukunz.wakeupmywall.core.i18n.localize
 
 /**
  * Power Rail 的展示模型。可用性字段一律来自 `PcState.capabilities(device)`，
@@ -40,23 +43,29 @@ val PowerRailModel.agentReachable: Boolean get() = canSleep
  */
 val PowerRailModel.showsStatusLine: Boolean get() = statusLine != connectionLabel
 
-fun powerRailModel(state: PcState, device: PcDevice?, wakeNote: String? = null): PowerRailModel {
+fun powerRailModel(
+    state: PcState,
+    device: PcDevice?,
+    wakeNote: String? = null,
+    /** 文案来源（i18n）：只翻译**展示词**，能力开关仍然只来自 `capabilities()`。 */
+    strings: AppStrings = EnglishStrings,
+): PowerRailModel {
     val capabilities = state.capabilities(device)
     return PowerRailModel(
         // 一台设备都没配时不要借 Mock 的名字：那会让人以为"有台叫 My PC 的机器"。
         pcName = device?.name ?: "No PC yet",
         deviceId = device?.id,
-        subtitle = "POWER CONTROL",
-        stateLabel = state.shortLabel(),
-        primaryLabel = state.primaryLabel(capabilities.primaryLabel),
-        primaryCaption = state.primaryCaption(),
+        subtitle = strings.localize("POWER CONTROL"),
+        stateLabel = strings.localize(state.shortLabel()),
+        primaryLabel = strings.localize(state.primaryLabel(capabilities.primaryLabel)),
+        primaryCaption = strings.localize(state.primaryCaption()),
         primaryEnabled = capabilities.primaryEnabled,
         canSleep = capabilities.canSleep,
         canShutdown = capabilities.canShutdown,
         canRestart = capabilities.canRestart,
         // 唯一决定连接条文案的地方：在线走 Agent，其余一律是 WOL 通道（规范 §3 术语规则）。
-        connectionLabel = if (state == PcState.ONLINE) "Agent connected over LAN" else "Wake-on-LAN Ready",
-        statusLine = capabilities.statusText,
+        connectionLabel = strings.localize(if (state == PcState.ONLINE) "Agent connected over LAN" else "Wake-on-LAN Ready"),
+        statusLine = strings.localize(capabilities.statusText),
         wakeNote = wakeNote,
     )
 }

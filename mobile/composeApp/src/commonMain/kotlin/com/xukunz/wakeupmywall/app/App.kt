@@ -191,6 +191,12 @@ fun App(
             ),
         )
     }
+    // 语言：非 @Composable 的闭包（电源动作、提示语）不能用 LocalStrings.current，这里按当前语言取一次。
+    val strings = when (appearance.language) {
+        AppLanguage.English -> EnglishStrings
+        AppLanguage.ChineseSimplified -> ChineseSimplifiedStrings
+    }
+
     var deviceInput by remember { mutableStateOf(device?.toSetupInput() ?: emptySetupInput()) }
     val wakeSequence = remember(wakeSender, wakePollMillis, wakeBudgetMillis, wakeAgentResponds, device) {
         WakeSequence(
@@ -209,7 +215,7 @@ fun App(
             onEvent = { event -> pcState = PcStateMachine.reduce(pcState, event) },
         )
     }
-    val railModel = powerRailModel(pcState, device, wakeNote = wakeNote)
+    val railModel = powerRailModel(pcState, device, wakeNote = wakeNote, strings = LocalStrings.current)
 
     /**
      * 探测结论 → 状态机事件（spec §4：在线与否一律由 Agent 判定）。
@@ -233,17 +239,17 @@ fun App(
         scope.launch {
             wakeNote = null
             if (target == null) {
-                wakeNote = "Add a device first"
+                wakeNote = strings.addDeviceFirst
                 return@launch
             }
             val token = agentToken
             if (token == null) {
-                wakeNote = "Pair the phone in Device Setup first (Agent section)"
+                wakeNote = strings.pairFirstHint
                 return@launch
             }
 
             when (val result = runCatching { agentApi.power(baseUrl(target), token, action) }.getOrNull()) {
-                null -> wakeNote = "Could not reach the Agent"
+                null -> wakeNote = strings.couldNotReachAgent
                 is ApiResult.Success -> pcState = PcStateMachine.reduce(pcState, event, target)
                 is ApiResult.Failure -> wakeNote = result.message
             }
@@ -259,18 +265,20 @@ fun App(
         scope.launch {
             wakeNote = null
             if (target == null) {
-                wakeNote = "Add a device first"
+                wakeNote = strings.addDeviceFirst
                 return@launch
             }
             val token = agentToken
             if (token == null) {
-                wakeNote = "Pair the phone in Device Setup first (Agent section)"
+                wakeNote = strings.pairFirstHint
                 return@launch
             }
 
             when (val result = runCatching { agentApi.runAction(baseUrl(target), token, action) }.getOrNull()) {
-                null -> wakeNote = "Could not reach the Agent"
-                is ApiResult.Success -> wakeNote = "${action.replaceFirstChar { it.uppercase() }} launched on ${target.name}"
+                null -> wakeNote = strings.couldNotReachAgent
+                is ApiResult.Success -> wakeNote = strings.launchedOn
+                        .replace("{action}", action.replaceFirstChar { it.uppercase() })
+                        .replace("{pc}", target.name)
                 is ApiResult.Failure -> wakeNote = result.message
             }
         }
@@ -393,7 +401,7 @@ fun App(
             val token = agentToken
             if (token == null) {
                 metricsFailures = metricsStaleAfter
-                metricsNote = "Pair the phone in Device Setup first (Agent section)"
+                metricsNote = strings.pairFirstHint
             } else {
                 when (
                     val result = runCatching {
@@ -403,7 +411,7 @@ fun App(
                 ) {
                     null -> {
                         metricsFailures += 1
-                        metricsNote = "Could not reach the Agent"
+                        metricsNote = strings.couldNotReachAgent
                     }
                     is ApiResult.Success -> applyMetricsSample(result.value)
                     is ApiResult.Failure -> {
@@ -498,10 +506,7 @@ fun App(
     WakeUpMyWallTheme(accent = appearance.accent) {
         // 语言切换只影响文案：所有用户可见字符串都从 LocalStrings 取（新增文案必须先加进表里）。
         CompositionLocalProvider(
-            LocalStrings provides when (appearance.language) {
-                AppLanguage.English -> EnglishStrings
-                AppLanguage.ChineseSimplified -> ChineseSimplifiedStrings
-            },
+            LocalStrings provides strings,
         ) {
         Box(
             modifier = Modifier
@@ -649,7 +654,7 @@ fun App(
                                                 isPairing = true
                                                 pairingNote = null
                                                 if (target == null) {
-                                                    pairingNote = "Add a device first"
+                                                    pairingNote = strings.addDeviceFirst
                                                 } else {
                                                     when (val result = agentApi.pair(baseUrl(target), code)) {
                                                         is ApiResult.Success -> {
@@ -704,8 +709,16 @@ fun App(
                 AlertDialog(
                     onDismissRequest = { pendingPowerAction = null },
                     modifier = Modifier.testTag("dialog:power"),
-                    title = { Text("${action.title()} ${device?.name ?: "the PC"}?") },
-                    text = { Text("This sends a ${action.title().lowercase()} command to the PC right away.") },
+                    title = {
+                        Text(
+                            strings.confirmPowerTitle
+                                .replace("{action}", action.title())
+                                .replace("{pc}", device?.name ?: "PC"),
+                        )
+                    },
+                    text = {
+                        Text(strings.confirmPowerBody.replace("{action}", action.title().lowercase()))
+                    },
                     confirmButton = {
                         TextButton(
                             onClick = {
@@ -719,7 +732,7 @@ fun App(
                         TextButton(
                             onClick = { pendingPowerAction = null },
                             modifier = Modifier.testTag("dialog:power-cancel"),
-                        ) { Text("Cancel") }
+                        ) { Text(strings.cancel) }
                     },
                 )
             }
