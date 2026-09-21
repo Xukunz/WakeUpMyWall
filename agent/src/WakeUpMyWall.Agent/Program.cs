@@ -45,7 +45,10 @@ builder.Services.AddSingleton<ISystemMetricsProvider>(new FakeSystemMetricsProvi
 
 var app = builder.Build();
 
+// 指标流（/ws/v1/metrics）需要 WebSocket 中间件；HTTP 端点不受影响。
+app.UseWebSockets();
 app.MapStatusEndpoints();
+app.MapMetricsSocket();
 
 /** 受保护端点（power / actions / system）都挂在这一组上。 */
 var protectedEndpoints = app.MapGroup("").AddEndpointFilter<BearerAuthFilter>();
