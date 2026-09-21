@@ -48,6 +48,8 @@ BUILD SUCCESSFUL in 1m 8s
 | TCP 探测 | JDK 自带 `java.net.Socket`（androidMain） | 未引入 `ktor-network`：探测只需"连得上/被拒/超时/解析失败"四态，JDK socket 足够，且异常映射能按类型写（common 侧拿不到这些异常类型） |
 | WOL 发送 | JDK 自带 `java.net.DatagramSocket`（androidMain，`broadcast = true`） | 不新增依赖；魔包 102 字节由 commonMain 的 `MagicPacket` 编码，androidUnitTest 用真 UDP socket 逐字节验过 |
 | PC Agent | **.NET SDK 10.0.401（LTS，装于 `~/.dotnet-local`）** + ASP.NET Core Minimal API | Phase 4A 新增；`agent/` 下 `dotnet test` 14 条契约测试全绿；Windows 侧产物用 `dotnet publish -r win-x64 --self-contained` 交叉发布（无需目标机装 .NET）。电源命令只在 Windows 生效，其它平台自动走 `--fake-power` |
+| 硬件监控库 | **LibreHardwareMonitorLib 0.9.6**（Phase 5A 实测） | 只挂在 `net10.0-windows` 上（包内只有 `runtimes/win-*/` 运行时资产 + `ref/net10.0` 引用程序集，单目标 `net10.0` 引用不了）。`dotnet build -f net10.0-windows` 与 `dotnet publish -f net10.0-windows -r win-x64 --self-contained` 均在本机（Linux）交叉构建通过，发布目录里带 `LibreHardwareMonitorLib.dll` 与 `HidSharp.dll`。传感器名与单位按上游源码核对（`Network.cs` 的吞吐是**字节/秒**、`MemoryWindows.cs` 的 `Data` 是 GB、`SmallData` 是 MB） |
+| Agent 目标框架 | **`net10.0;net10.0-windows` 双目标**（Phase 5A 实测） | `net10.0` 给 CI/开发机（合成指标，`--fake-metrics`）；`net10.0-windows` 给真实 PC（LibreHardwareMonitor）。Windows 专属代码用 `Compile Remove` 排除出 `net10.0`（已核对：`net10.0` 产物里没有 `WindowsMetricsProvider`，`net10.0-windows` 产物里有） |
 
 ### AGP 9 与 KMP 的关键限制（实测）
 

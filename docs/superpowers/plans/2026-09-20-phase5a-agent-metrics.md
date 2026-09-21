@@ -69,7 +69,7 @@
   - `SensorReading(string Hardware, string Sensor, string Name, double Value)`；`SensorHardware.{Cpu,Gpu,Memory,Storage,Motherboard,Network}`；`SensorKind.{Load,Temperature,ClockMhz,FanRpm,DataGb,ThroughputBps}`
   - `MetricsMapper.Map(readings: IReadOnlyList<SensorReading>, facts: MachineFacts, now: DateTimeOffset): SystemMetricsPayload`
 
-- [ ] **Step 1: 写失败测试**（`MetricsMapperTests.cs`；每条测试只断言一条规则）
+- [x] **Step 1: 写失败测试**（`MetricsMapperTests.cs`；每条测试只断言一条规则）
 
 ```csharp
 using WakeUpMyWall.Agent.Metrics;
@@ -191,12 +191,12 @@ public class MetricsMapperTests
 }
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH dotnet test WakeUpMyWall.Agent.slnx --filter MetricsMapperTests`
 Expected: 编译失败，`The type or namespace name 'Metrics' does not exist`（RED）
 
-- [ ] **Step 3: 实现**（三个文件；映射规则写在注释里，别让下一个人靠猜）
+- [x] **Step 3: 实现**（三个文件；映射规则写在注释里，别让下一个人靠猜）
 
 `Metrics/SystemMetrics.cs`：
 
@@ -435,12 +435,12 @@ public static class MetricsMapper
 }
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH dotnet test WakeUpMyWall.Agent.slnx`
 Expected: `Passed: 19`（14 既有 + 5 新增），0 失败
 
-- [ ] **Step 5: 提交** `feat: map raw sensor readings into the agent metric payload`
+- [x] **Step 5: 提交** `feat: map raw sensor readings into the agent metric payload`
 
 ### Task A2: `GET /api/v1/system` + 假数据提供者
 
@@ -453,7 +453,7 @@ Expected: `Passed: 19`（14 既有 + 5 新增），0 失败
 - Consumes: Task A1 的 `SystemMetricsPayload` / `MachineFacts` / `MetricsMapper.Map`
 - Produces: `interface ISystemMetricsProvider { SystemMetricsPayload Read(); }`；`FakeSystemMetricsProvider(TimeProvider clock)`；`MapSystemEndpoints(this RouteGroupBuilder group)`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```csharp
 using System.Net;
@@ -532,12 +532,12 @@ public class FakeSystemMetricsProviderTests
 }
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH dotnet test WakeUpMyWall.Agent.slnx --filter SystemEndpointTests`
 Expected: `/api/v1/system` 回 501 → `Assert.Equal() Failure: Expected Unauthorized, Actual NotImplemented`（RED）
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `Metrics/ISystemMetricsProvider.cs`：
 
@@ -646,12 +646,12 @@ builder.Services.AddSingleton<ISystemMetricsProvider>(services =>
 protectedEndpoints.MapSystemEndpoints();   // 取代原来的 501 占位
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH dotnet test WakeUpMyWall.Agent.slnx`
 Expected: `Passed: 23`，0 失败
 
-- [ ] **Step 5: 冒烟一次真实 HTTP（Linux + 假数据）**
+- [x] **Step 5: 冒烟一次真实 HTTP（Linux + 假数据）**
 
 ```bash
 cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH \
@@ -661,7 +661,7 @@ curl -s http://127.0.0.1:9877/api/v1/status
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9877/api/v1/system   # 期望 401
 ```
 
-- [ ] **Step 6: 提交** `feat: serve the agent metric payload on /api/v1/system`
+- [x] **Step 6: 提交** `feat: serve the agent metric payload on /api/v1/system`
 
 ### Task A3: Windows 提供者（LibreHardwareMonitor）+ 双目标 TFM
 
@@ -674,7 +674,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9877/api/v1/system   #
 - Consumes: `ISystemMetricsProvider`、`SensorReading`、`MetricsMapper`、`MachineFacts`
 - Produces: `WindowsMetricsProvider : ISystemMetricsProvider`（`Computer` + `DriveInfo` + 注册表）
 
-- [ ] **Step 1: 改 csproj：双目标 + 条件依赖**
+- [x] **Step 1: 改 csproj：双目标 + 条件依赖**
 
 ```xml
 <PropertyGroup>
@@ -708,7 +708,7 @@ builder.Services.AddSingleton<ISystemMetricsProvider>(
 
 （非 Windows 那一支不要为了取 `TimeProvider` 去建一个临时 provider —— 直接 `new FakeSystemMetricsProvider(TimeProvider.System)` 即可。）
 
-- [ ] **Step 2: 实现 `WindowsMetricsProvider`**（薄适配：LHM 传感器 → `SensorReading`；`DriveInfo` 与注册表 → `MachineFacts`）
+- [x] **Step 2: 实现 `WindowsMetricsProvider`**（薄适配：LHM 传感器 → `SensorReading`；`DriveInfo` 与注册表 → `MachineFacts`）
 
 实现要点（照此写，不要自由发挥）：
 
@@ -721,7 +721,7 @@ builder.Services.AddSingleton<ISystemMetricsProvider>(
 6. 存储容量：`new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory)!)` 的 `TotalSize` / `AvailableFreeSpace`（字节 → GB，`/1024^3`）；`StorageModule` 取 LHM 存储硬件名，取不到就用盘符。
 7. `UptimeSeconds = Environment.TickCount64 / 1000`；`BootedAtUtc = DateTimeOffset.UtcNow.AddSeconds(-uptime)`。
 
-- [ ] **Step 3: 交叉编译 + 发布冒烟（Linux 上就能做）**
+- [x] **Step 3: 交叉编译 + 发布冒烟（Linux 上就能做）**
 
 ```bash
 cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH \
@@ -731,7 +731,7 @@ cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH \
 ```
 Expected: 两条都成功，`/tmp/agent-win/WakeUpMyWall.Agent.exe` 存在（1 个 native 依赖都不会漏）
 
-- [ ] **Step 4: 双目标下跑全量测试，且 `net10.0` 目标仍可构建**
+- [x] **Step 4: 双目标下跑全量测试，且 `net10.0` 目标仍可构建**
 
 ```bash
 cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH \
@@ -739,20 +739,20 @@ cd agent && DOTNET_ROOT=$HOME/.dotnet-local PATH=$HOME/.dotnet-local:$PATH \
 ```
 Expected: 23 条测试全绿；`net10.0` 构建成功（Windows 提供者被 `Compile Remove` 排除，不参与编译）
 
-- [ ] **Step 5: 提交** `feat: read real windows metrics through librehardwaremonitor`
+- [x] **Step 5: 提交** `feat: read real windows metrics through librehardwaremonitor`
 
 ### Task A4: 文档、契约与验收
 
 **Files:**
 - Modify: `docs/plans/agent-api.md`、`agent/README.md`、`docs/plans/version-matrix.md`、`README.md`、`docs/superpowers/plans/2026-09-19-roadmap.md`、本计划
 
-- [ ] **Step 1: 写 `agent-api.md` 的 `/api/v1/system` 契约**（把 501 那行换成真实端点 + 字段表：JSON 路径、单位、可空性、来源）
-- [ ] **Step 2: 本机验收（Linux + 假数据，真实 HTTP + Bearer + 401 对照）**
+- [x] **Step 1: 写 `agent-api.md` 的 `/api/v1/system` 契约**（把 501 那行换成真实端点 + 字段表：JSON 路径、单位、可空性、来源）
+- [x] **Step 2: 本机验收（Linux + 假数据，真实 HTTP + Bearer + 401 对照）**
 
 起服务 → 从日志取配对码 → `POST /api/v1/pairing` 拿 Token → `GET /api/v1/system`（带 Token 与不带 Token 各一次），把关键字段贴进本计划 §4。
 
-- [ ] **Step 3: 更新 roadmap / version-matrix / README / agent README**（Phase 5 拆成 5A/5B/5C；LHM 0.9.6 + 双 TFM 行；`--fake-metrics` 与 Windows 自验清单）
-- [ ] **Step 4: 提交** `docs: record the phase 5a metric endpoint`
+- [x] **Step 3: 更新 roadmap / version-matrix / README / agent README**（Phase 5 拆成 5A/5B/5C；LHM 0.9.6 + 双 TFM 行；`--fake-metrics` 与 Windows 自验清单）
+- [x] **Step 4: 提交** `docs: record the phase 5a metric endpoint`
 
 ---
 
@@ -774,4 +774,52 @@ Expected: 23 条测试全绿；`net10.0` 构建成功（Windows 提供者被 `Co
 
 ## 4. 验收实录
 
-（Task A4 完成后填写：Linux + `--fake-metrics` 的真实 HTTP 结果、双 TFM 构建/发布结果，以及"真机 Windows 读数待用户验证"的显式标记。）
+**运行环境：** Ubuntu（本机，无 Windows），.NET SDK 10.0.401（`~/.dotnet-local`），2026-09-20 20:58 EDT。
+
+### 4.1 测试与构建
+
+| 步骤 | 命令 | 实测结果 |
+| --- | --- | --- |
+| Task A1 RED | `dotnet test --filter MetricsMapperTests` | 编译失败：`The type or namespace name 'Metrics' does not exist` |
+| Task A1 GREEN | `dotnet test WakeUpMyWall.Agent.slnx` | `Passed: 19`（14 既有 + 5 新增），0 失败 |
+| Task A2 RED | `dotnet test`（端点测试已写、实现未写） | `FakeSystemMetricsProvider` 找不到（编译期 RED）；实现后 `Metrics_answer_with_the_contract_fields_when_authorized` 由 501 变 200 |
+| Task A2 GREEN | `dotnet test WakeUpMyWall.Agent.slnx` | `Passed: 23`，0 失败 |
+| Task A3 交叉编译 | `dotnet build src/WakeUpMyWall.Agent -f net10.0-windows` | `Build succeeded. 0 Warning(s) 0 Error(s)`（LHM 0.9.6 已还原） |
+| Task A3 交叉发布 | `dotnet publish -f net10.0-windows -r win-x64 --self-contained -c Release -o /tmp/agent-win` | 成功；`WakeUpMyWall.Agent.exe`（162 KB）+ `LibreHardwareMonitorLib.dll` + `HidSharp.dll` 都在发布目录里 |
+| Task A3 目标隔离 | `strings bin/Debug/net10.0/…dll \| grep -c WindowsMetricsProvider` | `net10.0` = 0、`net10.0-windows` = 1（Windows 适配层确实没进非 Windows 产物） |
+| 全量回归 | `dotnet test` + `dotnet build -f net10.0` | `Passed: 23`；`Build succeeded. 0 Warning(s)` |
+
+### 4.2 端到端（真实 HTTP + Bearer）
+
+```text
+$ ASPNETCORE_URLS=http://127.0.0.1:9881 dotnet WakeUpMyWall.Agent.dll --fake-power
+      Now listening on: http://127.0.0.1:9881
+WakeUpMyWall 配对码：433187
+
+$ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9881/api/v1/system
+401                                    # 没有 Token：受保护端点照旧 401
+
+$ curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:9881/api/v1/system   # 20:58:02
+{"capturedAtUtc":"2026-09-21T00:58:02.8298709+00:00","identity":{"hostname":"xukunz-M8","os":"Linux (fake metrics)",
+ "cpuName":"Fake Ryzen 7 7700X 8-Core Processor","cpuShortName":"Ryzen 7 7700X","gpuName":"Fake GeForce RTX 4070 Ti",
+ "gpuShortName":"RTX 4070 Ti","ramModule":"32 GB DDR5-6000","storageModule":"NVMe 2 TB"},
+ "cpu":{"usagePercent":14,"clockGhz":4.2,"cores":4,"threads":12,"tempC":47.6,"fanRpm":980},
+ "gpu":{"usagePercent":15.8,"tempC":33.5,"vramUsedGb":2.4,"vramTotalGb":12,"fanRpm":1200},
+ "memory":{"usagePercent":42,"usedGb":13.4,"totalGb":32},
+ "storage":{"usagePercent":95,"usedTb":1.9,"totalTb":2,"freeGb":102,"tempC":41.3},
+ "thermal":{"motherboardTempC":33,"caseFanRpm":870},
+ "network":{"downloadMbps":10.6,"uploadMbps":2.2},"uptimeSeconds":280799,...}
+
+$ 4 秒后再取一次                                                                 # 20:58:06
+… "usagePercent":13 … "tempC":45.5 … "downloadMbps":14.6 … "uptimeSeconds":280804 …
+```
+
+结论：配对 → 带 Token 取指标 → 不带 Token 被 401 拒绝，链路通了；两次采样之间数值在动（CPU 14%→13%、
+温度 47.6→45.5 ℃、下行 10.6→14.6 Mbps），说明这是采样而不是常量。
+
+### 4.3 明确没验到的部分（不掩盖）
+
+- **Windows 真实读数没有在本机验证**：本环境没有 Windows PC，LibreHardwareMonitor 的传感器读取只做到
+  "交叉编译 + 交叉发布通过"。真机核对清单（CPU/内存/网络/存储对齐任务管理器、温度需要管理员权限）写在
+  [agent/README.md](../../../agent/README.md) 的「Windows 上的指标自验清单（Phase 5A）」，**待你在 Windows 上执行**。
+- 手机端还没有消费这个端点（Phase 5B）；`/ws/v1/metrics` 与 1s/5s 自适应属 Phase 5C。

@@ -6,7 +6,7 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 
 ## 项目状态
 
-当前处于 **Phase 3（WOL）**：Phase 0（KMP 工程基础）、Phase 1（Design System + Mock UI）、Phase 2（设备系统）已交付，Phase 3 的代码与模拟器验收已落地 —— 只剩"真机对目标 PC 连续 10 次开机"需要你在有目标 PC 的局域网里执行（步骤与记录表见 [Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) Task 5 Step 3）。已完成：
+当前处于 **Phase 5（PC Monitor 实时化）**：Phase 0–4 已交付，Phase 5 拆成三份计划，其中 **Phase 5A（Agent 指标端点）已完成**、5B/5C 待做（见 [路标](docs/superpowers/plans/2026-09-19-roadmap.md)）。仍有两项**需要你在真机上执行**的验收：Phase 3 的"对目标 PC 连续 10 次开机"（[Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) Task 5 Step 3）与 Phase 4A 的"Windows 上四种电源操作 + 服务自启"（[Phase 4A 计划](docs/superpowers/plans/2026-09-20-phase4a-pc-agent.md) Task A4 Step 3）。已完成：
 
 - Kotlin Multiplatform 工程骨架（`commonMain` 不依赖任何 Android API）
 - 领域模型与 PC 状态机（纯函数 + 单元测试）
@@ -23,6 +23,9 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - WOL：102 字节魔包（6×`0xFF` + MAC×16，纯函数 + 逐字节单测）、UDP 广播 ×3（JDK `DatagramSocket`，`broadcast = true`）、`WAKING` 期间每 2 秒轮询 `GET /api/v1/status`，应答即 `ONLINE`，预算耗尽回落 `WOL_READY` 并给出 `Sent 3 wake packets — no answer …` 这类解释行
 - 状态派生：`Test Connection` 的结论会喂给状态机 —— Agent 不可达但设备有 MAC/广播（`PcDevice.isWakeable`）时落 `WOL_READY`（主环可点），否则 `OFFLINE`
 - WOL 真机验收（模拟器）：logcat `sent 102 bytes x3 to 192.168.1.255:9`、rail `Waking PC…` → 60 s 后带原因回落、stub Agent 应答后回到 `Online`（见 [Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) §4.2、`docs/plans/screenshots/phase3-*.png`）
+- PC Agent（C# / .NET 10）：`GET /api/v1/status`（免鉴权）、`POST /api/v1/pairing`（6 位一次性配对码换 Token）、`POST /api/v1/power/{sleep,shutdown,restart,lock}`（命令走参数数组，未知动作 404 且不执行）、`GET /api/v1/actions`（白名单）、全部受保护端点缺 Token 一律 401
+- 手机端接入 Agent：Keystore AES-GCM 存 Token（明文不落盘）、Device Setup 的 `Advanced / Agent` 配对区、每 5 秒探一次 `/api/v1/status` 判断"PC 是否开着"、三种电源动作走真实接口（未配对时给出可读提示）
+- **指标端点（Phase 5A）**：`GET /api/v1/system` 返回 spec §8 的全部指标（CPU 使用率/温度/频率/核心、GPU 使用率/温度/显存/风扇、内存、系统盘、主板与 SSD 温度、机箱风扇、上下行 Mbps、Uptime），字段名与单位见 [agent-api.md](docs/plans/agent-api.md)；取不到的传感器给 `null` 而不是 0；Windows 走 LibreHardwareMonitor 0.9.6，非 Windows 走 `--fake-metrics` 合成读数（契约一致，端到端可验）
 - GitHub Actions CI：单元测试 + Compose UI 测试 + Debug 组装
 
 计划与验收标准：
@@ -30,6 +33,8 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - Phase 1：[2026-09-19-phase1-design-system-and-mock-ui.md](docs/superpowers/plans/2026-09-19-phase1-design-system-and-mock-ui.md)、视觉复核 [phase1-visual-review.md](docs/plans/phase1-visual-review.md)
 - Phase 2（已完成）：[2026-09-20-phase2-device-system.md](docs/superpowers/plans/2026-09-20-phase2-device-system.md)
 - Phase 3（代码与模拟器验收已完成，真机 10/10 待执行）：[2026-09-20-phase3-wol.md](docs/superpowers/plans/2026-09-20-phase3-wol.md)
+- Phase 4A（Agent 服务端，Windows 自验待执行）：[2026-09-20-phase4a-pc-agent.md](docs/superpowers/plans/2026-09-20-phase4a-pc-agent.md)
+- Phase 4B（手机端接入 Agent）、Phase 5A（Agent 指标端点，已完成）：[2026-09-20-phase4b-app-agent-integration.md](docs/superpowers/plans/2026-09-20-phase4b-app-agent-integration.md)、[2026-09-20-phase5a-agent-metrics.md](docs/superpowers/plans/2026-09-20-phase5a-agent-metrics.md)
 - 全阶段路标：[2026-09-19-roadmap.md](docs/superpowers/plans/2026-09-19-roadmap.md)
 
 ## 技术栈

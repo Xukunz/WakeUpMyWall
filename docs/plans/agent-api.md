@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | GET | `/api/v1/status` | **免鉴权** | 只回最小信息：`hostname` / `agentVersion` / `uptimeSeconds` / `paired`。免鉴权是为了让"PC 开着但还没配对"这一状态可达（spec §4 的 `ONLINE` 判定也需要它）。 |
 | POST | `/api/v1/pairing` | **免鉴权** | body `{"code":"123456"}`；配对码由 PC 端启动时生成并打印在控制台与日志里，6 位数字、5 分钟有效、一次性。成功回 `{"token":"…"}`。 |
-| GET | `/api/v1/system` | Bearer | Phase 4 返回 **501**：指标属于 Phase 5（LibreHardwareMonitor）。 |
+| GET | `/api/v1/system` | Bearer | 指标（Phase 5A 起为真实载荷，见 §指标载荷）。取不到的传感器一律 `null`，绝不用 0 冒充。 |
 | GET | `/api/v1/actions` | Bearer | `id → 显示名` 白名单。 |
 | POST | `/api/v1/actions/{id}` | Bearer | 只允许白名单内 id。 |
 | POST | `/api/v1/power/sleep` `/shutdown` `/restart` `/lock` | Bearer | 四个电源动作；命令走参数数组，绝不拼字符串。 |
@@ -26,7 +26,32 @@
 | 404 | 未知电源动作 / 未知 action id | **不执行任何外部命令**（验收要求，测试断言执行列表为空）。 |
 | 409 | 已经配对过，又调 `/pairing` | 想重新配对需要删掉 `agent.json` 并重启服务。 |
 | 500 | 系统命令返回非 0 退出码 | 回 `{"error":"…"}`，附上命令与退出码。 |
-| 501 | `/api/v1/system` | Phase 4 不提供指标。 |
+| 501 | — | 已不再使用：Phase 5A 起 `/api/v1/system` 返回真实指标（Phase 4 的 501 占位已删除）。 |
+
+## 指标载荷（`GET /api/v1/system`，Phase 5A）
+
+JSON 属性名沿用 Minimal API 的 camelCase；**除身份与时间字段外全部可空**——读不到就是 `null`（例如没有 LibreHardwareMonitor 支持的传感器）。单位写死如下，手机端不再做换算：
+
+| JSON 路径 | 单位 | 来源 |
+| --- | --- | --- |
+| `capturedAtUtc` | ISO-8601（UTC） | 采样时刻 |
+| `identity.hostname` / `identity.os` | 文本 | `Environment.MachineName` / `RuntimeInformation.OSDescription` |
+| `identity.cpuName` / `identity.cpuShortName` | 文本 | 注册表 `ProcessorNameString`（短名去掉 `AMD ` / `Intel ` / `NVIDIA GeForce ` 前缀） |
+| `identity.gpuName` / `identity.gpuShortName` | 文本 | LibreHardwareMonitor 的 GPU 硬件名 |
+| `identity.ramModule` / `identity.storageModule` | 文本 | LHM 的 DIMM / 存储硬件名 |
+| `cpu.usagePercent` / `cpu.tempC` | % / °C | LHM `CPU Total` / `CPU Package` |
+| `cpu.clockGhz` | GHz | LHM `CPU Core #n` 的平均值（源单位 MHz） |
+| `cpu.cores` / `cpu.threads` | 个 | 时钟传感器计数 / `Environment.ProcessorCount` |
+| `cpu.fanRpm` | RPM | 主板/CPU 硬件里名字含 `CPU` 的风扇 |
+| `gpu.usagePercent` / `gpu.tempC` / `gpu.vramUsedGb` / `gpu.vramTotalGb` / `gpu.fanRpm` | % / °C / GB / GB / RPM | LHM `GPU Core`、`D3D Dedicated Memory Used`；显存总量来自注册表 |
+| `memory.usagePercent` / `memory.usedGb` / `memory.totalGb` | % / GB / GB | LHM `Memory` / `Memory Used` + `Memory Available` |
+| `storage.usagePercent` / `storage.usedTb` / `storage.totalTb` / `storage.freeGb` / `storage.tempC` | % / TB / TB / GB / °C | 系统盘容量来自 `DriveInfo`，温度来自 LHM |
+| `thermal.motherboardTempC` / `thermal.caseFanRpm` | °C / RPM | LHM 主板硬件 |
+| `network.downloadMbps` / `network.uploadMbps` | Mbps | LHM 吞吐（**源单位是字节/秒**，按 `×8/1e6` 换算） |
+| `uptimeSeconds` / `bootedAtUtc` | 秒 / ISO-8601 | `Environment.TickCount64` |
+
+非 Windows 平台（开发机 / CI）与 `--fake-metrics` 走合成读数：数值由时间决定（可复现、随时间变化），
+契约与真实载荷完全一致，但 `identity.os` 会写成 `Linux (fake metrics)`，一眼看得出是假的。
 
 ## 配对流程（V1）
 
