@@ -41,5 +41,19 @@ public class UnpairTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Unpair_writes_the_new_code_to_the_pairing_file()
+    {
+        // 手机端 Unpair 与托盘"重新生成配对码"共用这条路径：新码必须落盘，
+        // 否则安装包/托盘读到的还是旧码（用户就是被这一点卡住的）。
+        using var app = new TestApp();
+        var client = await TestAuth.AuthorizedClientAsync(app);
+
+        var payload = await (await client.PostAsync("/api/v1/unpair", content: null))
+            .Content.ReadFromJsonAsync<UnpairPayload>();
+
+        Assert.Equal(payload!.PairingCode, File.ReadAllText(app.PairingCodeFile).Trim());
+    }
+
     private sealed record UnpairPayload(string PairingCode);
 }

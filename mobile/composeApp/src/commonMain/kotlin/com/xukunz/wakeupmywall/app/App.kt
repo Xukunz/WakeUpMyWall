@@ -682,7 +682,9 @@ fun App(
                                                             pairingNote = "Unpaired on both sides — new pairing code: " +
                                                                 "${result.value.pairingCode} (valid 5 min)"
                                                         is ApiResult.Failure -> pairingNote = result.message
-                                                        else -> Unit
+                                                        // 手机侧已经没有 Token 了：只能让用户在 PC 上重置（托盘右键）。
+                                                        else -> pairingNote =
+                                                            "Reset pairing on the PC: tray icon → 重新生成配对码"
                                                     }
                                                     agentTokens.clear(target.id)
                                                 }

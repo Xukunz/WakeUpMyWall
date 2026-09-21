@@ -20,6 +20,20 @@ if (args.Contains("--dump-sensors"))
     Console.WriteLine($"传感器清单已写入：{SensorDump.Write(dumpPath)}");
     return;
 }
+// 重置配对（无人值守/服务模式下没有托盘可用）：忘掉 Token、生成新码、写盘后退出。
+if (args.Contains("--reset-pairing"))
+{
+    var tokenFile = builder.Configuration["Agent:TokenFile"] ?? AgentPaths.DefaultTokenFile;
+    var codeFile = builder.Configuration["Agent:PairingCodeFile"] ?? AgentPaths.PairingCodeFile;
+    var store = new FileTokenStore(tokenFile);
+    var pairing = new PairingService(
+        store,
+        TimeProvider.System,
+        code => PairingCodeFile.TryWrite(codeFile, code, out _));
+    var fresh = pairing.Unpair();
+    Console.WriteLine($"配对已重置。新的配对码：{fresh}（已写入 {codeFile}）");
+    return;
+}
 #endif
 
 #if WINDOWS
@@ -43,7 +57,28 @@ builder.Logging.AddProvider(new FileLoggerProvider(
 // Token 落盘位置可由配置覆盖（测试用临时文件，生产用 AgentPaths.DefaultTokenFile）。
 builder.Services.AddSingleton<ITokenStore>(services => new FileTokenStore(
     services.GetRequiredService<IConfiguration>()["Agent:TokenFile"] ?? AgentPaths.DefaultTokenFile));
-builder.Services.AddSingleton<PairingService>();
+// 配对码落盘要跟 PairingService 绑在一起：启动、Unpair、托盘"重新生成配对码"三条路径都走它，
+// 否则 pairing.txt 会变成旧的码（安装包与托盘都靠这个文件取码）。
+builder.Services.AddSingleton(services =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var codeFile = configuration["Agent:PairingCodeFile"] ?? AgentPaths.PairingCodeFile;
+    var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Pairing");
+    return new PairingService(
+        services.GetRequiredService<ITokenStore>(),
+        services.GetRequiredService<TimeProvider>(),
+        code =>
+        {
+            if (PairingCodeFile.TryWrite(codeFile, code, out var error))
+            {
+                logger.LogInformation("新配对码 {Code} 已写入 {File}", code, codeFile);
+            }
+            else
+            {
+                logger.LogWarning("配对码写不进 {File}：{Reason}", codeFile, error);
+            }
+        });
+});
 builder.Services.AddSingleton<BearerAuthFilter>();
 builder.Services.AddSingleton<IAppLauncher, ShellAppLauncher>();
 builder.Services.AddSingleton<ActionRegistry>();
@@ -88,9 +123,13 @@ protectedEndpoints.MapPost(
 protectedEndpoints.MapPowerEndpoints();
 protectedEndpoints.MapActionEndpoints();
 
+// 409 的语义：PC 侧已有配对记录。手机端此时无法自行解除（它已经没有 Token 了），
+// 所以在 PC 上重置——托盘右键「重新生成配对码」或 `--reset-pairing`。
 app.MapPost("/api/v1/pairing", (PairingRequest request, PairingService pairing) =>
     pairing.IsPaired
-        ? Results.Json(new { error = "already paired" }, statusCode: StatusCodes.Status409Conflict)
+        ? Results.Json(
+            new { error = "already paired — reset pairing on the PC (tray → 重新生成配对码)" },
+            statusCode: StatusCodes.Status409Conflict)
         : pairing.TryRedeem(request.Code, out var token)
             ? Results.Ok(new { token })
             : Results.Json(
@@ -135,6 +174,7 @@ if (!WindowsServiceHelpers.IsWindowsService() && !args.Contains("--no-tray"))
             app.Logger.LogInformation("托盘请求退出，正在停止 Agent");
             app.Lifetime.StopApplication();
         },
+        resetPairing: () => pairing.Unpair(),
         logger: app.Logger);
 }
 #endif

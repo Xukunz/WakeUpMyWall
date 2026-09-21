@@ -21,9 +21,28 @@ public sealed class TrayIconHost : IDisposable
     private readonly ContextMenuStrip _menu;
     private readonly ToolStripMenuItem _pairingItem;
 
-    private TrayIconHost(Func<string> menuLabel, Action exit, ILogger logger)
+    private TrayIconHost(Func<string> menuLabel, Func<string> resetPairing, Action exit, ILogger logger)
     {
+        // 先建图标对象：下面的菜单项回调要用它弹气泡，字段是 readonly，不能等菜单做完再赋值。
+        _notifyIcon = new NotifyIcon
+        {
+            Icon = LoadIcon(IsLightTaskbar()),
+            // 悬停提示有 63 字符上限；此处只是名字，详细信息走右键菜单。
+            Text = "WakeUpMyWall Agent",
+        };
         _pairingItem = new ToolStripMenuItem(menuLabel()) { Enabled = false };
+
+        // 重置配对必须在 PC 侧提供：手机端一旦丢了 Token，就无法让 PC 忘掉旧配对，
+        // 重新配对会永远 409 already paired（真机踩到）。
+        var resetItem = new ToolStripMenuItem("重新生成配对码（解除配对）");
+        resetItem.Click += (_, _) =>
+        {
+            var code = resetPairing();
+            _pairingItem.Text = menuLabel();
+            _notifyIcon.BalloonTipTitle = "配对已重置";
+            _notifyIcon.BalloonTipText = $"新的配对码：{code}（5 分钟有效）";
+            _notifyIcon.ShowBalloonTip(10_000);
+        };
 
         var exitItem = new ToolStripMenuItem("退出 WakeUpMyWall Agent");
         exitItem.Click += (_, _) =>
@@ -35,19 +54,14 @@ public sealed class TrayIconHost : IDisposable
 
         _menu = new ContextMenuStrip();
         _menu.Items.Add(_pairingItem);
+        _menu.Items.Add(resetItem);
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(exitItem);
         // 每次弹出前刷新：配对码是会变的（重启换新码，配对成功后失效）。
         _menu.Opening += (_, _) => _pairingItem.Text = menuLabel();
 
-        _notifyIcon = new NotifyIcon
-        {
-            Icon = LoadIcon(IsLightTaskbar()),
-            // 悬停提示有 63 字符上限；此处只是名字，详细信息走右键菜单。
-            Text = "WakeUpMyWall Agent",
-            ContextMenuStrip = _menu,
-            Visible = true,
-        };
+        _notifyIcon.ContextMenuStrip = _menu;
+        _notifyIcon.Visible = true;
 
         // 首次运行给一次气泡，省得用户找不到图标（很多人不知道要去右下角找）。
         _notifyIcon.BalloonTipTitle = "WakeUpMyWall Agent 已在运行";
@@ -58,7 +72,11 @@ public sealed class TrayIconHost : IDisposable
     /**
      * 在专用 STA 线程上启动托盘。**失败返回 null**（不抛）：调用方只记日志，不影响 Agent。
      */
-    public static TrayIconHost? Start(Func<string> menuLabel, Action exit, ILogger logger)
+    public static TrayIconHost? Start(
+        Func<string> menuLabel,
+        Func<string> resetPairing,
+        Action exit,
+        ILogger logger)
     {
         TrayIconHost? host = null;
         using var ready = new ManualResetEventSlim(false);
@@ -67,7 +85,7 @@ public sealed class TrayIconHost : IDisposable
         {
             try
             {
-                host = new TrayIconHost(menuLabel, exit, logger);
+                host = new TrayIconHost(menuLabel, resetPairing, exit, logger);
                 ready.Set();
                 Application.Run(new ApplicationContext());
             }
