@@ -54,6 +54,8 @@ BUILD SUCCESSFUL in 1m 8s
 | Agent 版本与发布 | **`<Version>0.2.0</Version>` + AssemblyVersion 派生**（2026-09-20 实测） | `/api/v1/status` 的 `agentVersion` 由程序集读出（不再手写字符串），实测返回 `0.2.0`；发布流水线里另有一道"tag 与 csproj 版本一致"的检查 |
 | Windows 服务宿主 | **Microsoft.Extensions.Hosting.WindowsServices 10.0.0**（仅 `net10.0-windows`） | `builder.Host.UseWindowsService()` 让进程真的向 SCM 报到；不加的话 `sc.exe start` 会报 1053（这条是 Phase 4A 文档里没验到的坑） |
 | 一键安装包 | **Inno Setup 6**（仅在 release 流水线的 windows runner 上装，`choco install innosetup`） | `agent/installer/WakeUpMyWall.Agent.iss` 负责铺文件 + 注册服务 + 放行 9876 + 显示配对码；本机（Linux）没有 ISCC，安装包本身只能在 CI 里编译（zip 与 publish 产物已在本机交叉验证） |
+| 发布流水线实测（2026-09-21，run 35555889158 全绿） | `.github/workflows/release.yml` | 推 tag `v0.2.0` 后自动产出三个产物：`WakeUpMyWall-Agent-Setup-0.2.0.exe`（37 MB，PE32 安装器）、`WakeUpMyWall-Agent-win-x64-v0.2.0.zip`（50 MB / 352 文件）、`install.ps1`；装完 tag `released-<tag>` 作为"这次发布成了"的可核对标记 |
+| Windows CI 才暴露的两个坑（2026-09-21） | ① Agent 契约测试此前只在 Linux 上跑过：Windows 上 `Program.cs` 会注册真实 `WindowsPowerController`，测试强转 `FakePowerController` 直接 `InvalidCastException`（6 条红）→ 现在测试用 `Agent:UseFakePower` / `Agent:UseFakeMetrics` 配置强制假实现，任何平台都验同一份契约；② `choco install innosetup` **不装翻译组件**（`Languages\` 下只有 `Default.isl`），引用 `compiler:Languages\ChineseSimplified.isl` 会编译失败 → 中文语言文件改为随仓库自带（`agent/installer/languages/ChineseSimplified.isl`） |
 
 ### AGP 9 与 KMP 的关键限制（实测）
 

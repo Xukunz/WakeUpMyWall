@@ -6,7 +6,7 @@
 
 ## 一键安装（Windows 10/11 x64，推荐）
 
-1. 从 [Releases](https://github.com/Xukunz/WakeUpMyWall/releases) 下载 **`WakeUpMyWall-Agent-Setup-<版本>.exe`**（自包含，机器上不需要 .NET 运行时）。
+1. 从 [Releases](https://github.com/Xukunz/WakeUpMyWall/releases)（当前最新是 [`v0.2.0`](https://github.com/Xukunz/WakeUpMyWall/releases/tag/v0.2.0)）下载 **`WakeUpMyWall-Agent-Setup-<版本>.exe`**（自包含，机器上不需要 .NET 运行时）。
 2. 双击安装（会要管理员权限），安装程序会自动：
 
    - 铺文件到 `%ProgramFiles%\WakeUpMyWall`；
@@ -94,6 +94,8 @@ dotnet publish src/WakeUpMyWall.Agent -f net10.0-windows -c Release -r win-x64 -
 
 `--fake-metrics` 让 `/api/v1/system` 返回由时间合成的读数（同样只用于 CI / 开发机 / 演示），
 非 Windows 平台上默认就是这个模式，`identity.os` 会写成 `Linux (fake metrics)` 以便一眼识别。
+这两个开关也有配置形式：`Agent:UseFakePower` / `Agent:UseFakeMetrics`（契约测试用它保证在任何平台
+都拿到假实现——Windows runner 上曾经因为拿到真实控制器而红过 6 条）。
 
 ### 发布一个 Windows 包（维护者）
 
