@@ -44,6 +44,11 @@ data class UnpairResponse(val pairingCode: String)
  * Phase 5A 的 `GET /api/v1/system` 载荷。字段名与 `docs/plans/agent-api.md` 的表格逐字对应；
  * **可空的数值字段表示 Agent 没读到那个传感器**（例如没有硬件监控库权限时的温度），
  * 所以这里一律保留 `null`，绝不在解析层把它变成 0。
+ *
+ * `disks` 在**载荷顶层**，与 Agent 的 `SystemMetricsPayload.Disks` 对齐（不在 `storage` 里）：
+ * 2026-09-21 之前这里读的是 `storage.disks`，真实 Agent 的盘列表因此永远解析成空，
+ * Storage 卡片只剩一张合成盘、翻页控件永远不出现（用户实测的"看不到翻页按钮"）。
+ * `docs/plans/agent-api.md` 当时漏了这一段，是这次契约对不上的原因之一，已补上。
  */
 @Serializable
 data class AgentMetrics(
@@ -53,6 +58,8 @@ data class AgentMetrics(
     val gpu: AgentGpuMetrics,
     val memory: AgentMemoryMetrics,
     val storage: AgentStorageMetrics,
+    /** 每块**固定磁盘**一条（Agent 0.4.0 起）；老 Agent 没有这个字段就是空列表（合成一条系统盘兜底）。 */
+    val disks: List<AgentDisk> = emptyList(),
     val thermal: AgentThermalMetrics,
     val network: AgentNetworkMetrics,
     val uptimeSeconds: Long,
@@ -106,8 +113,6 @@ data class AgentStorageMetrics(
     val totalTb: Float? = null,
     val freeGb: Float? = null,
     val tempC: Float? = null,
-    /** 每块固定磁盘一条（0.4.0 起）：手机端按这个列表左右翻页。老 Agent 没有这个字段就是空列表。 */
-    val disks: List<AgentDisk> = emptyList(),
 )
 
 @Serializable

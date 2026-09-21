@@ -85,6 +85,13 @@ object AppSizes {
     val checkbox = 18.dp
     /** 概念图里的指标条是细线，不是进度条（与 6dp 的进度条分开）。 */
     val metricBarHeight = 3.dp
+    /**
+     * 页数指示（Storage 卡片翻页）：一元一格，当前页是一段更宽的胶囊。
+     * 参考图是 Apple Music 小部件下面那排点（点 : 胶囊 ≈ 1 : 2.5）。直径按"墙面屏上看得见"定到 8dp——
+     * 参考图里那粒 6px 的点照搬到这个尺寸的卡片上会糊成一团灰。
+     */
+    val pageDot = 8.dp
+    val pageDotActiveWidth = 20.dp
     /** PC 封面缩略图：摘要卡（小）与 Monitor 身份卡（中）两个尺寸。 */
     val coverThumbnailWidth = 72.dp
     val coverThumbnailHeight = 48.dp

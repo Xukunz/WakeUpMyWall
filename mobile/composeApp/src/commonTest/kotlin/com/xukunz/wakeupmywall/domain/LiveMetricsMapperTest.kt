@@ -1,6 +1,7 @@
 package com.xukunz.wakeupmywall.domain
 
 import com.xukunz.wakeupmywall.core.network.AgentCpuMetrics
+import com.xukunz.wakeupmywall.core.network.AgentDisk
 import com.xukunz.wakeupmywall.core.network.AgentGpuMetrics
 import com.xukunz.wakeupmywall.core.network.AgentIdentity
 import com.xukunz.wakeupmywall.core.network.AgentMemoryMetrics
@@ -127,6 +128,58 @@ class LiveMetricsMapperTest {
         assertEquals("Ryzen 7 7700X", live.identity.cpuShortName)
         assertEquals("RTX 4070 Ti", live.identity.gpuShortName)
         assertEquals("32 GB DDR5-6000", live.identity.ramModule)
+    }
+
+    @Test
+    fun `the agent disk list becomes the storage card pages`() {
+        // Agent 的多盘清单在载荷顶层（`SystemMetricsPayload.Disks`）。
+        // 手机端的 Storage 卡片一页一块盘，页数就是这里的条数。
+        val withDisks = complete.copy(
+            disks = listOf(
+                AgentDisk(
+                    name = "Windows",
+                    mount = "C:\\",
+                    usagePercent = 60.04f,
+                    usedGb = 307.24f,
+                    totalGb = 512f,
+                    freeGb = 151.3f,
+                    tempC = 41.4f,
+                ),
+                AgentDisk(
+                    name = "Data",
+                    mount = "D:\\",
+                    usagePercent = 70.54f,
+                    usedGb = 1443.2f,
+                    totalGb = 2048f,
+                    freeGb = 604.8f,
+                    tempC = null,
+                ),
+            ),
+        )
+
+        val pages = LiveMetricsMapper.map(withDisks, TimeZone.UTC).snapshot.disks
+
+        assertEquals(2, pages.size)
+        assertEquals("Windows", pages[0].name)
+        assertEquals("C:\\", pages[0].mount)
+        assertEquals(60f, pages[0].usagePercent)
+        assertEquals(307.2f, pages[0].usedGb)
+        assertEquals(41, pages[0].tempC)
+        assertEquals("D:\\", pages[1].mount)
+        assertEquals(70.5f, pages[1].usagePercent)
+        assertNull(pages[1].tempC)
+    }
+
+    @Test
+    fun `an agent without a disk list still gets one system drive page`() {
+        val pages = LiveMetricsMapper.map(complete, TimeZone.UTC).snapshot.disks
+
+        assertEquals(1, pages.size)
+        assertEquals("NVMe 2 TB", pages[0].name)
+        assertEquals("C:\\", pages[0].mount)
+        assertEquals(1986.6f, pages[0].usedGb)
+        assertEquals(2048f, pages[0].totalGb)
+        assertEquals(41, pages[0].tempC)
     }
 
     @Test

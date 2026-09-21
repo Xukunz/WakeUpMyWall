@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,6 +54,7 @@ import com.xukunz.wakeupmywall.ui.dashboard.widgets.QuoteCard
 import com.xukunz.wakeupmywall.ui.icons.AppIcon
 import com.xukunz.wakeupmywall.ui.icons.AppIconKind
 import kotlin.math.sin
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 object MetricKeys {
@@ -469,10 +471,11 @@ private fun QuickActionsCard(
 }
 
 /**
- * Storage 卡片：**每块磁盘一页**，左右滑动翻页（用户反馈"只能看 C 盘"）。
+ * Storage 卡片：**每块磁盘一页**，横向拖动或按页脚的 `‹ ●─● ›` 翻页（用户反馈"只能看 C 盘"）。
  *
- * 页数 = 磁盘数；老 Agent（没有 disks 字段）或只有一块盘时就是单页，行为与原来一致。
- * 页脚给这一页盘符/名称、已用/总量、剩余空间与温度；顶部小字给出 `第 n/m 块` 便于知道还有别的盘。
+ * 页数 = 磁盘数（Agent 载荷**顶层**的 `disks`）；老 Agent 没有这个字段、或机器上只有一块盘时就是单页，
+ * 与原来完全一致。页脚给这一页的盘符/名称、已用/总量、剩余空间与温度，
+ * 标题下的小字 `C:\ · 1/2` 说清这是第几块盘。
  */
 @Composable
 private fun StorageCard(
@@ -500,44 +503,30 @@ private fun StorageCard(
     val pagerScope = rememberCoroutineScope()
 
     WidgetSurface(style = style, modifier = modifier.testTag("metric:storage")) {
+        // 标题行只放"这是哪张卡、哪块盘"：翻页控件搬到页脚（见下）。
+        // 之前 ◀ ▶ 和型号文字挤在同一行，型号先把宽度吃光，按钮被量成 0 宽、在真机上直接看不见。
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AppIcon(kind = AppIconKind.Storage, tint = MetricColors.storage, size = AppSizes.iconLarge)
-                Column {
-                    Text(LocalStrings.current.storage, style = MaterialTheme.typography.bodyMedium)
+            AppIcon(kind = AppIconKind.Storage, tint = MetricColors.storage, size = AppSizes.iconLarge)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(LocalStrings.current.storage, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = modelLine,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("metric:storage-model"),
+                )
+                if (pages.size > 1) {
+                    // 翻页提示（`C:\ · 1/2`）：说清这一页是哪块盘、一共有几块。
                     Text(
-                        text = modelLine,
+                        text = "${pages[pagerState.currentPage].mount} · ${pagerState.currentPage + 1}/${pages.size}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag("metric:storage-model"),
+                        color = MetricColors.storage,
+                        modifier = Modifier.testTag("metric:storage-page"),
                     )
-                    if (pages.size > 1) {
-                        // 翻页提示（`C:\ · 1/2`）：让人知道旁边还有别的盘。
-                        Text(
-                            text = "${pages[pagerState.currentPage].mount} · ${pagerState.currentPage + 1}/${pages.size}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MetricColors.storage,
-                            modifier = Modifier.testTag("metric:storage-page"),
-                        )
-                    }
-                }
-            }
-            // 显式的左右按钮：手势在某些系统/外层容器里可能被抢，按钮永远可用。
-            if (pages.size > 1) {
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    StoragePageButton("\u25c0", "metric:storage-prev", pagerState.currentPage > 0) {
-                        pagerScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                    }
-                    StoragePageButton("\u25b6", "metric:storage-next", pagerState.currentPage < pages.size - 1) {
-                        pagerScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                    }
                 }
             }
         }
@@ -585,45 +574,86 @@ private fun StorageCard(
             }
         }
 
-        if (pages.size > 1) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                pages.indices.forEach { index ->
-                    val active = index == pagerState.currentPage
-                    Box(
-                        Modifier
-                            .padding(horizontal = Spacing.hairline)
-                            .size(if (active) Spacing.sm else Spacing.xs)
-                            .clip(CircleShape)
-                            .background(if (active) MetricColors.storage else DarkSurface.outline),
-                    )
-                }
+        if (pages.size > 1) StoragePagerControls(pageCount = pages.size, state = pagerState, scope = pagerScope)
+    }
+}
+
+/**
+ * 存储卡片的翻页行：`◀ ●─● ▶`。
+ *
+ * 左/右按钮是手势的兜底（横向拖动在某些系统或外层容器里会被抢走，按钮永远可用），
+ * 中间是页数指示：**点 + 当前页胶囊**（参考图 Apple Music 小部件下面那排；当前页拉长成一段胶囊，
+ * 其余是圆点）。两边按钮先量、圆点行吃剩下的空间，所以卡片再窄也不会把按钮挤没。
+ */
+@Composable
+private fun StoragePagerControls(
+    pageCount: Int,
+    state: PagerState,
+    scope: CoroutineScope,
+) {
+    val currentPage = state.currentPage
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs).testTag("metric:storage-pager-controls"),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StoragePageButton(AppIconKind.ChevronLeft, "metric:storage-prev", currentPage > 0) {
+            scope.launch { state.animateScrollToPage(currentPage - 1) }
+        }
+        Row(
+            // `fill = false`：圆点只占自己需要的宽度，整组控件居中；卡片变窄时先挤圆点，按钮不动。
+            modifier = Modifier.weight(1f, fill = false),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(pageCount) { index ->
+                StoragePageDot(active = index == currentPage, index = index)
             }
+        }
+        StoragePageButton(AppIconKind.ChevronRight, "metric:storage-next", currentPage < pageCount - 1) {
+            scope.launch { state.animateScrollToPage(currentPage + 1) }
         }
     }
 }
 
-/** 存储卡片的翻页按钮（上一块 / 下一块盘）。 */
+/** 存储卡片的翻页按钮（上一块 / 下一块盘）：28dp 的圆形可按区域。 */
 @Composable
 private fun StoragePageButton(
-    label: String,
+    kind: AppIconKind,
     tag: String,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (enabled) MetricColors.storage else MaterialTheme.colorScheme.onSurfaceVariant,
+    Box(
         modifier = Modifier
+            .size(AppSizes.iconLarge)
             .clip(AppShapes.badge)
-            .background(DarkSurface.card.copy(alpha = 0.5f))
+            .background(DarkSurface.card.copy(alpha = if (enabled) 0.5f else 0.25f))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
             .testTag(tag),
+        contentAlignment = Alignment.Center,
+    ) {
+        AppIcon(
+            kind = kind,
+            tint = if (enabled) MetricColors.storage else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            size = AppSizes.iconSmall,
+        )
+    }
+}
+
+/**
+ * 页数指示的一格：当前页是胶囊（更宽），其余是圆点。
+ * 每个点单独打标签，测试才能数出"一共几页、现在是第几页"。
+ */
+@Composable
+private fun StoragePageDot(active: Boolean, index: Int) {
+    Box(
+        Modifier
+            .padding(horizontal = Spacing.xs)
+            .size(width = if (active) AppSizes.pageDotActiveWidth else AppSizes.pageDot, height = AppSizes.pageDot)
+            .clip(CircleShape)
+            .background(if (active) MetricColors.storage else DarkSurface.textSecondary.copy(alpha = 0.45f))
+            .testTag("metric:storage-dot-$index"),
     )
 }
 

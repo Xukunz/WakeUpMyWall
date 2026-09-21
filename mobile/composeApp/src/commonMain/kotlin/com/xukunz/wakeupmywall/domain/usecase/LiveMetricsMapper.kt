@@ -93,13 +93,12 @@ object LiveMetricsMapper {
     private fun round1(value: Float?): Float? = value?.let { (it * 10f).roundToInt() / 10f }
 
     /**
-     * 磁盘列表：优先用 Agent 报的多盘清单；老 Agent（0.4.0 之前）没有这个字段，
-     * 就用系统盘那几个字段合成一条，UI 不会因此空掉。
+     * 磁盘列表：优先用 Agent 报的多盘清单（载荷**顶层**的 `disks`，与 `SystemMetricsPayload.Disks` 对齐）；
+     * 老 Agent（0.4.0 之前）没有这个字段，就用系统盘那几个字段合成一条，UI 不会因此空掉。
      */
     private fun mapDisks(metrics: AgentMetrics): List<DiskSnapshot> {
-        val storage = metrics.storage
-        if (storage.disks.isNotEmpty()) {
-            return storage.disks.map { disk ->
+        if (metrics.disks.isNotEmpty()) {
+            return metrics.disks.map { disk ->
                 DiskSnapshot(
                     name = disk.name,
                     mount = disk.mount,
@@ -112,6 +111,7 @@ object LiveMetricsMapper {
             }
         }
 
+        val storage = metrics.storage
         if (storage.totalTb == null && storage.freeGb == null && storage.usagePercent == null) return emptyList()
         return listOf(
             DiskSnapshot(

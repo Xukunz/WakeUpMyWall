@@ -23,6 +23,10 @@ private val sampleMetrics = """
             "vramTotalGb":12.0,"fanRpm":1200},
      "memory":{"usagePercent":38.0,"usedGb":12.2,"totalGb":32.0},
      "storage":{"usagePercent":95.0,"usedTb":1.9,"totalTb":2.0,"freeGb":102.0,"tempC":41.0},
+     "disks":[{"name":"Windows","mount":"C:\\","usagePercent":60.0,"usedGb":307.2,"totalGb":512.0,
+               "freeGb":151.3,"tempC":41.0},
+              {"name":"Data","mount":"D:\\","usagePercent":70.5,"usedGb":1443.2,"totalGb":2048.0,
+               "freeGb":604.8,"tempC":null}],
      "thermal":{"motherboardTempC":35.0,"caseFanRpm":870},
      "network":{"downloadMbps":12.4,"uploadMbps":3.1},
      "uptimeSeconds":289440,"bootedAtUtc":"2025-04-18T12:00:00Z"}
@@ -68,6 +72,36 @@ class AgentApiMetricsTest {
         assertEquals(870, metrics.thermal.caseFanRpm)
         assertEquals(12.4f, metrics.network.downloadMbps)
         assertEquals(289440L, metrics.uptimeSeconds)
+    }
+
+    @Test
+    fun `the fixed disk list comes from the top level of the payload`() = runTest {
+        // 契约点：Agent 的 `SystemMetricsPayload.Disks` 是**顶层字段**，不在 `storage` 里。
+        // 之前的实现只在 `storage.disks` 里找它，于是真实 Agent 的多盘清单永远是空的，
+        // Storage 卡片一直只有合成出来的一张盘、翻页控件从不出现（用户实测）。
+        val engine = MockEngine { respond(sampleMetrics, HttpStatusCode.OK, metricsJsonHeaders) }
+
+        val metrics = (AgentApi(createAgentHttpClient(engine))
+            .system("http://192.168.1.10:9876", "token-1") as ApiResult.Success).value
+
+        assertEquals(2, metrics.disks.size)
+        assertEquals("C:\\", metrics.disks[0].mount)
+        assertEquals(307.2f, metrics.disks[0].usedGb)
+        assertEquals(41f, metrics.disks[0].tempC)
+        assertEquals("Data", metrics.disks[1].name)
+        assertEquals(2048f, metrics.disks[1].totalGb)
+        assertNull(metrics.disks[1].tempC)
+    }
+
+    @Test
+    fun `an agent without the disk list parses to an empty list instead of failing`() = runTest {
+        // 老 Agent（0.4.0 之前）没有 `disks`：载荷要照样解析，交给映射层用系统盘合成一条兜底。
+        val engine = MockEngine { respond(sparseMetrics, HttpStatusCode.OK, metricsJsonHeaders) }
+
+        val metrics = (AgentApi(createAgentHttpClient(engine))
+            .system("http://192.168.1.10:9876", "token-1") as ApiResult.Success).value
+
+        assertEquals(emptyList(), metrics.disks)
     }
 
     @Test

@@ -47,9 +47,24 @@ JSON 属性名沿用 Minimal API 的 camelCase；**除身份与时间字段外�
 | `gpu.usagePercent` / `gpu.tempC` / `gpu.vramUsedGb` / `gpu.vramTotalGb` / `gpu.fanRpm` | % / °C / GB / GB / RPM | LHM `GPU Core`、`D3D Dedicated Memory Used`；显存总量来自注册表 |
 | `memory.usagePercent` / `memory.usedGb` / `memory.totalGb` | % / GB / GB | LHM `Memory` / `Memory Used` + `Memory Available` |
 | `storage.usagePercent` / `storage.usedTb` / `storage.totalTb` / `storage.freeGb` / `storage.tempC` | % / TB / TB / GB / °C | 系统盘容量来自 `DriveInfo`，温度来自 LHM |
+| `disks[]`（**载荷顶层**，0.4.0 起） | 数组 | 每块固定盘一条；手机端 Storage 卡片按这个数组一页一块盘。见下表 |
 | `thermal.motherboardTempC` / `thermal.caseFanRpm` | °C / RPM | LHM 主板硬件 |
 | `network.downloadMbps` / `network.uploadMbps` | Mbps | LHM 吞吐（**源单位是字节/秒**，按 `×8/1e6` 换算） |
 | `uptimeSeconds` / `bootedAtUtc` | 秒 / ISO-8601 | `Environment.TickCount64` |
+
+`disks[]` 的每一元素（字段名就是手机端 `AgentDisk` 的名字，**顺序即翻页顺序**）：
+
+| JSON 路径 | 单位 | 来源 |
+| --- | --- | --- |
+| `disks[].name` | 文本 | 卷标（`VolumeLabel`）；没有卷标时就是盘符名 |
+| `disks[].mount` | 文本 | `DriveInfo.Name`（`C:\`） |
+| `disks[].usagePercent` / `usedGb` / `totalGb` / `freeGb` | % / GB / GB / GB | `DriveInfo.TotalSize` / `AvailableFreeSpace` |
+| `disks[].tempC` | °C | 只有系统盘有归属明确的 SSD 温度传感器，其它盘一律 `null` |
+
+**位置易错点**：`disks` 在**载荷顶层**（对应 `SystemMetricsPayload.Disks`），不在 `storage` 里。
+2026-09-21 之前手机端读的是 `storage.disks`，于是真实 Agent 的多盘清单永远解析成空，
+Storage 卡片只剩合成的一张系统盘、翻页控件从不出现（用户实测的"看不到翻页按钮"）。
+改契约时两边一起改；手机端的契约测试 `AgentApiMetricsTest` 直接吃上面这张表的形状。
 
 非 Windows 平台（开发机 / CI）与 `--fake-metrics` 走合成读数：数值由时间决定（可复现、随时间变化），
 契约与真实载荷完全一致，但 `identity.os` 会写成 `Linux (fake metrics)`，一眼看得出是假的。

@@ -1,10 +1,13 @@
 package com.xukunz.wakeupmywall.ui.monitor
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.test.runComposeUiTest
 import com.xukunz.wakeupmywall.core.theme.WakeUpMyWallTheme
 import com.xukunz.wakeupmywall.core.i18n.ChineseSimplifiedStrings
@@ -13,6 +16,7 @@ import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * Phase 5B：真实读数可能缺项，Monitor 必须**如实地**显示 `—`（而不是 0、也不是 `null`），
@@ -119,6 +123,59 @@ class MonitorMetricsTest {
 
         onNodeWithTag("metric:storage-page", useUnmergedTree = true).assertTextEquals("D:\\ · 2/2")
         onNodeWithTag("metric:storage-disk-1", useUnmergedTree = true).assertTextEquals("4 TB Data")
+    }
+
+    @Test
+    fun `the storage card keeps its paging buttons on a narrow card`() = runDesktopComposeUiTest(width = 420, height = 1200) {
+        // 真机（平板横屏 2 列 / 手机竖屏）里 Storage 卡片只有 170–270dp 宽，型号名又很长
+        // （`Samsung SSD 990 EVO Plus 2TB`）。实测过的故障：型号先把标题行的宽度吃光，
+        // 后面的翻页按钮被量成 0×0——用户看到的就是"**没有翻页按钮**"。
+        setContent {
+            WakeUpMyWallTheme {
+                MonitorMode(
+                    metrics = MockData.metrics,
+                    history = history,
+                    style = WidgetStyle.Glass,
+                    identity = MockData.hardware.copy(storageModule = "Samsung SSD 990 EVO Plus 2TB"),
+                )
+            }
+        }
+
+        val card = onNodeWithTag("metric:storage").fetchSemanticsNode().boundsInRoot
+        for (tag in listOf("metric:storage-prev", "metric:storage-next")) {
+            val bounds = onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue(bounds.width > 0f && bounds.height > 0f, "$tag 被挤成了 0 尺寸（真机上就是看不见）")
+            assertTrue(
+                bounds.left >= card.left && bounds.right <= card.right,
+                "$tag 跑出了卡片（$bounds 不在 $card 里）",
+            )
+            onNodeWithTag(tag, useUnmergedTree = true).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun `the paging buttons walk through the disks and the dots follow`() = runComposeUiTest {
+        setContent {
+            WakeUpMyWallTheme {
+                MonitorMode(MockData.metrics, history, WidgetStyle.Glass, identity = MockData.hardware)
+            }
+        }
+
+        // 页数指示（参考图那排点）：两块盘 = 两个点，当前页是拉长的胶囊。
+        onNodeWithTag("metric:storage-dot-0", useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithTag("metric:storage-dot-1", useUnmergedTree = true).assertIsDisplayed()
+        val first = onNodeWithTag("metric:storage-dot-0", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val second = onNodeWithTag("metric:storage-dot-1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(first.width > second.width, "当前页应该是更宽的胶囊（$first vs $second）")
+
+        onNodeWithTag("metric:storage-next", useUnmergedTree = true).performClick()
+        onNodeWithTag("metric:storage-page", useUnmergedTree = true).assertTextEquals("D:\\ · 2/2")
+        val pagedFirst = onNodeWithTag("metric:storage-dot-0", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val pagedSecond = onNodeWithTag("metric:storage-dot-1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(pagedSecond.width > pagedFirst.width, "翻页后胶囊要跟着走到第 2 页")
+
+        onNodeWithTag("metric:storage-prev", useUnmergedTree = true).performClick()
+        onNodeWithTag("metric:storage-page", useUnmergedTree = true).assertTextEquals("C:\\ · 1/2")
     }
 
     @Test
