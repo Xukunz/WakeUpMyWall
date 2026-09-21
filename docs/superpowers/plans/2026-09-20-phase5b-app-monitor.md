@@ -323,6 +323,18 @@ Expected: BUILD SUCCESSFUL，新增 4 条测试通过
 - 60 秒曲线在模拟器上只跑了几十秒，环只填了几个点（截图里的 sparkline 是这几秒的记录）；Ring Buffer 本身有单元测试（Phase 1）。
 - Recent Activity 仍是 `—`（Phase 5A/5B 都不做，spec §8 列为 P2）。
 
+### 4.4 事后补记：真机才暴露的明文 HTTP 拦截（2026-09-21 修）
+
+用户在自己手机上做配对测试时报 **"TCP connected but the status call failed"**。根因是 Android 的明文流量策略：
+
+- `targetSdk ≥ 28` 起系统默认**只对 localhost 放行明文 HTTP**；我们的 Agent 是局域网明文服务（spec §5 的设计），
+  手机连 `192.168.x.x` 时 TCP 能连（`java.net.Socket` 不受该策略约束），但 HTTP 请求被系统拦掉：
+  `CLEARTEXT communication to 192.168.x.x not permitted by network security policy`。
+- 之所以此前一直没暴露：模拟器验收全部走 `adb reverse` + `127.0.0.1`，**恰好命中 localhost 豁免**。
+- 修法：`AndroidManifest.xml` 加 `android:usesCleartextTraffic="true"`（Bearer Token 才是真正的安全边界；
+  公共域名仍走系统默认策略）。已在模拟器上用**局域网 IP**（192.168.31.162）复现并验证修复：
+  修复前 Monitor 提示那句 CLEARTEXT，修复后同一路径正常出数（`Updated 23:13:20`）。
+
 ---
 
 ## 5. 执行中的计划修正
