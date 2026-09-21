@@ -10,6 +10,7 @@
 | --- | --- | --- | --- |
 | GET | `/api/v1/status` | **免鉴权** | 只回最小信息：`hostname` / `agentVersion` / `uptimeSeconds` / `paired`。免鉴权是为了让"PC 开着但还没配对"这一状态可达（spec §4 的 `ONLINE` 判定也需要它）。 |
 | POST | `/api/v1/pairing` | **免鉴权** | body `{"code":"123456"}`；配对码由 PC 端启动时生成并打印在控制台与日志里，6 位数字、5 分钟有效、一次性。成功回 `{"token":"…"}`。 |
+| POST | `/api/v1/unpair` | Bearer | 忘掉当前 Token 并回一个新配对码 `{"pairingCode":"123456"}`。手机端 Unpair 必须调用它：否则 PC 端还留着旧 Token，重新配对会一直 409 `already paired`。 |
 | GET | `/api/v1/system` | Bearer | 指标（Phase 5A 起为真实载荷，见 §指标载荷）。取不到的传感器一律 `null`，绝不用 0 冒充。 |
 | GET | `/api/v1/actions` | Bearer | `id → 显示名` 白名单。 |
 | POST | `/api/v1/actions/{id}` | Bearer | 只允许白名单内 id。 |

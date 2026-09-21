@@ -8,7 +8,7 @@ namespace WakeUpMyWall.Agent.Auth;
  * PC 端生成 6 位数字配对码，打印在控制台与日志里；只有能看见 PC 的人才能用它换 Token。
  * 配对码 5 分钟有效、一次性；Token 换到后落盘，服务重启仍然有效。
  */
-public sealed class PairingService(ITokenStore store, TimeProvider clock)
+public sealed class PairingService(ITokenStore store, TimeProvider clock, Action<string>? onCodeCreated = null)
 {
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
 
@@ -24,7 +24,21 @@ public sealed class PairingService(ITokenStore store, TimeProvider clock)
     {
         _code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         _expiresAt = clock.GetUtcNow() + Lifetime;
+        onCodeCreated?.Invoke(_code);
         return _code;
+    }
+
+    /**
+     * 解除配对并立刻生成新码（`POST /api/v1/unpair`）。
+     *
+     * 为什么必须有它：以前 Unpair 只清手机端的 Token，PC 端 `agent.json` 还在，
+     * 重新配对就永远拿到 409 `already paired`，用户只能去删文件重启（真机实测踩到）。
+     * 调用者必须持有当前 Token（端点在 Bearer 保护组里），因此这不是"谁都能踢人"的口子。
+     */
+    public string Unpair()
+    {
+        store.Clear();
+        return CreateCode();
     }
 
     public bool TryRedeem(string candidate, out string? token)

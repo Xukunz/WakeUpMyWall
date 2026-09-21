@@ -81,6 +81,10 @@ app.MapMetricsSocket();
 /** 受保护端点（power / actions / system）都挂在这一组上。 */
 var protectedEndpoints = app.MapGroup("").AddEndpointFilter<BearerAuthFilter>();
 protectedEndpoints.MapSystemEndpoints();
+// Unpair：手机端 Unpair 时调用。少了它 PC 端会一直留着旧 Token，重新配对永远 409。
+protectedEndpoints.MapPost(
+    "/api/v1/unpair",
+    (PairingService pairing) => Results.Ok(new { pairingCode = pairing.Unpair() }));
 protectedEndpoints.MapPowerEndpoints();
 protectedEndpoints.MapActionEndpoints();
 

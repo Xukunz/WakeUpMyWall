@@ -37,6 +37,9 @@ data class ActionRunResponse(val id: String, val executed: Boolean)
 @Serializable
 data class PowerResponse(val action: String, val accepted: Boolean)
 
+@Serializable
+data class UnpairResponse(val pairingCode: String)
+
 /**
  * Phase 5A 的 `GET /api/v1/system` 载荷。字段名与 `docs/plans/agent-api.md` 的表格逐字对应；
  * **可空的数值字段表示 Agent 没读到那个传感器**（例如没有硬件监控库权限时的温度），
@@ -155,6 +158,13 @@ class AgentApi(private val client: HttpClient) {
                 setBody(PairingRequest(code))
             }
         }
+
+    /**
+     * 解除配对：让 PC 也忘掉 Token 并回一个新配对码。
+     * 只清手机端会导致"重新配对永远 409 already paired"（真机踩到），所以 Unpair 必须走这个端点。
+     */
+    suspend fun unpair(baseUrl: String, token: String?): ApiResult<UnpairResponse> =
+        call { client.post("$baseUrl/api/v1/unpair") { bearer(token) } }
 
     suspend fun actions(baseUrl: String, token: String?): ApiResult<List<ActionEntry>> =
         call { client.get("$baseUrl/api/v1/actions") { bearer(token) } }

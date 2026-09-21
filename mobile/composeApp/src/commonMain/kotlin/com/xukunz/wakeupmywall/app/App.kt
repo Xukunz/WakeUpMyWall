@@ -672,7 +672,20 @@ fun App(
                                             val target = device
                                             scope.launch {
                                                 pairingNote = null
-                                                if (target != null) agentTokens.clear(target.id)
+                                                // 关键：也让 PC 忘掉 Token，否则重新配对永远 409 already paired（真机踩到）。
+                                                if (target != null) {
+                                                    val result = agentToken?.let { token ->
+                                                        runCatching { agentApi.unpair(baseUrl(target), token) }.getOrNull()
+                                                    }
+                                                    when (result) {
+                                                        is ApiResult.Success ->
+                                                            pairingNote = "Unpaired on both sides — new pairing code: " +
+                                                                "${result.value.pairingCode} (valid 5 min)"
+                                                        is ApiResult.Failure -> pairingNote = result.message
+                                                        else -> Unit
+                                                    }
+                                                    agentTokens.clear(target.id)
+                                                }
                                                 agentToken = null
                                             }
                                         },
