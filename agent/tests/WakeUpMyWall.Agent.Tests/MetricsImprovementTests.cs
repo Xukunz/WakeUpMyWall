@@ -80,6 +80,83 @@ public class MetricsImprovementTests
     }
 
     [Fact]
+    public void Amd_wraps_the_cpu_temperature_under_its_own_sensor_name()
+    {
+        // LHM 在 AMD 上把封装温度叫 `Core (Tctl/Tdie)`（`CPU Package` 是 Intel 的名字）——
+        // 这两个字符串都能在 LibreHardwareMonitorLib 0.9.6 的字符串表里查到（见 SensorDump 的输出）。
+        // 之前只认 Intel 的名字，所以 Ryzen 上的 CPU 温度永远是 `—`（用户实测：9800X3D）。
+        var zen = MetricsMapper.Map(
+            [new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "Core (Tctl/Tdie)", 55.4)],
+            Facts,
+            DateTimeOffset.UnixEpoch);
+        Assert.Equal(55.4, zen.Cpu.TempC);
+
+        // 早期 Zen 只有 Tctl 或只有 Tdie，同样要接住。
+        var earlyZen = MetricsMapper.Map(
+            [new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "Core (Tdie)", 61.0)],
+            Facts,
+            DateTimeOffset.UnixEpoch);
+        Assert.Equal(61.0, earlyZen.Cpu.TempC);
+    }
+
+    [Fact]
+    public void Without_a_package_sensor_the_hottest_core_is_the_cpu_temperature()
+    {
+        var payload = MetricsMapper.Map(
+            [
+                new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "CPU Core #1", 48.0),
+                new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "CPU Core #2", 63.5),
+            ],
+            Facts,
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(63.5, payload.Cpu.TempC);
+    }
+
+    [Fact]
+    public void A_distance_to_tjmax_reading_is_not_a_cpu_temperature()
+    {
+        // `Distance to TjMax` 数值看着像温度，含义正相反（离 TjMax 还有多少度）——
+        // 它不能拿来当 CPU 温度，所以兜底取最大值时要把它排除掉。
+        var payload = MetricsMapper.Map(
+            [new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "Distance to TjMax", 31.0)],
+            Facts,
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Null(payload.Cpu.TempC);
+    }
+
+    [Fact]
+    public void Nvme_composite_temperature_is_the_storage_temperature()
+    {
+        // 存储温度同样是两套名字：SATA 是 SMART 属性 194 的 `Temperature`，
+        // NVMe 是 SMART/Health 里的 `Composite Temperature`（LHM 0.9.6 的盘温度传感器名）。
+        // 用户那块 Samsung SSD 990 EVO Plus 是 NVMe，所以之前只认 `Temperature` 的查法一直是空。
+        var payload = MetricsMapper.Map(
+            [new SensorReading(SensorHardware.Storage, SensorKind.Temperature, "Composite Temperature", 41.0)],
+            Facts,
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(41.0, payload.Storage.TempC);
+        Assert.Equal(41.0, payload.Disks.Single().TempC);   // 系统盘那一页也要带上温度
+    }
+
+    [Fact]
+    public void Numbered_storage_temperatures_fall_back_to_the_lowest_sensor()
+    {
+        // 多传感器的盘（990 EVO Plus 报 composite + sensor 1/2）LHM 会起名 `Temperature #2`、`#3`……
+        var payload = MetricsMapper.Map(
+            [
+                new SensorReading(SensorHardware.Storage, SensorKind.Temperature, "Temperature #2", 44.0),
+                new SensorReading(SensorHardware.Storage, SensorKind.Temperature, "Temperature #3", 52.0),
+            ],
+            Facts,
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(44.0, payload.Storage.TempC);
+    }
+
+    [Fact]
     public void Network_rates_come_from_counter_deltas_and_never_from_resets()
     {
         var sampler = new NetworkRateSampler();
@@ -101,6 +178,68 @@ public class MetricsImprovementTests
         RamModule: "32 GB", StorageModule: "NVMe 2 TB",
         VramTotalGb: 12, StorageTotalGb: 2048, StorageFreeGb: 102, SystemDiskMount: "C:\\", Disks: [new DiskFact("NVMe 2 TB", "C:\\", 2048, 102)], NominalClockMhz: null, PhysicalCores: null,
         UptimeSeconds: 100, BootedAtUtc: "2025-04-18T12:00:00Z");
+}
+
+/**
+ * `--dump-sensors` 的结论段：真机上三种"温度是 `—`"的原因看起来一模一样，
+ * 但处理办法完全不同，所以文案必须分得清（这个函数就是那句结论）。
+ */
+public class TemperatureDiagnosisTests
+{
+    [Fact]
+    public void A_matched_sensor_is_named_in_the_conclusion()
+    {
+        var text = TemperatureDiagnosis.Describe(
+            "CPU 温度",
+            [new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "Core (Tctl/Tdie)", 55.4)],
+            MetricsMapper.CpuTemperatureNames,
+            MetricsMapper.CpuTemperature);
+
+        Assert.Equal("CPU 温度：55.4 ℃（传感器名 Core (Tctl/Tdie)）", text);
+    }
+
+    [Fact]
+    public void A_fallback_reading_says_the_candidate_names_did_not_match()
+    {
+        var text = TemperatureDiagnosis.Describe(
+            "CPU 温度",
+            [
+                new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "Some Vendor Sensor", 48.0),
+                new SensorReading(SensorHardware.Cpu, SensorKind.Temperature, "Another Sensor", 63.5),
+            ],
+            MetricsMapper.CpuTemperatureNames,
+            MetricsMapper.CpuTemperature);
+
+        Assert.Equal("CPU 温度：63.5 ℃（候选名都没命中，兜底取了最高的温度传感器）", text);
+    }
+
+    [Fact]
+    public void No_sensor_at_all_points_at_the_driver_rather_than_a_name_mismatch()
+    {
+        // 这块硬件上连温度传感器都没有 —— 只有这一种情况与权限/驱动有关。
+        var text = TemperatureDiagnosis.Describe(
+            "SSD 温度",
+            [new SensorReading(SensorHardware.Storage, SensorKind.Load, "Used Space", 70.0)],
+            MetricsMapper.StorageTemperatureNames,
+            MetricsMapper.StorageTemperature);
+
+        Assert.Equal("SSD 温度：这块硬件上一个温度传感器都没有", text);
+    }
+
+    [Fact]
+    public void Sensors_that_read_nothing_are_listed_by_name()
+    {
+        var text = TemperatureDiagnosis.Describe(
+            "SSD 温度",
+            [
+                new SensorReading(SensorHardware.Storage, SensorKind.Temperature, "Temperature", 0),
+                new SensorReading(SensorHardware.Storage, SensorKind.Temperature, "Composite Temperature", 0),
+            ],
+            MetricsMapper.StorageTemperatureNames,
+            MetricsMapper.StorageTemperature);
+
+        Assert.Equal("SSD 温度：有温度传感器但读数全空或为 0（Temperature, Composite Temperature）", text);
+    }
 }
 
 /** Quick Actions 之前只是"记录 id"，手机点了没反应；现在必须真的调用启动器。 */

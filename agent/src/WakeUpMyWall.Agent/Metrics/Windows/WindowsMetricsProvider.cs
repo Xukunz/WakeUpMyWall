@@ -59,7 +59,7 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
     public void Dispose() => _computer.Close();
 
     /** 硬件（含主板的 SuperIO 子硬件）的传感器搬成读数；子硬件沿用父硬件的归类。 */
-    private static void Collect(IHardware hardware, string target, List<SensorReading> readings)
+    internal static void Collect(IHardware hardware, string target, List<SensorReading> readings)
     {
         hardware.Update();
         foreach (var sensor in hardware.Sensors)
@@ -76,7 +76,7 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
     }
 
     /** 主显卡：多显卡机器（尤其带核显）按 [GpuSelection] 的规则挑，其余硬件按类型归类。 */
-    private static string? MapHardware(IHardware hardware, IHardware? primaryGpu) => hardware.HardwareType switch
+    internal static string? MapHardware(IHardware hardware, IHardware? primaryGpu) => hardware.HardwareType switch
     {
         HardwareType.Cpu => SensorHardware.Cpu,
         // 只认主显卡；其它显卡整块跳过（两张卡的读数混在一起没有意义）。

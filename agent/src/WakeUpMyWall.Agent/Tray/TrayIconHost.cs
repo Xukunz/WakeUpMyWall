@@ -21,7 +21,7 @@ public sealed class TrayIconHost : IDisposable
     private readonly ContextMenuStrip _menu;
     private readonly ToolStripMenuItem _pairingItem;
 
-    private TrayIconHost(Func<string> menuLabel, Func<string> resetPairing, Action exit, ILogger logger)
+    private TrayIconHost(Func<string> menuLabel, string? notice, Func<string> resetPairing, Action exit, ILogger logger)
     {
         // 先建图标对象：下面的菜单项回调要用它弹气泡，字段是 readonly，不能等菜单做完再赋值。
         _notifyIcon = new NotifyIcon
@@ -54,6 +54,8 @@ public sealed class TrayIconHost : IDisposable
 
         _menu = new ContextMenuStrip();
         _menu.Items.Add(_pairingItem);
+        // 环境前提缺了（例如 PawnIO 没装）时挂一条不可点的说明：温度读不到的原因不该只在日志里。
+        if (notice is not null) _menu.Items.Add(new ToolStripMenuItem($"⚠ {notice}") { Enabled = false });
         _menu.Items.Add(resetItem);
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(exitItem);
@@ -65,7 +67,9 @@ public sealed class TrayIconHost : IDisposable
 
         // 首次运行给一次气泡，省得用户找不到图标（很多人不知道要去右下角找）。
         _notifyIcon.BalloonTipTitle = "WakeUpMyWall Agent 已在运行";
-        _notifyIcon.BalloonTipText = menuLabel() + "（右键图标可查看或退出）";
+        _notifyIcon.BalloonTipText = notice is null
+            ? menuLabel() + "（右键图标可查看或退出）"
+            : $"{notice}。右键图标查看配对码。";
         _notifyIcon.ShowBalloonTip(8_000);
     }
 
@@ -74,6 +78,7 @@ public sealed class TrayIconHost : IDisposable
      */
     public static TrayIconHost? Start(
         Func<string> menuLabel,
+        string? notice,
         Func<string> resetPairing,
         Action exit,
         ILogger logger)
@@ -85,7 +90,7 @@ public sealed class TrayIconHost : IDisposable
         {
             try
             {
-                host = new TrayIconHost(menuLabel, resetPairing, exit, logger);
+                host = new TrayIconHost(menuLabel, notice, resetPairing, exit, logger);
                 ready.Set();
                 Application.Run(new ApplicationContext());
             }

@@ -15,9 +15,31 @@
    | 登录时自动启动（托盘） | 勾选 | 放进"启动"文件夹，登录后常驻托盘 |
    | 安装为 Windows 服务 | 不勾选 | 后台服务（开机自启、**没有托盘图标**）；勾了它就不再放托盘自启，避免两者抢 9876 |
 
-   安装程序还会自动：铺文件到 `%ProgramFiles%\WakeUpMyWall`、放行防火墙 TCP `9876`（仅专用/域网络）、**把配对码弹窗显示给你**。
+安装程序还会自动：铺文件到 `%ProgramFiles%\WakeUpMyWall`、放行防火墙 TCP `9876`（仅专用/域网络）、**把配对码弹窗显示给你**。
 
 3. 手机端：Device Setup → `Agent Host` 填这台 PC 的局域网 IP、`Agent Port` 9876 → Save → 在 Agent 区输入安装程序给的配对码 → Pair。
+
+### 前置条件：PawnIO 驱动（温度 / 风扇 / 盘温靠它）
+
+LibreHardwareMonitor **0.9.5 起改用 PawnIO 这个内核驱动**去读 MSR / SuperIO / NVMe SMART。
+机器上没装 PawnIO 时，读数会呈现成这样一组症状（用户报的"CPU 温度和 SSD 温度读不出来"就是它）：
+
+| 读数 | 没装 PawnIO 时 |
+| --- | --- |
+| CPU 温度、CPU 频率、每核频率、核心数 | `—`（频率退回注册表的标称值） |
+| 主板温度、CPU 风扇、机箱风扇 | `—` |
+| SSD 温度（NVMe SMART） | `—` |
+| GPU 温度 / 占用 / 显存、内存占用、磁盘容量、网速、CPU 占用 | ✅ 照常（GPU 走 NVAPI/NVML，不需要这个驱动） |
+
+装一次就行：到 PawnIO 的官方页面（`pawnio.eu`）下载安装包，管理员权限装完重启 Agent；
+服务模式用 `sc.exe stop WakeUpMyWallAgent` + `sc.exe start WakeUpMyWallAgent`。
+
+不确定的时候不用猜——Agent 会自己说：
+
+- 启动日志里会写 `PawnIO 未安装：CPU 温度与频率、主板温度、SSD 温度都读不到（GPU 温度不受影响）`；
+- 托盘右键菜单顶部会出现同一条 ⚠ 说明；
+- `WakeUpMyWall.Agent.exe --dump-sensors` 把 PawnIO 状态、进程是否管理员、LHM 实际枚举到的每一条传感器
+  写成 `%ProgramData%\WakeUpMyWall\sensors.txt`，末尾还有一段"为什么是 `—`"的结论。
 
 ### 运行方式：托盘（默认）
 
@@ -150,14 +172,18 @@ LibreHardwareMonitor 只提供 win-* 运行时资产，所以**给 Windows 打�
 2. 对照任务管理器 / 硬件监控工具核对：
    - `cpu.usagePercent` 与任务管理器的 CPU 占用接近（±3%）；
    - `memory.usagePercent` 与任务管理器的内存占用接近（±2%）；
-   - `cpu.tempC` / `gpu.tempC` 有读数（**需要管理员权限**：LibreHardwareMonitor 的内核驱动要管理员才能加载；
-     普通权限下这两个字段可能是 `null`，这是如实反映，不是 bug）；
+   - `cpu.tempC` / `gpu.tempC` / `storage.tempC` 有读数（**前提是装了 PawnIO 驱动 + 管理员身份运行**：
+     LHM 0.9.5 起这两样缺一不可，缺了就是 `null`——如实反映，不是 bug；见上面的「前置条件：PawnIO」）；
    - `network.downloadMbps` 与实际下载速度量级一致；
    - `storage.totalTb` / `storage.freeGb` 与系统盘一致。
 3. 把结果（截图或文字）补进 [Phase 5A 计划](../docs/superpowers/plans/2026-09-20-phase5a-agent-metrics.md) 的 §4 验收实录。
 
 ## 常见问题
 
+- **CPU 温度 / SSD 温度 / 主板温度读不出来**：先装 PawnIO 并确认 Agent 是管理员身份运行（
+  [前置条件](#前置条件pawnio-驱动温度--风扇--盘温靠它)）。这两条都满足还读不到，就跑一次
+  `WakeUpMyWall.Agent.exe --dump-sensors`，把 `%ProgramData%\WakeUpMyWall\sensors.txt` 发出来——
+  清单里会逐条列出 LHM 枚举到的传感器名与数值，能一次分清"驱动没装"、"这块硬件没有该传感器"与"名字没匹配上"。
 - **9876 被占用**：`netstat -ano | findstr :9876` 找出占用进程；换端口用环境变量 `ASPNETCORE_URLS=http://0.0.0.0:9877` 或 `--urls`。
 - **手机连不上**：确认服务在听 `0.0.0.0`、防火墙放行了 9876、手机与 PC 在同一网段；`curl http://<PC-IP>:9876/api/v1/status` 从另一台机器试一次。
 - **想重新配对**：删掉 `C:\ProgramData\WakeUpMyWall\agent.json` 并重启服务，会打印新的配对码。

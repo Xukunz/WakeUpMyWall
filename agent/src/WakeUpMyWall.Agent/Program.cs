@@ -140,6 +140,13 @@ var pairingCode = app.Services.GetRequiredService<PairingService>().CreateCode()
 var pairingCodeFile = builder.Configuration["Agent:PairingCodeFile"] ?? AgentPaths.PairingCodeFile;
 var pairingCodeWritten = PairingCodeFile.TryWrite(pairingCodeFile, pairingCode, out var pairingCodeError);
 
+#if WINDOWS
+// 温度/风扇/盘温的上游前提：LHM 0.9.5 起要靠 PawnIO 驱动。缺了它这些读数只能是 `—`，
+// 而 GPU 温度、内存、容量照常显示——用户会以为"只有温度坏了"。启动就说清楚，别让人去猜。
+var pawnIoWarning = useFakeMetrics ? null : PawnIoStatus.Warning;
+if (pawnIoWarning is not null) app.Logger.LogWarning("{Warning}。装好 PawnIO 后重启 Agent 即可", pawnIoWarning);
+#endif
+
 app.Logger.LogInformation(
     "WakeUpMyWall Agent {Version} 已启动，配对码 {Code}（5 分钟有效，一次性）",
     StatusEndpoints.AgentVersion,
@@ -169,6 +176,7 @@ if (!WindowsServiceHelpers.IsWindowsService() && !args.Contains("--no-tray"))
             : pairing.IsPaired
                 ? "已配对 ✓（需要新码就重启本程序）"
                 : "配对码：（尚未生成）",
+        notice: pawnIoWarning,
         exit: () =>
         {
             app.Logger.LogInformation("托盘请求退出，正在停止 Agent");
