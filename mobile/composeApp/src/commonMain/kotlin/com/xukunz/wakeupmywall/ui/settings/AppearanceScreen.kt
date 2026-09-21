@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import com.xukunz.wakeupmywall.core.i18n.LocalStrings
+import com.xukunz.wakeupmywall.core.i18n.localize
+import com.xukunz.wakeupmywall.domain.model.MonitorLayout
 import com.xukunz.wakeupmywall.core.i18n.AppLanguage
 import com.xukunz.wakeupmywall.core.theme.AppSizes
 import com.xukunz.wakeupmywall.core.theme.AppShapes
@@ -60,6 +62,9 @@ data class AppearanceState(
     val transparency: Float,
     val fontScale: Float,
     val widgets: List<DashboardWidget>,
+    /** Monitor（硬件界面）的卡片布局：顺序 / 显隐 / 每卡信息类别。 */
+    val monitorCards: List<com.xukunz.wakeupmywall.domain.model.MonitorCardConfig> =
+        com.xukunz.wakeupmywall.domain.model.MonitorLayout.Default,
     /** 界面语言（spec：多语言兼容，V1 提供英文与简体中文）。 */
     val language: com.xukunz.wakeupmywall.core.i18n.AppLanguage =
         com.xukunz.wakeupmywall.core.i18n.AppLanguage.English,
@@ -244,6 +249,7 @@ private fun ControlBar(
         ) {
             WallpaperSegment(state, onStateChange, Modifier.fillMaxWidth())
             LanguageSegment(state, onStateChange, Modifier.fillMaxWidth())
+            MonitorCardsSegment(state, onStateChange, Modifier.fillMaxWidth())
             AccentSegment(state, onStateChange, Modifier.fillMaxWidth())
             StyleSegment(state, onStateChange, Modifier.fillMaxWidth())
             AppearanceSegment(state, onStateChange, Modifier.fillMaxWidth())
@@ -253,11 +259,81 @@ private fun ControlBar(
         Row(modifier = chrome, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
             WallpaperSegment(state, onStateChange, Modifier.weight(1f))
             LanguageSegment(state, onStateChange, Modifier.weight(1f))
+            MonitorCardsSegment(state, onStateChange, Modifier.weight(1f))
             AccentSegment(state, onStateChange, Modifier.weight(1f))
             StyleSegment(state, onStateChange, Modifier.weight(1f))
             AppearanceSegment(state, onStateChange, Modifier.weight(1f))
         }
     }
+}
+
+/**
+ * Monitor 卡片编辑器：每行一张卡 —— 上移 / 下移 / 显示开关 / 信息类别循环。
+ * 排序用按钮而不是拖拽：拖拽要处理长按、自动滚动、无障碍，成本远高于收益（计划期定案）。
+ */
+@Composable
+private fun MonitorCardsSegment(
+    state: AppearanceState,
+    onStateChange: (AppearanceState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val strings = LocalStrings.current
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Text(
+            text = strings.monitorCards,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        state.monitorCards.forEach { card ->
+            val details = MonitorLayout.supportedDetails(card.id)
+            val detail = MonitorLayout.effectiveDetail(card)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CardChip("\u2191", "appearance:card-${card.id.key}-up") {
+                    onStateChange(state.copy(monitorCards = MonitorLayout.move(state.monitorCards, card.id, -1)))
+                }
+                CardChip("\u2193", "appearance:card-${card.id.key}-down") {
+                    onStateChange(state.copy(monitorCards = MonitorLayout.move(state.monitorCards, card.id, +1)))
+                }
+                Text(
+                    text = strings.localize(card.id.label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (card.enabled) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                if (details.isNotEmpty() && detail != null) {
+                    CardChip(strings.localize(detail.label), "appearance:card-${card.id.key}-detail") {
+                        onStateChange(state.copy(monitorCards = MonitorLayout.cycleDetail(state.monitorCards, card.id)))
+                    }
+                }
+                CardChip(if (card.enabled) "\u2713" else "\u2014", "appearance:card-${card.id.key}-toggle") {
+                    onStateChange(state.copy(monitorCards = MonitorLayout.toggle(state.monitorCards, card.id)))
+                }
+            }
+        }
+    }
+}
+
+/** 编辑器里的小按钮（上移/下移/类别/开关）：字号与颜色都走令牌。 */
+@Composable
+private fun CardChip(label: String, tag: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(AppShapes.button)
+            .background(DarkSurface.card.copy(alpha = 0.5f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+            .testTag(tag),
+    )
 }
 
 /**

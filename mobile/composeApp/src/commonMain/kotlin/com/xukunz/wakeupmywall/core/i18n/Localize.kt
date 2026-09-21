@@ -56,6 +56,13 @@ private val Translations: Map<String, (AppStrings) -> String> = mapOf(
     "CPU" to { it.cpu },
     "GPU" to { it.gpu },
     // 设置导航
+    "Quote" to { it.recentActivity },
+    // 卡片信息类别（Monitor 卡片自定义）
+    "Clock" to { it.clock },
+    "Cores" to { it.coresDetail },
+    "Usage" to { it.usage },
+    "Vram" to { it.vram },
+    "Free Space" to { it.freeSpace },
     "Settings" to { it.settings },
     "Device Setup" to { it.deviceSetup },
     "Integrations" to { it.integrations },

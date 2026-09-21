@@ -39,6 +39,10 @@ import com.xukunz.wakeupmywall.core.theme.LocalAccentPalette
 import com.xukunz.wakeupmywall.core.theme.MetricColors
 import com.xukunz.wakeupmywall.core.theme.Spacing
 import com.xukunz.wakeupmywall.core.i18n.LocalStrings
+import com.xukunz.wakeupmywall.domain.model.MonitorCardConfig
+import com.xukunz.wakeupmywall.domain.model.MonitorCardDetail
+import com.xukunz.wakeupmywall.domain.model.MonitorCardId
+import com.xukunz.wakeupmywall.domain.model.MonitorLayout
 import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.ui.components.Breakpoints
 import com.xukunz.wakeupmywall.ui.components.PcCover
@@ -95,6 +99,8 @@ fun MonitorMode(
     metricsNote: String? = null,
     /** Quick Actions 的点击回调（Phase 5.5）：带上动作 id（`browser` / `steam` / `spotify` / `discord`）。 */
     onQuickAction: ((String) -> Unit)? = null,
+    /** 卡片布局（顺序 / 显隐 / 每卡信息类别）；默认就是 Phase 1 定下的顺序。 */
+    cards: List<MonitorCardConfig> = MonitorLayout.Default,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("monitor")) {
         // maxWidth 只能在 BoxWithConstraints 作用域直接读，进入 Column 的 content lambda 后就不是这个 receiver 了。
@@ -129,64 +135,88 @@ fun MonitorMode(
             }
 
             // 列数由断点决定：主区 ≥900dp 按概念图排 5 列（墙面屏 1280dp 的主区是 921dp），否则 3 列 / 2 列（风险 R7）。
-            val metricSlots: List<@Composable (Modifier) -> Unit> = listOf(
-                { slot ->
-                    MetricCard(
-                        key = MetricKeys.Cpu,
-                        label = LocalStrings.current.cpu,
-                        percent = metrics.cpuPercent,
-                        modelLine = identity?.cpuShortName ?: "CPU",
-                        values = history[MetricKeys.Cpu].orEmpty(),
-                        footerPrimary = "${metrics.cpuClockGhz.number()} GHz",
-                        footerSecondary = "${metrics.cpuCores.number()} ${LocalStrings.current.cores} ${metrics.cpuThreads.number()} ${LocalStrings.current.threads}",
-                        style = style,
-                        modifier = slot,
-                        icon = AppIconKind.Cpu,
-                        color = MetricColors.cpu,
-                    )
-                },
-                { slot ->
-                    MetricCard(
-                        key = MetricKeys.Gpu,
-                        label = LocalStrings.current.gpu,
-                        percent = metrics.gpuPercent,
-                        modelLine = identity?.gpuShortName ?: "GPU",
-                        values = history[MetricKeys.Gpu].orEmpty(),
-                        footerPrimary = metrics.gpuTempC.celsiusText(),
-                        footerSecondary = "${metrics.vramUsedGb.number()} / ${metrics.vramTotalGb.number()} GB VRAM",
-                        style = style,
-                        modifier = slot,
-                        icon = AppIconKind.Gpu,
-                        color = MetricColors.gpu,
-                    )
-                },
-                { slot ->
-                    MetricCard(
-                        key = MetricKeys.Ram,
-                        label = LocalStrings.current.ram,
-                        percent = metrics.ramPercent,
-                        modelLine = identity?.ramModule ?: "RAM",
-                        values = history[MetricKeys.Ram].orEmpty(),
-                        footerPrimary = "${metrics.ramUsedGb.number()} / ${metrics.ramTotalGb.number()} GB",
-                        footerSecondary = LocalStrings.current.workingSet,
-                        style = style,
-                        modifier = slot,
-                        icon = AppIconKind.Ram,
-                        color = MetricColors.ram,
-                    )
-                },
-                { slot ->
-                    StorageCard(
-                        disks = metrics.disks,
-                        metrics = metrics,
-                        modelLine = identity?.storageModule ?: "Storage",
-                        values = history[MetricKeys.Storage].orEmpty(),
-                        style = style,
-                        modifier = slot,
-                    )
-                },
-                { slot -> TempsAndFansCard(metrics, style, slot) },
-            )
+            // 卡片顺序 / 显隐 / 信息类别全部来自配置（默认与 Phase 1 布局一致）。
+            val visibleCards = MonitorLayout.visible(cards)
+            val metricSlots: List<@Composable (Modifier) -> Unit> = visibleCards.mapNotNull { config ->
+                val slot: (@Composable (Modifier) -> Unit)? = when (config.id) {
+                    MonitorCardId.Cpu -> ({ slot: Modifier ->
+                        MetricCard(
+                            key = MetricKeys.Cpu,
+                            label = LocalStrings.current.cpu,
+                            percent = metrics.cpuPercent,
+                            modelLine = identity?.cpuShortName ?: "CPU",
+                            values = history[MetricKeys.Cpu].orEmpty(),
+                            footerPrimary = when (MonitorLayout.effectiveDetail(config)) {
+                                MonitorCardDetail.Cores ->
+                                    "${metrics.cpuCores.number()} ${LocalStrings.current.cores} ${metrics.cpuThreads.number()} ${LocalStrings.current.threads}"
+                                MonitorCardDetail.Temp -> metrics.cpuTempC.celsiusText()
+                                else -> "${metrics.cpuClockGhz.number()} GHz"
+                            },
+                            // 次行永远给"另一类信息"：默认（频率）时次行是核心数，选核心数时次行回到频率。
+                            footerSecondary = if (MonitorLayout.effectiveDetail(config) == MonitorCardDetail.Cores) {
+                                "${metrics.cpuClockGhz.number()} GHz"
+                            } else {
+                                "${metrics.cpuCores.number()} ${LocalStrings.current.cores} ${metrics.cpuThreads.number()} ${LocalStrings.current.threads}"
+                            },
+                            style = style,
+                            modifier = slot,
+                            icon = AppIconKind.Cpu,
+                            color = MetricColors.cpu,
+                        )
+                    })
+                    MonitorCardId.Gpu -> ({ slot: Modifier ->
+                        MetricCard(
+                            key = MetricKeys.Gpu,
+                            label = LocalStrings.current.gpu,
+                            percent = metrics.gpuPercent,
+                            modelLine = identity?.gpuShortName ?: "GPU",
+                            values = history[MetricKeys.Gpu].orEmpty(),
+                            footerPrimary = when (MonitorLayout.effectiveDetail(config)) {
+                                MonitorCardDetail.Vram ->
+                                    "${metrics.vramUsedGb.number()} / ${metrics.vramTotalGb.number()} GB VRAM"
+                                MonitorCardDetail.Usage -> "${metrics.gpuPercent.number()}% load"
+                                else -> metrics.gpuTempC.celsiusText()
+                            },
+                            footerSecondary = "${metrics.vramUsedGb.number()} / ${metrics.vramTotalGb.number()} GB VRAM",
+                            style = style,
+                            modifier = slot,
+                            icon = AppIconKind.Gpu,
+                            color = MetricColors.gpu,
+                        )
+                    })
+                    MonitorCardId.Ram -> ({ slot: Modifier ->
+                        MetricCard(
+                            key = MetricKeys.Ram,
+                            label = LocalStrings.current.ram,
+                            percent = metrics.ramPercent,
+                            modelLine = identity?.ramModule ?: "RAM",
+                            values = history[MetricKeys.Ram].orEmpty(),
+                            footerPrimary = when (MonitorLayout.effectiveDetail(config)) {
+                                MonitorCardDetail.Free -> "${metrics.ramTotalGb?.let { total -> metrics.ramUsedGb?.let { total - it } }.number()} GB ${LocalStrings.current.free}"
+                                else -> "${metrics.ramUsedGb.number()} / ${metrics.ramTotalGb.number()} GB"
+                            },
+                            footerSecondary = LocalStrings.current.workingSet,
+                            style = style,
+                            modifier = slot,
+                            icon = AppIconKind.Ram,
+                            color = MetricColors.ram,
+                        )
+                    })
+                    MonitorCardId.Storage -> ({ slot: Modifier ->
+                        StorageCard(
+                            disks = metrics.disks,
+                            metrics = metrics,
+                            modelLine = identity?.storageModule ?: "Storage",
+                            values = history[MetricKeys.Storage].orEmpty(),
+                            style = style,
+                            modifier = slot,
+                        )
+                    })
+                    MonitorCardId.Temps -> ({ slot: Modifier -> TempsAndFansCard(metrics, style, slot) })
+                    else -> null
+                }
+                slot
+            }
             metricSlots.chunked(columns).forEach { metricRow ->
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     metricRow.forEach { slot -> slot(Modifier.weight(1f)) }
@@ -197,12 +227,18 @@ fun MonitorMode(
             // 第三行同样按断点排：576dp 下强排 4 列会把网络数值和引用卡挤到无法阅读（实测踩到）。
             // 权重也不等：概念图里 Recent Activity 明显比 Network / Uptime 宽（实测 295px vs 205px），
             // 等宽会把应用名截成 `Micros…`，等于丢掉这张卡的信息量。
-            val bottomSlots = listOf(
-                WeightedSlot(1f) { slot -> NetworkCard(metrics, history[MetricKeys.Network].orEmpty(), style, slot) },
-                WeightedSlot(0.85f) { slot -> UptimeCard(metrics, style, slot) },
-                WeightedSlot(1.35f) { slot -> ActivityCard(metrics, style, slot) },
-                WeightedSlot(1f) { slot -> QuoteCard(slot.testTag("monitor:quote")) },
-            )
+            val bottomSlots = visibleCards.mapNotNull { config ->
+                val slot: WeightedSlot? = when (config.id) {
+                    MonitorCardId.Network -> WeightedSlot(1f) { slot ->
+                        NetworkCard(metrics, history[MetricKeys.Network].orEmpty(), style, slot)
+                    }
+                    MonitorCardId.Uptime -> WeightedSlot(0.85f) { slot -> UptimeCard(metrics, style, slot) }
+                    MonitorCardId.Activity -> WeightedSlot(1.35f) { slot -> ActivityCard(metrics, style, slot) }
+                    MonitorCardId.Quote -> WeightedSlot(1f) { slot -> QuoteCard(slot.testTag("monitor:quote")) }
+                    else -> null
+                }
+                slot
+            }
             bottomSlots.chunked(columns).forEach { bottomRow ->
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
                     bottomRow.forEach { slot -> slot.content(Modifier.weight(slot.weight)) }

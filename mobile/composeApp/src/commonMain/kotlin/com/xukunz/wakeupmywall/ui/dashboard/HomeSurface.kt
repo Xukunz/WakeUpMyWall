@@ -80,6 +80,9 @@ fun HomeSurface(
     metricsNote: String? = null,
     /** Monitor 里 Quick Actions 的点击回调（带上动作 id）。 */
     onQuickAction: ((String) -> Unit)? = null,
+    /** Monitor 卡片布局（顺序 / 显隐 / 信息类别）。 */
+    monitorCards: List<com.xukunz.wakeupmywall.domain.model.MonitorCardConfig> =
+        com.xukunz.wakeupmywall.domain.model.MonitorLayout.Default,
 ) {
     val threshold = with(LocalDensity.current) { AppSizes.swipeThreshold.toPx() }
     Box(
@@ -122,6 +125,7 @@ fun HomeSurface(
                 isStale = metricsStale,
                 metricsNote = metricsNote,
                 onQuickAction = onQuickAction,
+                cards = monitorCards,
             )
             HomeMode.StandBy -> StandByMode(
                 // 权威规格 D 的长日期与日历卡（B2）的短日期不是同一个字符串。

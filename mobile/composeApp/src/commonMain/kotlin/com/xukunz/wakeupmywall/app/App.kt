@@ -578,6 +578,7 @@ fun App(
                             metricsStale = metricsStale,
                             metricsNote = metricsNote,
                             onQuickAction = ::runQuickAction,
+                            monitorCards = appearance.monitorCards,
                         )
                     }
                     Workspace.Settings -> AppShell(
