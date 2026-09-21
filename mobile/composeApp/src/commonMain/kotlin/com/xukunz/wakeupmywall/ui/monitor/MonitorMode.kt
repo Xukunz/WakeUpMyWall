@@ -82,6 +82,12 @@ fun MonitorMode(
     deviceId: String? = null,
     onOpenDevice: (() -> Unit)? = null,
     status: PcStatusLine? = null,
+    /** 上一次成功采样的时刻（`HH:mm:ss`）；null = 还没有过成功采样。 */
+    capturedLabel: String? = null,
+    /** 连续多次没采到（Agent 掉线 / 未配对）：读数全部显示 `—`，并如实标注。 */
+    isStale: Boolean = false,
+    /** 失败原因（可读文案）；null = 不渲染。 */
+    metricsNote: String? = null,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("monitor")) {
         // maxWidth 只能在 BoxWithConstraints 作用域直接读，进入 Column 的 content lambda 后就不是这个 receiver 了。
@@ -99,12 +105,18 @@ fun MonitorMode(
         ) {
             if (stacked) {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                    DeviceIdentityCard(identity, deviceId, status, style, onOpenDevice, Modifier.fillMaxWidth())
+                    DeviceIdentityCard(
+                        identity, deviceId, status, style, onOpenDevice, capturedLabel, isStale, metricsNote,
+                        Modifier.fillMaxWidth(),
+                    )
                     QuickActionsCard(style, Modifier.fillMaxWidth())
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                    DeviceIdentityCard(identity, deviceId, status, style, onOpenDevice, Modifier.weight(1.4f))
+                    DeviceIdentityCard(
+                        identity, deviceId, status, style, onOpenDevice, capturedLabel, isStale, metricsNote,
+                        Modifier.weight(1.4f),
+                    )
                     QuickActionsCard(style, Modifier.weight(1f))
                 }
             }
@@ -118,8 +130,8 @@ fun MonitorMode(
                         percent = metrics.cpuPercent,
                         modelLine = identity?.cpuShortName ?: "CPU",
                         values = history[MetricKeys.Cpu].orEmpty(),
-                        footerPrimary = "${metrics.cpuClockGhz} GHz",
-                        footerSecondary = "${metrics.cpuCores} cores ${metrics.cpuThreads} threads",
+                        footerPrimary = "${metrics.cpuClockGhz.number()} GHz",
+                        footerSecondary = "${metrics.cpuCores.number()} cores ${metrics.cpuThreads.number()} threads",
                         style = style,
                         modifier = slot,
                         icon = AppIconKind.Cpu,
@@ -133,8 +145,8 @@ fun MonitorMode(
                         percent = metrics.gpuPercent,
                         modelLine = identity?.gpuShortName ?: "GPU",
                         values = history[MetricKeys.Gpu].orEmpty(),
-                        footerPrimary = "${metrics.gpuTempC} °C",
-                        footerSecondary = "${metrics.vramUsedGb} / ${metrics.vramTotalGb} GB VRAM",
+                        footerPrimary = metrics.gpuTempC.celsiusText(),
+                        footerSecondary = "${metrics.vramUsedGb.number()} / ${metrics.vramTotalGb.number()} GB VRAM",
                         style = style,
                         modifier = slot,
                         icon = AppIconKind.Gpu,
@@ -148,7 +160,7 @@ fun MonitorMode(
                         percent = metrics.ramPercent,
                         modelLine = identity?.ramModule ?: "RAM",
                         values = history[MetricKeys.Ram].orEmpty(),
-                        footerPrimary = "${metrics.ramUsedGb} / ${metrics.ramTotalGb} GB",
+                        footerPrimary = "${metrics.ramUsedGb.number()} / ${metrics.ramTotalGb.number()} GB",
                         footerSecondary = "Working set",
                         style = style,
                         modifier = slot,
@@ -163,8 +175,8 @@ fun MonitorMode(
                         percent = metrics.storagePercent,
                         modelLine = identity?.storageModule ?: "Storage",
                         values = history[MetricKeys.Storage].orEmpty(),
-                        footerPrimary = "${metrics.storageUsedTb} / ${metrics.storageTotalTb} TB",
-                        footerSecondary = "${metrics.storageFreeGb} GB free",
+                        footerPrimary = "${metrics.storageUsedTb.number()} / ${metrics.storageTotalTb.number()} TB",
+                        footerSecondary = "${metrics.storageFreeGb.number()} GB free",
                         style = style,
                         modifier = slot,
                         icon = AppIconKind.Storage,
@@ -206,6 +218,9 @@ private fun DeviceIdentityCard(
     status: PcStatusLine?,
     style: WidgetStyle,
     onOpen: (() -> Unit)?,
+    capturedLabel: String?,
+    isStale: Boolean,
+    metricsNote: String?,
     modifier: Modifier = Modifier,
 ) {
     // 身份卡右上角的 `>` 是可点返回入口（HomeSurface 用它回 Dashboard）。
@@ -250,6 +265,32 @@ private fun DeviceIdentityCard(
                     modifier = Modifier.testTag("monitor:identity-lastseen"),
                 )
             }
+        }
+        // 指标的"新鲜度"如实写在身份卡里：掉线时它比任何数字都重要（Phase 5B）。
+        // 刻意放在 status 判断之外——没有状态行时（设计预览）同样需要说明数据是什么时候采的。
+        if (capturedLabel != null) {
+            Text(
+                text = if (isStale) "Last update $capturedLabel" else "Updated $capturedLabel",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("monitor:captured"),
+            )
+        }
+        if (isStale) {
+            Text(
+                text = "No fresh metrics",
+                style = MaterialTheme.typography.labelSmall,
+                color = LocalAccentPalette.current.onlineColor,
+                modifier = Modifier.testTag("monitor:stale"),
+            )
+        }
+        if (metricsNote != null) {
+            Text(
+                text = metricsNote,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("monitor:metrics-note"),
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -363,16 +404,16 @@ private fun QuickActionsCard(style: WidgetStyle, modifier: Modifier = Modifier) 
 private fun TempsAndFansCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: Modifier = Modifier) {
     WidgetSurface(style = style, modifier = modifier.testTag("metric:temps")) {
         SectionLine(icon = AppIconKind.Thermometer, tint = MetricColors.temperatureWarm, title = "System Temps")
-        MetricRow("CPU", "${metrics.cpuTempC}°C", metrics.cpuTempC / 100f, "metric:temps-cpu", MetricColors.temperature)
-        MetricRow("GPU", "${metrics.gpuTempC}°C", metrics.gpuTempC / 100f, "metric:temps-gpu", MetricColors.temperatureWarm)
+        MetricRow("CPU", metrics.cpuTempC.celsiusText(), temperatureFraction(metrics.cpuTempC), "metric:temps-cpu", MetricColors.temperature)
+        MetricRow("GPU", metrics.gpuTempC.celsiusText(), temperatureFraction(metrics.gpuTempC), "metric:temps-gpu", MetricColors.temperatureWarm)
         MetricRow(
             "Motherboard",
-            "${metrics.motherboardTempC}°C",
-            metrics.motherboardTempC / 100f,
+            metrics.motherboardTempC.celsiusText(),
+            temperatureFraction(metrics.motherboardTempC),
             "metric:temps-motherboard",
             MetricColors.temperature,
         )
-        MetricRow("SSD", "${metrics.ssdTempC}°C", metrics.ssdTempC / 100f, "metric:temps-ssd", MetricColors.temperature)
+        MetricRow("SSD", metrics.ssdTempC.celsiusText(), temperatureFraction(metrics.ssdTempC), "metric:temps-ssd", MetricColors.temperature)
 
         Column(
             modifier = Modifier.fillMaxWidth().testTag("metric:fans"),
@@ -380,12 +421,17 @@ private fun TempsAndFansCard(metrics: MetricsSnapshot, style: WidgetStyle, modif
         ) {
             SectionLine(icon = AppIconKind.Fan, tint = MetricColors.fan, title = "Fans")
             // 概念图里风扇也是"点 + 名称 + 数值 + 细条"，转速按 2000 RPM 满刻度换算。
-            MetricRow("CPU Fan", "${formatRpm(metrics.cpuFanRpm)} RPM", metrics.cpuFanRpm / 2000f, "metric:fans-cpu", MetricColors.fan)
-            MetricRow("GPU Fan", "${formatRpm(metrics.gpuFanRpm)} RPM", metrics.gpuFanRpm / 2000f, "metric:fans-gpu", MetricColors.fan)
-            MetricRow("Case Fans", "${formatRpm(metrics.caseFanRpm)} RPM", metrics.caseFanRpm / 2000f, "metric:fans-case", MetricColors.fan)
+            MetricRow("CPU Fan", "${metrics.cpuFanRpm.rpmText()} RPM", fanFraction(metrics.cpuFanRpm), "metric:fans-cpu", MetricColors.fan)
+            MetricRow("GPU Fan", "${metrics.gpuFanRpm.rpmText()} RPM", fanFraction(metrics.gpuFanRpm), "metric:fans-gpu", MetricColors.fan)
+            MetricRow("Case Fans", "${metrics.caseFanRpm.rpmText()} RPM", fanFraction(metrics.caseFanRpm), "metric:fans-case", MetricColors.fan)
         }
     }
 }
+
+/** 没读到温度/转速时进度条给 0（条是空的），但数值显示 `—`：两者表达的是同一件事。 */
+private fun temperatureFraction(value: Int?): Float = (value ?: 0) / 100f
+
+private fun fanFraction(rpm: Int?): Float = (rpm ?: 0) / 2000f
 
 /** 卡片内的小节标题：图标 + 文字（概念图里 System Temps / Fans 前面各有一个图形）。 */
 @Composable
@@ -404,12 +450,12 @@ private fun NetworkCard(metrics: MetricsSnapshot, values: List<Float>, style: Wi
     WidgetSurface(style = style, modifier = modifier.testTag("metric:network")) {
         SectionLine(icon = AppIconKind.Wifi, tint = MetricColors.networkIcon, title = "Network")
         Text(
-            text = "↓${metrics.downloadMbps} Mbps",
+            text = "↓${metrics.downloadMbps.number()} Mbps",
             style = AppTypography.metricReadout,
             modifier = Modifier.testTag("metric:network-down"),
         )
         Text(
-            text = "↑${metrics.uploadMbps} Mbps",
+            text = "↑${metrics.uploadMbps.number()} Mbps",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.testTag("metric:network-up"),
@@ -423,12 +469,12 @@ private fun UptimeCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: M
     WidgetSurface(style = style, modifier = modifier.testTag("metric:uptime")) {
         SectionLine(icon = AppIconKind.Clock, tint = MetricColors.uptimeIcon, title = "Uptime")
         Text(
-            text = formatUptime(metrics.uptimeSeconds),
+            text = metrics.uptimeSeconds.uptimeText(),
             style = AppTypography.metricReadout,
             modifier = Modifier.testTag("metric:uptime-value"),
         )
         Text(
-            text = metrics.bootDateLabel,
+            text = metrics.bootDateLabel.orUnknown(),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -439,6 +485,15 @@ private fun UptimeCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: M
 private fun ActivityCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier: Modifier = Modifier) {
     WidgetSurface(style = style, modifier = modifier.testTag("monitor:activity")) {
         SectionLine(icon = AppIconKind.List, tint = MetricColors.activityIcon, title = "Recent Activity")
+        if (metrics.recentActivity.isEmpty()) {
+            // spec §8 把"最近应用"列为 P2：还没有真实数据时如实显示 —，不编四条假记录。
+            Text(
+                text = UnknownReading,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("monitor:activity-empty"),
+            )
+        }
         metrics.recentActivity.forEachIndexed { index, entry ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -469,33 +524,20 @@ private fun ActivityCard(metrics: MetricsSnapshot, style: WidgetStyle, modifier:
     }
 }
 
-/** 千分位：1,240 RPM 这种写法在概念图里是带分隔符的。 */
-private fun formatRpm(rpm: Int): String {
-    val text = rpm.toString()
-    if (text.length <= 3) return text
-    return text.dropLast(3) + "," + text.takeLast(3)
-}
-
-private fun formatUptime(seconds: Long): String {
-    val days = seconds / 86_400
-    val hours = (seconds % 86_400) / 3_600
-    val minutes = (seconds % 3_600) / 60
-    return "${days}d ${hours}h ${minutes}m"
-}
-
 /**
- * 由当前读数生成的确定性 60 秒 Mock 曲线（1 Hz）。Phase 5 接入真实轮询后，
- * 调用方改为传 `MetricRingBuffer.values()`，本函数随之删除。
+ * 由 Mock 读数生成的确定性曲线。**只在没有真实设备的预览路径上用**（Phase 5B 起，
+ * 配了设备但没有采样时走 `MetricsSnapshot.Unknown`，不再用 Mock 数字冒充）。
+ * 有真实采样时调用方传 `MetricRingBuffer.values()`。
  */
 fun mockMetricHistory(metrics: MetricsSnapshot, samples: Int = 60): Map<String, List<Float>> {
     fun wave(base: Float, amplitude: Float): List<Float> =
         List(samples) { index -> base + amplitude * sin(index / 6f) }
 
     return mapOf(
-        MetricKeys.Cpu to wave(metrics.cpuPercent, 4f),
-        MetricKeys.Gpu to wave(metrics.gpuPercent, 6f),
-        MetricKeys.Ram to wave(metrics.ramPercent, 2f),
-        MetricKeys.Storage to List(samples) { metrics.storagePercent },
-        MetricKeys.Network to wave(metrics.downloadMbps, 12f),
+        MetricKeys.Cpu to wave(metrics.cpuPercent ?: 0f, 4f),
+        MetricKeys.Gpu to wave(metrics.gpuPercent ?: 0f, 6f),
+        MetricKeys.Ram to wave(metrics.ramPercent ?: 0f, 2f),
+        MetricKeys.Storage to List(samples) { metrics.storagePercent ?: 0f },
+        MetricKeys.Network to wave(metrics.downloadMbps ?: 0f, 12f),
     )
 }

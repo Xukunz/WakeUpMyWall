@@ -42,7 +42,8 @@ import com.xukunz.wakeupmywall.ui.icons.AppIconKind
 fun MetricCard(
     key: String,
     label: String,
-    percent: Float,
+    /** `null` = 这个读数没采到：环心显示 `—`，不画弧。 */
+    percent: Float?,
     modelLine: String,
     values: List<Float>,
     footerPrimary: String,
@@ -117,12 +118,12 @@ fun MetricCard(
 /** 环形进度：背景环 + 前景弧 + 中心百分数。 */
 @Composable
 fun ProgressRing(
-    percent: Float,
+    percent: Float?,
     tag: String,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
-    val fraction = (percent / 100f).coerceIn(0f, 1f)
+    val fraction = percent?.let { (it / 100f).coerceIn(0f, 1f) } ?: 0f
     val accent = if (color == Color.Unspecified) MaterialTheme.colorScheme.primary else color
     val track = MaterialTheme.colorScheme.outline
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -153,7 +154,7 @@ fun ProgressRing(
                 },
         )
         Text(
-            text = "${percent.toInt()}%",
+            text = percent.percentText(),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag(tag),
         )

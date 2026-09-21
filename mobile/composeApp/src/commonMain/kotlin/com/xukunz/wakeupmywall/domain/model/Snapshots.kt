@@ -48,13 +48,27 @@ data class ActivityEntry(val app: String, val whenLabel: String)
  * ↓12.4 ↑3.1 Mbps），与 Monitor 页的实时读数（C2）不是同一组数字，因此单独建模。
  */
 data class PcSummarySnapshot(
-    val cpuPercent: Int,
-    val cpuTempC: Int,
-    val ramPercent: Int,
-    val downloadMbps: Float,
-    val uploadMbps: Float,
+    val cpuPercent: Int?,
+    val cpuTempC: Int?,
+    val ramPercent: Int?,
+    val downloadMbps: Float?,
+    val uploadMbps: Float?,
     val lastSeenLabel: String,
-)
+) {
+    companion object {
+        /**
+         * 一台都读不到的摘要：**不是 0**。UI 把它渲染成 `—`（Phase 5B：Agent 掉线或还没采到样时用）。
+         */
+        val Unknown = PcSummarySnapshot(
+            cpuPercent = null,
+            cpuTempC = null,
+            ramPercent = null,
+            downloadMbps = null,
+            uploadMbps = null,
+            lastSeenLabel = "—",
+        )
+    }
+}
 
 /** 静态硬件身份（型号小字）。实时数值一律在 [MetricsSnapshot]，同一事实只存一处。 */
 data class HardwareIdentity(
@@ -73,30 +87,78 @@ data class HardwareIdentity(
 )
 
 data class MetricsSnapshot(
-    val cpuPercent: Float,
-    val cpuClockGhz: Float,
-    val cpuCores: Int,
-    val cpuThreads: Int,
-    val cpuTempC: Int,
-    val gpuPercent: Float,
-    val gpuTempC: Int,
-    val vramUsedGb: Float,
-    val vramTotalGb: Int,
-    val ramPercent: Float,
-    val ramUsedGb: Float,
-    val ramTotalGb: Int,
-    val storagePercent: Float,
-    val storageUsedTb: Float,
-    val storageTotalTb: Float,
-    val storageFreeGb: Int,
-    val motherboardTempC: Int,
-    val ssdTempC: Int,
-    val cpuFanRpm: Int,
-    val gpuFanRpm: Int,
-    val caseFanRpm: Int,
-    val downloadMbps: Float,
-    val uploadMbps: Float,
-    val uptimeSeconds: Long,
-    val bootDateLabel: String,
-    val recentActivity: List<ActivityEntry>,
+    /** 数值一律可空：`null` = Agent 没读到那个传感器，**不是 0**（Phase 5A 的契约）。 */
+    val cpuPercent: Float?,
+    val cpuClockGhz: Float?,
+    val cpuCores: Int?,
+    val cpuThreads: Int?,
+    val cpuTempC: Int?,
+    val gpuPercent: Float?,
+    val gpuTempC: Int?,
+    val vramUsedGb: Float?,
+    val vramTotalGb: Int?,
+    val ramPercent: Float?,
+    val ramUsedGb: Float?,
+    val ramTotalGb: Int?,
+    val storagePercent: Float?,
+    val storageUsedTb: Float?,
+    val storageTotalTb: Float?,
+    val storageFreeGb: Int?,
+    val motherboardTempC: Int?,
+    val ssdTempC: Int?,
+    val cpuFanRpm: Int?,
+    val gpuFanRpm: Int?,
+    val caseFanRpm: Int?,
+    val downloadMbps: Float?,
+    val uploadMbps: Float?,
+    val uptimeSeconds: Long?,
+    val bootDateLabel: String?,
+    /** spec §8 把"最近应用"列为 P2：真实数据未接入前是空列表，UI 显示 `—`。 */
+    val recentActivity: List<ActivityEntry> = emptyList(),
+) {
+    companion object {
+        /**
+         * 一份"什么都不知道"的读数：有设备但还没采到样（或已经掉线）时用它，
+         * 让 UI 逐项显示 `—`，而不是继续拿 Mock 数字冒充真实机器。
+         */
+        val Unknown = MetricsSnapshot(
+            cpuPercent = null,
+            cpuClockGhz = null,
+            cpuCores = null,
+            cpuThreads = null,
+            cpuTempC = null,
+            gpuPercent = null,
+            gpuTempC = null,
+            vramUsedGb = null,
+            vramTotalGb = null,
+            ramPercent = null,
+            ramUsedGb = null,
+            ramTotalGb = null,
+            storagePercent = null,
+            storageUsedTb = null,
+            storageTotalTb = null,
+            storageFreeGb = null,
+            motherboardTempC = null,
+            ssdTempC = null,
+            cpuFanRpm = null,
+            gpuFanRpm = null,
+            caseFanRpm = null,
+            downloadMbps = null,
+            uploadMbps = null,
+            uptimeSeconds = null,
+            bootDateLabel = null,
+        )
+    }
+}
+
+/**
+ * 一次成功的指标采样：Monitor 需要的三份模型 + 采样时刻。
+ * 三个字段里的 `null` 都表示"这次没读到"，UI 一律渲染成 `—`。
+ */
+data class LiveMetrics(
+    val snapshot: MetricsSnapshot,
+    val identity: HardwareIdentity,
+    val summary: PcSummarySnapshot,
+    /** `HH:mm:ss`（本机时区）。身份卡的 `Updated …` 与掉线时的 `Last update …` 都用它。 */
+    val capturedAtLabel: String,
 )

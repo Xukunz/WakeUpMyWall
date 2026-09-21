@@ -231,11 +231,11 @@ Expected: BUILD SUCCESSFUL，新增 4 条测试通过
   - `object LiveMetricsMapper { fun map(metrics: AgentMetrics): LiveMetrics }`
   - `MetricsSnapshot` / `PcSummarySnapshot` 数值字段改为可空（`Float?` / `Int?`）
 
-- [ ] **Step 1: 写失败测试**（映射的每条规则一条断言：直通、单位（GHz 已是 GHz 不再换算）、缺省、`threads` 缺省时用 `Runtime`-无关的默认值 `null`、`bootDateLabel` 由 `bootedAtUtc` 大写化日期部分）
-- [ ] **Step 2: 跑测试确认失败**
-- [ ] **Step 3: 实现**（纯函数，无副作用；`recentActivity` 传 `emptyList()`——spec §8 把最近应用列为 P2）
-- [ ] **Step 4: 跑测试确认通过**
-- [ ] **Step 5: 提交** `feat: map agent metrics into the domain snapshot`
+- [x] **Step 1: 写失败测试**（映射的每条规则一条断言：直通、单位（GHz 已是 GHz 不再换算）、缺省、`threads` 缺省时用 `Runtime`-无关的默认值 `null`、`bootDateLabel` 由 `bootedAtUtc` 大写化日期部分）
+- [x] **Step 2: 跑测试确认失败**
+- [x] **Step 3: 实现**（纯函数，无副作用；`recentActivity` 传 `emptyList()`——spec §8 把最近应用列为 P2）
+- [x] **Step 4: 跑测试确认通过**
+- [x] **Step 5: 提交** `feat: map agent metrics into the domain snapshot`
 
 ### Task B3: 采样循环 + Ring Buffer + UI 可空读数
 
@@ -252,11 +252,11 @@ Expected: BUILD SUCCESSFUL，新增 4 条测试通过
   4. Monitor 与 Dashboard 摘要卡优先用 live 数据；没有 live 数据时退回 Mock（保证 Phase 1 视觉基线与桌面预览不变）。
 - 格式化助手统一规则：`null` → `—`（百分比、GHz、GB、TB、℃、RPM、Mbps、uptime 全部适用）。
 
-- [ ] **Step 1: 写失败测试**（注入探针：成功一次 → Monitor 显示代理返回的数字；再失败 3 次 → `—` 与 `monitor:stale`；未配对 → 不发请求 + 提示文案）
-- [ ] **Step 2: 跑测试确认失败**
-- [ ] **Step 3: 实现**（`LaunchedEffect(device?.id, agentToken, metricsPollMillis)`；Ring Buffer 用 `remember { MetricRingBuffer(60) }` 五条；卡片接线）
-- [ ] **Step 4: 跑测试 + `:composeApp:assembleDebug` 确认通过**
-- [ ] **Step 5: 提交** `feat: show live pc metrics on the monitor`
+- [x] **Step 1: 写失败测试**（注入探针：成功一次 → Monitor 显示代理返回的数字；再失败 3 次 → `—` 与 `monitor:stale`；未配对 → 不发请求 + 提示文案）
+- [x] **Step 2: 跑测试确认失败**
+- [x] **Step 3: 实现**（`LaunchedEffect(device?.id, agentToken, metricsPollMillis)`；Ring Buffer 用 `remember { MetricRingBuffer(60) }` 五条；卡片接线）
+- [x] **Step 4: 跑测试 + `:composeApp:assembleDebug` 确认通过**
+- [x] **Step 5: 提交** `feat: show live pc metrics on the monitor`
 
 ### Task B4: 端到端验收与文档
 

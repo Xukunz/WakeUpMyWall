@@ -32,6 +32,9 @@ import com.xukunz.wakeupmywall.ui.components.WidgetStyle
 import com.xukunz.wakeupmywall.ui.components.WidgetSurface
 import com.xukunz.wakeupmywall.ui.icons.AppIcon
 import com.xukunz.wakeupmywall.ui.icons.AppIconKind
+import com.xukunz.wakeupmywall.ui.monitor.celsiusText
+import com.xukunz.wakeupmywall.ui.monitor.number
+import com.xukunz.wakeupmywall.ui.monitor.percentText
 import com.xukunz.wakeupmywall.ui.powerrail.PowerRailModel
 
 /**
@@ -103,14 +106,14 @@ fun PcSummaryWidget(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
-                        SummaryMetric("CPU", "${summary.cpuPercent}%", summary.cpuPercent / 100f, MetricColors.cpu, "cpu", Modifier.weight(1f))
-                        SummaryMetric("Temp", "${summary.cpuTempC}°C", summary.cpuTempC / 100f, MetricColors.temperature, "temp", Modifier.weight(1f))
+                        SummaryMetric("CPU", summary.cpuPercent.percentText(), percentFraction(summary.cpuPercent), MetricColors.cpu, "cpu", Modifier.weight(1f))
+                        SummaryMetric("Temp", summary.cpuTempC.celsiusText(), percentFraction(summary.cpuTempC), MetricColors.temperature, "temp", Modifier.weight(1f))
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
-                        SummaryMetric("RAM", "${summary.ramPercent}%", summary.ramPercent / 100f, MetricColors.ram, "ram", Modifier.weight(1f))
+                        SummaryMetric("RAM", summary.ramPercent.percentText(), percentFraction(summary.ramPercent), MetricColors.ram, "ram", Modifier.weight(1f))
                         NetworkMetric(summary, Modifier.weight(1.4f))
                     }
                 }
@@ -127,9 +130,9 @@ fun PcSummaryWidget(
                             .size(AppSizes.coverThumbnailWidth, AppSizes.coverThumbnailHeight)
                             .testTag("dashboard:pc-cover"),
                     )
-                    SummaryMetric("CPU", "${summary.cpuPercent}%", summary.cpuPercent / 100f, MetricColors.cpu, "cpu", Modifier.weight(1f))
-                    SummaryMetric("Temp", "${summary.cpuTempC}°C", summary.cpuTempC / 100f, MetricColors.temperature, "temp", Modifier.weight(1f))
-                    SummaryMetric("RAM", "${summary.ramPercent}%", summary.ramPercent / 100f, MetricColors.ram, "ram", Modifier.weight(1f))
+                    SummaryMetric("CPU", summary.cpuPercent.percentText(), percentFraction(summary.cpuPercent), MetricColors.cpu, "cpu", Modifier.weight(1f))
+                    SummaryMetric("Temp", summary.cpuTempC.celsiusText(), percentFraction(summary.cpuTempC), MetricColors.temperature, "temp", Modifier.weight(1f))
+                    SummaryMetric("RAM", summary.ramPercent.percentText(), percentFraction(summary.ramPercent), MetricColors.ram, "ram", Modifier.weight(1f))
                     NetworkMetric(summary, Modifier.weight(2.2f))
                 }
             }
@@ -137,13 +140,16 @@ fun PcSummaryWidget(
     }
 }
 
+/** 没读到的读数：细条给 0（空条），数值显示 `—`。 */
+private fun percentFraction(percent: Int?): Float = (percent ?: 0) / 100f
+
 /** Network 是唯一有两行数值的一列（下行 ↓ 上行 ↑），任何排布下都要给它更宽的位置。 */
 @Composable
 private fun NetworkMetric(summary: PcSummarySnapshot, modifier: Modifier = Modifier) {
     SummaryMetric(
         label = "Network",
-        value = "↓${summary.downloadMbps} Mbps\n↑${summary.uploadMbps} Mbps",
-        fraction = summary.downloadMbps / 200f,
+        value = "↓${summary.downloadMbps.number()} Mbps\n↑${summary.uploadMbps.number()} Mbps",
+        fraction = (summary.downloadMbps ?: 0f) / 200f,
         color = MetricColors.network,
         key = "network",
         modifier = modifier,

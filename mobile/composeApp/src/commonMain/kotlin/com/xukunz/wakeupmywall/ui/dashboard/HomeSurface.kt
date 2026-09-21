@@ -72,6 +72,12 @@ fun HomeSurface(
     modifier: Modifier = Modifier,
     identity: HardwareIdentity? = null,
     nextEvent: NextEvent = MockData.nextEvent,
+    /** 上一次成功采样的时刻（`HH:mm:ss`）；null = 还没成功采过样。 */
+    capturedLabel: String? = null,
+    /** 连续多次没采到指标：Monitor 的读数全部退成 `—` 并标注。 */
+    metricsStale: Boolean = false,
+    /** 采不到指标的原因（可读文案）；null = 不渲染。 */
+    metricsNote: String? = null,
 ) {
     val threshold = with(LocalDensity.current) { AppSizes.swipeThreshold.toPx() }
     Box(
@@ -110,6 +116,9 @@ fun HomeSurface(
                     stateLabel = dashboard.pc.stateLabel,
                     lastSeenLabel = dashboard.pcSummary.lastSeenLabel,
                 ),
+                capturedLabel = capturedLabel,
+                isStale = metricsStale,
+                metricsNote = metricsNote,
             )
             HomeMode.StandBy -> StandByMode(
                 // 权威规格 D 的长日期与日历卡（B2）的短日期不是同一个字符串。

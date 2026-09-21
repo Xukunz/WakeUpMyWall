@@ -24,7 +24,9 @@ import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
 import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
 import com.xukunz.wakeupmywall.core.agent.AgentTokenStore
 import com.xukunz.wakeupmywall.core.agent.InMemoryAgentTokenStore
+import com.xukunz.wakeupmywall.core.metrics.MetricRingBuffer
 import com.xukunz.wakeupmywall.core.network.AgentApi
+import com.xukunz.wakeupmywall.core.network.AgentMetrics
 import com.xukunz.wakeupmywall.core.network.ApiResult
 import com.xukunz.wakeupmywall.core.network.PowerAction
 import com.xukunz.wakeupmywall.core.network.createAgentHttpClient
@@ -40,9 +42,13 @@ import com.xukunz.wakeupmywall.data.device.DeviceRepository
 import com.xukunz.wakeupmywall.data.settings.InMemorySettingsStorage
 import com.xukunz.wakeupmywall.data.mock.MockData
 import com.xukunz.wakeupmywall.domain.model.DashboardLayout
+import com.xukunz.wakeupmywall.domain.model.LiveMetrics
+import com.xukunz.wakeupmywall.domain.model.MetricsSnapshot
 import com.xukunz.wakeupmywall.domain.model.PcDevice
 import com.xukunz.wakeupmywall.domain.model.PcEvent
 import com.xukunz.wakeupmywall.domain.model.PcState
+import com.xukunz.wakeupmywall.domain.model.PcSummarySnapshot
+import com.xukunz.wakeupmywall.domain.usecase.LiveMetricsMapper
 import com.xukunz.wakeupmywall.domain.usecase.PcStateMachine
 import com.xukunz.wakeupmywall.ui.AppShell
 import com.xukunz.wakeupmywall.ui.RailEvent
@@ -63,6 +69,7 @@ import com.xukunz.wakeupmywall.ui.dashboard.HomeMode
 import com.xukunz.wakeupmywall.ui.dashboard.HomeModeController
 import com.xukunz.wakeupmywall.ui.dashboard.HomeSurface
 import com.xukunz.wakeupmywall.ui.monitor.mockMetricHistory
+import com.xukunz.wakeupmywall.ui.monitor.MetricKeys
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,6 +100,10 @@ fun App(
     agentPollMillis: Long = 5_000,
     /** 测试注入用：直接给连接结论；默认 null = 用真实 TCP + HTTP 探测。 */
     agentReportProbe: (suspend (PcDevice) -> ConnectionReport)? = null,
+    /** 指标采样节奏。spec §9 的 ACTIVE 1s / IDLE 5s 自适应属 Phase 5C，这里先固定 2 秒。 */
+    metricsPollMillis: Long = 2_000,
+    /** 测试注入用：直接给指标结果；默认 null = 真去问 `GET /api/v1/system`。 */
+    metricsProbe: (suspend (PcDevice, String?) -> ApiResult<AgentMetrics>)? = null,
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
@@ -123,6 +134,16 @@ fun App(
     var agentToken by remember { mutableStateOf<String?>(null) }
     var isPairing by remember { mutableStateOf(false) }
     var pairingNote by remember { mutableStateOf<String?>(null) }
+    // 指标采样的状态：最近一次成功的采样、连续失败次数、失败原因。
+    var liveMetrics by remember { mutableStateOf<LiveMetrics?>(null) }
+    var metricsFailures by remember { mutableStateOf(0) }
+    var metricsNote by remember { mutableStateOf<String?>(null) }
+    // 换设备就换一组 60 点环形缓冲（曲线是"这台机器"的，不该跨设备混）。
+    val metricBuffers = remember(device?.id) {
+        listOf(MetricKeys.Cpu, MetricKeys.Gpu, MetricKeys.Ram, MetricKeys.Storage, MetricKeys.Network)
+            .associateWith { MetricRingBuffer(capacity = 60) }
+    }
+    var metricHistory by remember(device?.id) { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
     var appearance by remember {
         mutableStateOf(
@@ -275,6 +296,82 @@ fun App(
         }
     }
 
+    /**
+     * 指标采样（Phase 5B）：每 [metricsPollMillis] 问一次 `GET /api/v1/system`（Bearer）。
+     * 成功 → 更新读数并把 CPU/GPU/RAM/存储/网络推入环形缓冲（60 点曲线）；
+     * 失败 → 只记原因与连续失败次数，**不清空已有读数**；连续 [metricsStaleAfter] 次失败才算掉线，
+     * 此时 UI 才把读数退成 `—` 并标注 `Last update …`（不留一张看不出真假的旧数字）。
+     * 没配对不发请求：载荷要 Bearer，盲发只会白拿 401。
+     */
+    LaunchedEffect(device?.id, agentToken, metricsPollMillis, metricsProbe) {
+        val target = device
+        liveMetrics = null
+        metricsFailures = 0
+        metricsNote = null
+        if (target == null) return@LaunchedEffect
+
+        fun pushSample(snapshot: MetricsSnapshot) {
+            snapshot.cpuPercent?.let { metricBuffers.getValue(MetricKeys.Cpu).add(it) }
+            snapshot.gpuPercent?.let { metricBuffers.getValue(MetricKeys.Gpu).add(it) }
+            snapshot.ramPercent?.let { metricBuffers.getValue(MetricKeys.Ram).add(it) }
+            snapshot.storagePercent?.let { metricBuffers.getValue(MetricKeys.Storage).add(it) }
+            snapshot.downloadMbps?.let { metricBuffers.getValue(MetricKeys.Network).add(it) }
+            metricHistory = metricBuffers.mapValues { (_, buffer) -> buffer.values() }
+        }
+
+        while (true) {
+            val token = agentToken
+            if (token == null) {
+                metricsFailures = metricsStaleAfter
+                metricsNote = "Pair the phone in Device Setup first (Agent section)"
+            } else {
+                when (
+                    val result = runCatching {
+                        metricsProbe?.invoke(target, token)
+                            ?: agentApi.system(baseUrl(target), token)
+                    }.getOrNull()
+                ) {
+                    null -> {
+                        metricsFailures += 1
+                        metricsNote = "Could not reach the Agent"
+                    }
+                    is ApiResult.Success -> {
+                        val sample = LiveMetricsMapper.map(result.value)
+                        liveMetrics = sample
+                        metricsFailures = 0
+                        metricsNote = null
+                        pushSample(sample.snapshot)
+                    }
+                    is ApiResult.Failure -> {
+                        metricsFailures += 1
+                        metricsNote = result.message
+                    }
+                }
+            }
+            delay(metricsPollMillis)
+        }
+    }
+
+    // 指标只有三个来源，且**不互相冒充**：
+    //   1. 有设备 + 采样新鲜 → Agent 的真实读数；
+    //   2. 有设备 + 还没采到/已掉线 → 全部 `—`（拿 Mock 冒充真实机器会误导人）；
+    //   3. 一台设备都没配 → 设计预览路径，继续用 Mock（Phase 1 的视觉基线）。
+    val live = liveMetrics
+    val hasDevice = device != null
+    val metricsStale = metricsFailures >= metricsStaleAfter
+    val shownMetrics = when {
+        !hasDevice -> MockData.metrics
+        live != null && !metricsStale -> live.snapshot
+        else -> MetricsSnapshot.Unknown
+    }
+    val shownSummary = when {
+        !hasDevice -> MockData.summaryMetrics
+        live != null && !metricsStale -> live.summary
+        else -> PcSummarySnapshot.Unknown
+    }
+    val shownIdentity = if (hasDevice) live?.identity else MockData.hardware
+    val shownHistory = if (hasDevice) metricHistory else mockMetricHistory(MockData.metrics)
+
     WakeUpMyWallTheme(accent = appearance.accent) {
         Box(modifier = Modifier.fillMaxSize()) {
             WallpaperBackground(appearance.wallpaperId)
@@ -322,14 +419,17 @@ fun App(
                                 events = MockData.calendarEvents,
                                 todos = MockData.todos,
                                 pc = railModel,
-                                pcSummary = MockData.summaryMetrics,
+                                pcSummary = shownSummary,
                                 widgets = DashboardLayout.default,
                             ),
-                            metrics = MockData.metrics,
-                            history = mockMetricHistory(MockData.metrics),
+                            metrics = shownMetrics,
+                            history = shownHistory,
                             style = appearance.widgetStyle,
                             onModeChange = homeModeController::show,
-                            identity = MockData.hardware,
+                            identity = shownIdentity,
+                            capturedLabel = live?.capturedAtLabel,
+                            metricsStale = metricsStale,
+                            metricsNote = metricsNote,
                         )
                     }
                     Workspace.Settings -> AppShell(
@@ -515,3 +615,9 @@ private val unavailableReasons = setOf(
     ConnectionFailure.UNAUTHORIZED,
     ConnectionFailure.AGENT_ERROR,
 )
+
+/**
+ * 连续多少次指标采样失败，才算"这台机器现在读不到数"。
+ * 3 次 ≈ 6 秒（2 秒采样），能熬过一次抖动，又不会让用户对着过期数字发呆太久。
+ */
+private const val metricsStaleAfter = 3
