@@ -287,3 +287,13 @@ Expected: BUILD SUCCESSFUL，新增 4 条测试通过
 ## 4. 验收实录
 
 （Task B4 完成后填写。）
+
+---
+
+## 5. 执行中的计划修正
+
+- **B2 与 B3 必须一次落地（Ruling B-1）**：`MetricsSnapshot` / `PcSummarySnapshot` 的数值字段一旦变成可空，
+  UI 里既有的字符串插值（如 `"${metrics.cpuClockGhz} GHz"`）会先渲染成 `null`，既有的 `MonitorModeTest` /
+  `PcSummaryWidget` 断言会立刻变红——也就是说 B2 单独提交会留下一个**能编译但显示错误**的中间态。
+  因此 B2（映射 + 可空模型）与 B3（采样循环 + UI `—` 化 + staleness）合并为一笔提交
+  `feat: show live pc metrics on the monitor`，测试一起写。代价：这一笔提交比 Task 粒度更大，评审时要一次看完整条链路。
