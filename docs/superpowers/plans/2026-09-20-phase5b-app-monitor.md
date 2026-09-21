@@ -68,7 +68,7 @@
   - `AgentNetworkMetrics(downloadMbps: Float? = null, uploadMbps: Float? = null)`
   - `suspend fun system(baseUrl: String, token: String?): ApiResult<AgentMetrics>`
 
-- [ ] **Step 1: 写失败测试**（`AgentApiMetricsTest.kt`）
+- [x] **Step 1: 写失败测试**（`AgentApiMetricsTest.kt`）
 
 ```kotlin
 package com.xukunz.wakeupmywall.core.network
@@ -181,12 +181,12 @@ class AgentApiMetricsTest {
 }
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `JAVA_HOME=$HOME/.local/toolchain/jdk-25.0.4.1+1 ./gradlew :composeApp:testDebugUnitTest --tests "*AgentApiMetricsTest*"`
 Expected: 编译失败（`Unresolved reference: system` / `AgentMetrics`）
 
-- [ ] **Step 3: 实现**（DTO 与 `system()`，与既有 `status()` 同样的 try/catch 结构）
+- [x] **Step 3: 实现**（DTO 与 `system()`，与既有 `status()` 同样的 try/catch 结构）
 
 ```kotlin
 /** Phase 5A 的 `GET /api/v1/system` 载荷。**字段可空 = Agent 没读到该传感器**（不是 0）。 */
@@ -211,12 +211,12 @@ suspend fun system(baseUrl: String, token: String?): ApiResult<AgentMetrics> =
 （各分节 DTO 的字段名与 `docs/plans/agent-api.md` 的表格逐字一致；数值字段一律 `= null` 默认值，
 这样 Agent 省略字段时不会解析失败。）
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `JAVA_HOME=$HOME/.local/toolchain/jdk-25.0.4.1+1 ./gradlew :composeApp:testDebugUnitTest`
 Expected: BUILD SUCCESSFUL，新增 4 条测试通过
 
-- [ ] **Step 5: 提交** `feat: read the agent metrics payload on the phone`
+- [x] **Step 5: 提交** `feat: read the agent metrics payload on the phone`
 
 ### Task B2: DTO → 领域快照的纯映射
 

@@ -34,6 +34,86 @@ data class ActionEntry(val id: String, val name: String)
 @Serializable
 data class PowerResponse(val action: String, val accepted: Boolean)
 
+/**
+ * Phase 5A 的 `GET /api/v1/system` 载荷。字段名与 `docs/plans/agent-api.md` 的表格逐字对应；
+ * **可空的数值字段表示 Agent 没读到那个传感器**（例如没有硬件监控库权限时的温度），
+ * 所以这里一律保留 `null`，绝不在解析层把它变成 0。
+ */
+@Serializable
+data class AgentMetrics(
+    val capturedAtUtc: String,
+    val identity: AgentIdentity,
+    val cpu: AgentCpuMetrics,
+    val gpu: AgentGpuMetrics,
+    val memory: AgentMemoryMetrics,
+    val storage: AgentStorageMetrics,
+    val thermal: AgentThermalMetrics,
+    val network: AgentNetworkMetrics,
+    val uptimeSeconds: Long,
+    val bootedAtUtc: String,
+)
+
+@Serializable
+data class AgentIdentity(
+    val hostname: String,
+    val os: String,
+    val cpuName: String,
+    val cpuShortName: String,
+    val gpuName: String,
+    val gpuShortName: String,
+    val ramModule: String,
+    val storageModule: String,
+)
+
+@Serializable
+data class AgentCpuMetrics(
+    val name: String,
+    val usagePercent: Float? = null,
+    val clockGhz: Float? = null,
+    val cores: Int? = null,
+    val threads: Int? = null,
+    val tempC: Float? = null,
+    val fanRpm: Int? = null,
+)
+
+@Serializable
+data class AgentGpuMetrics(
+    val name: String,
+    val usagePercent: Float? = null,
+    val tempC: Float? = null,
+    val vramUsedGb: Float? = null,
+    val vramTotalGb: Float? = null,
+    val fanRpm: Int? = null,
+)
+
+@Serializable
+data class AgentMemoryMetrics(
+    val usagePercent: Float? = null,
+    val usedGb: Float? = null,
+    val totalGb: Float? = null,
+)
+
+@Serializable
+data class AgentStorageMetrics(
+    val usagePercent: Float? = null,
+    val usedTb: Float? = null,
+    val totalTb: Float? = null,
+    val freeGb: Float? = null,
+    val tempC: Float? = null,
+)
+
+@Serializable
+data class AgentThermalMetrics(
+    val motherboardTempC: Float? = null,
+    val caseFanRpm: Int? = null,
+)
+
+@Serializable
+data class AgentNetworkMetrics(
+    val downloadMbps: Float? = null,
+    val uploadMbps: Float? = null,
+)
+
 /** spec §5 的四个电源动作；[path] 就是 Agent 端点里的动作名。 */
 enum class PowerAction(val path: String) {
     SLEEP("sleep"),
@@ -46,6 +126,10 @@ class AgentApi(private val client: HttpClient) {
 
     suspend fun status(baseUrl: String, token: String?): ApiResult<AgentStatus> =
         call { client.get("$baseUrl/api/v1/status") { bearer(token) } }
+
+    /** spec §8 的指标：受保护端点，必须带 Token（Phase 5A 起不再回 501）。 */
+    suspend fun system(baseUrl: String, token: String?): ApiResult<AgentMetrics> =
+        call { client.get("$baseUrl/api/v1/system") { bearer(token) } }
 
     /** 配对端点免鉴权：用 PC 端打印的 6 位配对码换 Token。 */
     suspend fun pair(baseUrl: String, code: String): ApiResult<PairingResponse> =
