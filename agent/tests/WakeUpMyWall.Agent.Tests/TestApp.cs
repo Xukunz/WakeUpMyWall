@@ -16,6 +16,9 @@ public sealed class TestApp : WebApplicationFactory<Program>
     private readonly string _tokenFile =
         Path.Combine(Path.GetTempPath(), $"wumw-agent-test-{Guid.NewGuid():N}.json");
 
+    private readonly string _pairingCodeFile =
+        Path.Combine(Path.GetTempPath(), $"wumw-agent-test-{Guid.NewGuid():N}.pairing");
+
     private readonly int? _metricsIntervalMillis;
 
     /** [metricsIntervalMillis] 只给"推送间隔"的测试用：默认走 Agent 的 1 秒。 */
@@ -24,6 +27,7 @@ public sealed class TestApp : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Agent:TokenFile", _tokenFile);
+        builder.UseSetting("Agent:PairingCodeFile", _pairingCodeFile);
         if (_metricsIntervalMillis is not null)
         {
             builder.UseSetting("Agent:MetricsIntervalMs", _metricsIntervalMillis.Value.ToString());
@@ -34,7 +38,11 @@ public sealed class TestApp : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
         if (File.Exists(_tokenFile)) File.Delete(_tokenFile);
+        if (File.Exists(_pairingCodeFile)) File.Delete(_pairingCodeFile);
     }
+
+    /** 启动时写给"没有控制台的服务模式"看的配对码文件（安装包就靠它把码显示给用户）。 */
+    public string PairingCodeFile => _pairingCodeFile;
 }
 
 public static class TestAuth

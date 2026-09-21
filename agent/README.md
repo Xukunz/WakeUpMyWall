@@ -4,17 +4,38 @@
 以及提供 CPU / GPU / 内存 / 存储 / 网络 / 温度 / 风扇的实时指标。
 接口契约见 [docs/plans/agent-api.md](../docs/plans/agent-api.md)。
 
-## 快速开始（Windows，不用装 .NET）
+## 一键安装（Windows 10/11 x64，推荐）
 
-1. 从 [Releases](https://github.com/Xukunz/WakeUpMyWall/releases) 下载 `agent-win-x64-v0.1.0.zip`（自包含，机器上不需要 .NET 运行时），解压到例如 `C:\WakeUpMyWall`。
-2. 先手动跑一次，确认能起：
+1. 从 [Releases](https://github.com/Xukunz/WakeUpMyWall/releases) 下载 **`WakeUpMyWall-Agent-Setup-<版本>.exe`**（自包含，机器上不需要 .NET 运行时）。
+2. 双击安装（会要管理员权限），安装程序会自动：
+
+   - 铺文件到 `%ProgramFiles%\WakeUpMyWall`；
+   - 注册并启动 Windows 服务 `WakeUpMyWallAgent`（**开机自启**，无需登录）；
+   - 放行防火墙 TCP `9876`（仅专用/域网络）；
+   - **把配对码显示给你**（服务没有控制台，码取自 `%ProgramData%\WakeUpMyWall\pairing.txt`）。
+
+3. 手机端：Device Setup → `Agent Host` 填这台 PC 的局域网 IP、`Agent Port` 9876 → Save → 在 Agent 区输入安装程序给的配对码 → Pair。
+
+想要别的安装方式：
+
+- **便携版**：下载 `WakeUpMyWall-Agent-win-x64-<版本>.zip`，解压后手动跑 exe（控制台会直接打印配对码）。
+- **脚本安装**：把 `install.ps1` 与 zip 放一起，管理员 PowerShell 执行
+  `powershell -ExecutionPolicy Bypass -File .\install.ps1 -ZipPath .\WakeUpMyWall-Agent-win-x64-<版本>.zip`，效果与安装包一致。
+
+> 版本号已经与发布产物对齐：`GET /api/v1/status` 里的 `agentVersion` 就来自这一版的构建（`0.2.0` 起），
+> 不会再出现"PC 上装的旧包和 `/status` 报的一样"的情况。
+
+## 手动运行（排查用）
+
+1. 解压 zip 到例如 `C:\WakeUpMyWall`，跑一次：
 
    ```powershell
    C:\WakeUpMyWall\WakeUpMyWall.Agent.exe
    ```
 
    控制台会打印：`WakeUpMyWall 配对码：123456`（5 分钟有效、一次性）。
-3. 同一台 PC 上验证：
+   同时这份码也会写到 `%ProgramData%\WakeUpMyWall\pairing.txt`，服务模式下用它取码。
+2. 同一台 PC 上验证：
 
    ```powershell
    curl.exe http://127.0.0.1:9876/api/v1/status
@@ -27,7 +48,7 @@
    curl.exe http://<这台PC的IP>:9876/api/v1/status
    ```
 
-## 装成 Windows 服务（推荐：无人登录也能常驻）
+## 手动装成 Windows 服务（一键安装包已替你做了这些）
 
 管理员 PowerShell：
 
@@ -38,11 +59,12 @@ New-NetFirewallRule -DisplayName "WakeUpMyWall Agent" -Direction Inbound -Protoc
 sc.exe create WakeUpMyWallAgent binPath= "C:\WakeUpMyWall\WakeUpMyWall.Agent.exe" start= auto
 sc.exe start WakeUpMyWallAgent
 
-# 取配对码（服务模式下控制台不可见，看日志）
-Get-Content C:\ProgramData\WakeUpMyWall\agent.log -Tail 20
+# 取配对码（服务模式下控制台不可见）
+Get-Content C:\ProgramData\WakeUpMyWall\pairing.txt
 ```
 
-服务模式下的日志位置：`C:\ProgramData\WakeUpMyWall\`。Token 也在同一个目录（`agent.json`）。
+服务模式下的落盘位置：`C:\ProgramData\WakeUpMyWall\`——`pairing.txt`（当前配对码）与 `agent.json`（配对后的 Token）。
+重启服务会生成新的配对码。
 
 ## 端点速查
 
@@ -72,6 +94,19 @@ dotnet publish src/WakeUpMyWall.Agent -f net10.0-windows -c Release -r win-x64 -
 
 `--fake-metrics` 让 `/api/v1/system` 返回由时间合成的读数（同样只用于 CI / 开发机 / 演示），
 非 Windows 平台上默认就是这个模式，`identity.os` 会写成 `Linux (fake metrics)` 以便一眼识别。
+
+### 发布一个 Windows 包（维护者）
+
+推一个 tag 即可，流水线 [.github/workflows/release.yml](../.github/workflows/release.yml) 会：
+跑契约测试 → `dotnet publish -f net10.0-windows -r win-x64 --self-contained` → 打 zip →
+用 Inno Setup 编译一键安装包 → 建 Release 并挂上三个产物（zip / Setup exe / install.ps1）。
+
+```bash
+# 版本号在 agent/src/WakeUpMyWall.Agent/WakeUpMyWall.Agent.csproj 的 <Version>
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+流水线里有一步"版本号对齐检查"：tag 与 csproj 的 `<Version>` 不一致就直接失败，避免再次出现"包和版本对不上"。
 
 工程是**双目标**的：`net10.0`（开发机 / CI）与 `net10.0-windows`（真实指标）。
 LibreHardwareMonitor 只提供 win-* 运行时资产，所以**给 Windows 打包时必须带 `-f net10.0-windows`**，

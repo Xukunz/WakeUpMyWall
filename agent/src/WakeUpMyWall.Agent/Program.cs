@@ -9,6 +9,12 @@ using WakeUpMyWall.Agent.Metrics.Windows;
 
 var builder = WebApplication.CreateBuilder(args);
 
+#if WINDOWS
+// 装成 Windows 服务时要真的向 SCM 报到（否则 sc.exe start 报 1053）；
+// 在控制台里手动运行同样的 exe 时，这个方法什么都不做（IsWindowsService() 为 false）。
+builder.Host.UseWindowsService(options => options.ServiceName = "WakeUpMyWallAgent");
+#endif
+
 // 端口默认就是 9876（spec §5 的 Agent 端口）；ASPNETCORE_URLS / --urls / Agent:Urls 都能覆盖。
 // 显式写在这里，是因为只靠命令行参数时容易被 launchSettings 之外的默认值抢走（实测过）。
 builder.WebHost.UseUrls(
@@ -66,8 +72,24 @@ app.MapPost("/api/v1/pairing", (PairingRequest request, PairingService pairing) 
                 statusCode: StatusCodes.Status403Forbidden));
 
 var pairingCode = app.Services.GetRequiredService<PairingService>().CreateCode();
-app.Logger.LogInformation("WakeUpMyWall 配对码 {Code}（5 分钟有效，一次性）", pairingCode);
+var pairingCodeFile = builder.Configuration["Agent:PairingCodeFile"] ?? AgentPaths.PairingCodeFile;
+var pairingCodeWritten = PairingCodeFile.TryWrite(pairingCodeFile, pairingCode, out var pairingCodeError);
+
+app.Logger.LogInformation(
+    "WakeUpMyWall Agent {Version} 已启动，配对码 {Code}（5 分钟有效，一次性）",
+    StatusEndpoints.AgentVersion,
+    pairingCode);
 Console.WriteLine($"WakeUpMyWall 配对码：{pairingCode}");
+
+// 装成服务后没有控制台：把码留在盘上，安装包与用户都从这里取（写失败只是少一条便利路径）。
+if (pairingCodeWritten)
+{
+    app.Logger.LogInformation("配对码已写入 {File}", pairingCodeFile);
+}
+else
+{
+    app.Logger.LogWarning("配对码写不进 {File}：{Reason}", pairingCodeFile, pairingCodeError);
+}
 
 app.Run();
 

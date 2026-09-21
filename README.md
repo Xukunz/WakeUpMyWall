@@ -8,6 +8,8 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 
 **Phase 5（PC Monitor 实时化）已全部完成**（5A 指标端点 / 5B 手机端实时化 / 5C 流式通道），Phase 0–4 也已交付（见 [路标](docs/superpowers/plans/2026-09-19-roadmap.md)）。仍有**需要你在真机上执行**的验收：Phase 3 的"对目标 PC 连续 10 次开机"（[Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) Task 5 Step 3）、Phase 4A 的"Windows 上四种电源操作 + 服务自启"（[Phase 4A 计划](docs/superpowers/plans/2026-09-20-phase4a-pc-agent.md) Task A4 Step 3），以及 Phase 5A 的"读数与任务管理器一致"（[agent/README.md](agent/README.md) 的清单）。已完成：
 
+**PC Agent 现在有一键安装包**：Releases 里的 `WakeUpMyWall-Agent-Setup-0.2.0.exe` 装完即注册成开机自启的 Windows 服务、放行 9876、并把配对码显示给你（细节见 [agent/README.md](agent/README.md)）。打 tag 即自动出包（zip + Setup exe + install.ps1），见 [release.yml](.github/workflows/release.yml)。
+
 - Kotlin Multiplatform 工程骨架（`commonMain` 不依赖任何 Android API）
 - 领域模型与 PC 状态机（纯函数 + 单元测试）
 - 网络抽象（Ktor + 请求超时 + 统一错误映射）与存储抽象（内存实现 + DataStore 落盘）

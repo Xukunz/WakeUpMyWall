@@ -27,3 +27,7 @@ captures/
 Thumbs.db
 agent/**/bin/
 agent/**/obj/
+
+# 发布产物：由 CI（.github/workflows/release.yml）或本机 publish 生成，不入库
+publish/
+dist/

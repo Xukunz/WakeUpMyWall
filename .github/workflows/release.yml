@@ -1,0 +1,78 @@
+name: Release
+
+# 打 tag 即出包：Windows 自包含 zip + 一键安装 exe + 脚本安装器，并直接建 Release。
+# 为什么在 windows runner 上做：一键安装包用 Inno Setup 编译（ISCC 只有 Windows 版）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '不通过 tag 手动出包时用的版本号（例如 0.2.0）'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  windows-agent:
+    name: Windows agent（zip + 一键安装包）
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 契约测试
+        run: dotnet test agent/WakeUpMyWall.Agent.slnx -c Release
+
+      - name: 发布自包含 win-x64（必须 -f net10.0-windows）
+        run: >
+          dotnet publish agent/src/WakeUpMyWall.Agent
+          -f net10.0-windows -c Release -r win-x64 --self-contained true
+          -o publish/win-x64
+
+      - name: 打包便携版 zip
+        shell: pwsh
+        run: |
+          $tag = if ('${{ github.ref_name }}') { '${{ github.ref_name }}' } else { "v${{ github.event.inputs.version }}" }
+          Compress-Archive -Path publish/win-x64/* -DestinationPath "WakeUpMyWall-Agent-win-x64-$tag.zip"
+
+      - name: 版本号对齐检查（tag、zip 名与 Agent 自报版本）
+        shell: pwsh
+        run: |
+          $version = if ('${{ github.ref_name }}') { '${{ github.ref_name }}'.TrimStart('v') } else { '${{ github.event.inputs.version }}' }
+          $reported = (Get-Item publish/win-x64/WakeUpMyWall.Agent.dll).VersionInfo.ProductVersion
+          Write-Host "tag=$version / 程序集=$reported"
+          if ($reported -notlike "$version*") {
+            throw "csproj 的 <Version> 与 tag 不一致：$reported vs $version"
+          }
+
+      - name: 编译一键安装包（Inno Setup）
+        shell: pwsh
+        run: |
+          $version = if ('${{ github.ref_name }}') { '${{ github.ref_name }}'.TrimStart('v') } else { '${{ github.event.inputs.version }}' }
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "agent/installer/WakeUpMyWall.Agent.iss" "/DMyAppVersion=$version"
+
+      - name: 建 Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            WakeUpMyWall-Agent-win-x64-*.zip
+            dist/WakeUpMyWall-Agent-Setup-*.exe
+            agent/installer/install.ps1
+
+      # 产物传完之后打一个"已发布"标记 tag：它只在这个 job 全绿时才存在，
+      # 因此在只有 SSH（没有 API token）的环境里也能确认"这次发布真的成了"。
+      - name: 标记已发布
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "released-${{ github.ref_name }}"
+          git push origin "released-${{ github.ref_name }}"

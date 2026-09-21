@@ -16,7 +16,8 @@ public class StatusEndpointTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.False(string.IsNullOrWhiteSpace(payload!.Hostname));
-        Assert.Equal("0.1.0", payload.AgentVersion);
+        // 版本号从 csproj 的 <Version> 派生：装到 PC 上的包是哪一版，手机端一眼能看出。
+        Assert.Equal("0.2.0", payload.AgentVersion);
         Assert.True(payload.UptimeSeconds >= 0);
         Assert.False(payload.Paired);
     }

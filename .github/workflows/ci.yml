@@ -21,3 +21,13 @@ jobs:
         run: ./gradlew :composeApp:desktopTest --no-daemon
       - name: Assemble debug
         run: ./gradlew :composeApp:assembleDebug --no-daemon
+
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Agent contract tests
+        run: dotnet test agent/WakeUpMyWall.Agent.slnx

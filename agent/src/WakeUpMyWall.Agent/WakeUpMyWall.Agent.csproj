@@ -6,6 +6,8 @@
       net10.0-windows 给真实 PC（LibreHardwareMonitor 只带 win-* 运行时资产，引用不了别的目标）。
     -->
     <TargetFrameworks>net10.0;net10.0-windows</TargetFrameworks>
+    <!-- 版本号是**发布产物名与 /api/v1/status 的对齐点**：改这里，Agent 自报的版本跟着变（见 StatusEndpoints）。 -->
+    <Version>0.2.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -14,6 +16,8 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <!-- 装成 Windows 服务时必须真的向 SCM 报到（否则 sc.exe 启动会报 1053），这由 UseWindowsService 负责。 -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
   </ItemGroup>
 
   <!-- 没有 LibreHardwareMonitor 的目标上，Windows 专属的适配层不参与编译。 -->
