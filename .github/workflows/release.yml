@@ -20,6 +20,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # 完整历史：版本号里的 commit 后缀与最后的"已发布"标记 tag 都要用到
 
       - uses: actions/setup-dotnet@v4
         with:
