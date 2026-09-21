@@ -3,6 +3,7 @@ using WakeUpMyWall.Agent.Auth;
 using WakeUpMyWall.Agent.Actions;
 using WakeUpMyWall.Agent.Metrics;
 using WakeUpMyWall.Agent.Power;
+using WakeUpMyWall.Agent.Logging;
 #if WINDOWS
 using WakeUpMyWall.Agent.Metrics.Windows;
 #endif
@@ -24,6 +25,9 @@ builder.WebHost.UseUrls(
     ?? "http://0.0.0.0:9876");
 
 builder.Services.AddSingleton(TimeProvider.System);
+// 服务模式没有控制台：日志同时落一份文件（卸载/排查时唯一能看的东西）。
+builder.Logging.AddProvider(new FileLoggerProvider(
+    builder.Configuration["Agent:LogFile"] ?? Path.Combine(AgentPaths.BaseDirectory, "agent.log")));
 // Token 落盘位置可由配置覆盖（测试用临时文件，生产用 AgentPaths.DefaultTokenFile）。
 builder.Services.AddSingleton<ITokenStore>(services => new FileTokenStore(
     services.GetRequiredService<IConfiguration>()["Agent:TokenFile"] ?? AgentPaths.DefaultTokenFile));

@@ -63,8 +63,16 @@ sc.exe start WakeUpMyWallAgent
 Get-Content C:\ProgramData\WakeUpMyWall\pairing.txt
 ```
 
-服务模式下的落盘位置：`C:\ProgramData\WakeUpMyWall\`——`pairing.txt`（当前配对码）与 `agent.json`（配对后的 Token）。
-重启服务会生成新的配对码。
+服务模式下的落盘位置：`C:\ProgramData\WakeUpMyWall\`
+
+| 文件 | 内容 |
+| --- | --- |
+| `pairing.txt` | 当前配对码（重启服务会换新的） |
+| `agent.json` | 配对后的 Token |
+| `agent.log` | 服务日志：启动、配对码、**每次电源动作的结果**、指标读取失败的原因（0.2.1 起） |
+
+点手机上的电源按钮没反应时，先看 `agent.log`：里面会写明动作有没有到、命令的退出码是多少；
+如果日志里根本没有那一行，说明请求没到 Agent（多半是没配对或网络不通）。
 
 ## 端点速查
 

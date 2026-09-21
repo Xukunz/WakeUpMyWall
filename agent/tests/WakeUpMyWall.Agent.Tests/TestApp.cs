@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using WakeUpMyWall.Agent.Auth;
 
@@ -19,15 +20,28 @@ public sealed class TestApp : WebApplicationFactory<Program>
     private readonly string _pairingCodeFile =
         Path.Combine(Path.GetTempPath(), $"wumw-agent-test-{Guid.NewGuid():N}.pairing");
 
+    private readonly string _logFile =
+        Path.Combine(Path.GetTempPath(), $"wumw-agent-test-{Guid.NewGuid():N}.log");
+
     private readonly int? _metricsIntervalMillis;
 
-    /** [metricsIntervalMillis] 只给"推送间隔"的测试用：默认走 Agent 的 1 秒。 */
-    public TestApp(int? metricsIntervalMillis = null) => _metricsIntervalMillis = metricsIntervalMillis;
+    private readonly Action<IServiceCollection>? _configureServices;
+
+    /**
+     * [metricsIntervalMillis] 只给"推送间隔"的测试用（默认走 Agent 的 1 秒）；
+     * [configureServices] 只给"要替换某个服务实现"的测试用（例如让指标读取抛异常）。
+     */
+    public TestApp(int? metricsIntervalMillis = null, Action<IServiceCollection>? configureServices = null)
+    {
+        _metricsIntervalMillis = metricsIntervalMillis;
+        _configureServices = configureServices;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Agent:TokenFile", _tokenFile);
         builder.UseSetting("Agent:PairingCodeFile", _pairingCodeFile);
+        builder.UseSetting("Agent:LogFile", _logFile);
         // 契约测试永远用假控制器/假指标：不然在 Windows runner 上会拿到真实控制器与 LibreHardwareMonitor，
         // 测试要么强转失败，要么去开硬件驱动（CI 实测踩过）。
         builder.UseSetting("Agent:UseFakePower", "true");
@@ -36,6 +50,9 @@ public sealed class TestApp : WebApplicationFactory<Program>
         {
             builder.UseSetting("Agent:MetricsIntervalMs", _metricsIntervalMillis.Value.ToString());
         }
+
+        // 替换服务实现的钩子（例如让指标读取抛异常）：走 TestHost 的 ConfigureTestServices。
+        if (_configureServices is not null) builder.ConfigureTestServices(_configureServices);
     }
 
     protected override void Dispose(bool disposing)
@@ -43,6 +60,7 @@ public sealed class TestApp : WebApplicationFactory<Program>
         base.Dispose(disposing);
         if (File.Exists(_tokenFile)) File.Delete(_tokenFile);
         if (File.Exists(_pairingCodeFile)) File.Delete(_pairingCodeFile);
+        if (File.Exists(_logFile)) File.Delete(_logFile);
     }
 
     /** 启动时写给"没有控制台的服务模式"看的配对码文件（安装包就靠它把码显示给用户）。 */
