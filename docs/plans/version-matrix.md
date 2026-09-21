@@ -50,6 +50,7 @@ BUILD SUCCESSFUL in 1m 8s
 | PC Agent | **.NET SDK 10.0.401（LTS，装于 `~/.dotnet-local`）** + ASP.NET Core Minimal API | Phase 4A 新增；`agent/` 下 `dotnet test` 14 条契约测试全绿；Windows 侧产物用 `dotnet publish -r win-x64 --self-contained` 交叉发布（无需目标机装 .NET）。电源命令只在 Windows 生效，其它平台自动走 `--fake-power` |
 | 硬件监控库 | **LibreHardwareMonitorLib 0.9.6**（Phase 5A 实测） | 只挂在 `net10.0-windows` 上（包内只有 `runtimes/win-*/` 运行时资产 + `ref/net10.0` 引用程序集，单目标 `net10.0` 引用不了）。`dotnet build -f net10.0-windows` 与 `dotnet publish -f net10.0-windows -r win-x64 --self-contained` 均在本机（Linux）交叉构建通过，发布目录里带 `LibreHardwareMonitorLib.dll` 与 `HidSharp.dll`。传感器名与单位按上游源码核对（`Network.cs` 的吞吐是**字节/秒**、`MemoryWindows.cs` 的 `Data` 是 GB、`SmallData` 是 MB） |
 | Agent 目标框架 | **`net10.0;net10.0-windows` 双目标**（Phase 5A 实测） | `net10.0` 给 CI/开发机（合成指标，`--fake-metrics`）；`net10.0-windows` 给真实 PC（LibreHardwareMonitor）。Windows 专属代码用 `Compile Remove` 排除出 `net10.0`（已核对：`net10.0` 产物里没有 `WindowsMetricsProvider`，`net10.0-windows` 产物里有） |
+| 指标流 | **ASP.NET Core WebSockets（框架自带）+ `ktor-client-websockets` 3.6.0**（Phase 5C 实测） | Agent 侧 `/ws/v1/metrics` 在握手阶段查 Bearer，之后按 `Agent:MetricsIntervalMs`（默认 1000）推帧；手机侧 Ktor 客户端**必须** `install(WebSockets)` 且 URL 的 scheme 必须是 `ws://`（拿 `http://` 去连会退化成普通 GET，Agent 如实回 400 —— 两条都在模拟器上实测踩过）。Ktor 客户端对"接住连接但不回帧"的对端不会自己报错，必须自己加无帧超时（本项目用 `Flow.withIdleTimeout(3s)`） |
 
 ### AGP 9 与 KMP 的关键限制（实测）
 

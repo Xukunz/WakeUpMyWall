@@ -32,6 +32,7 @@ import com.xukunz.wakeupmywall.core.metrics.KtorMetricsStream
 import com.xukunz.wakeupmywall.core.metrics.MetricsCadence
 import com.xukunz.wakeupmywall.core.metrics.MetricsGate
 import com.xukunz.wakeupmywall.core.metrics.MetricsStream
+import com.xukunz.wakeupmywall.core.metrics.withIdleTimeout
 import com.xukunz.wakeupmywall.core.network.AgentApi
 import com.xukunz.wakeupmywall.core.network.AgentMetrics
 import com.xukunz.wakeupmywall.core.network.ApiResult
@@ -387,8 +388,9 @@ fun App(
 
     /**
      * 指标流（Phase 5C）：连上 `/ws/v1/metrics` 后按 1 Hz 收帧，按 [cadence] 决定哪些帧进 UI。
-     * 断开 → 指数退避重连（1/2/4/8 秒封顶）；**连续 [streamFallbackAfter] 次连不上**（老 Agent 没有这个
-     * 端点、或网络不通）就把 [streamLive] 放下，让 HTTP 轮询接手；60 秒后再试一次流，等对方升级。
+     * 断开 → 指数退避重连（1/2/4/8 秒封顶），期间 HTTP 轮询接手，读数不断供。
+     * 只有**从来没收到过帧**（老 Agent 没有这个端点）才降级成"隔 60 秒再试"——
+     * 已经证明能推的流只会按退避重连，不会把用户扔在 HTTP 上等一分钟（实测踩到过）。
      */
     LaunchedEffect(device?.id, agentToken, metricsStreamFactory, cadence) {
         val target = device ?: return@LaunchedEffect
@@ -396,18 +398,22 @@ fun App(
 
         var backoff = streamBackoffStartMillis
         var failuresWithoutFrames = 0
+        var everStreamed = false
         while (true) {
             var gotFrame = false
             runCatching {
-                metricsStreamFactory().frames(baseUrl(target), token).collect { frame ->
-                    gotFrame = true
-                    streamLive = true
-                    if (metricsGate.accept(elapsedMillis(), isIdle)) applyMetricsSample(frame)
-                }
+                metricsStreamFactory().frames(baseUrl(target), token)
+                    .withIdleTimeout(streamIdleTimeoutMillis)
+                    .collect { frame ->
+                        gotFrame = true
+                        streamLive = true
+                        if (metricsGate.accept(elapsedMillis(), isIdle)) applyMetricsSample(frame)
+                    }
             }
             streamLive = false
 
             if (gotFrame) {
+                everStreamed = true
                 failuresWithoutFrames = 0
                 backoff = streamBackoffStartMillis
             } else {
@@ -415,7 +421,8 @@ fun App(
                 backoff = (backoff * 2).coerceAtMost(streamBackoffMaxMillis)
             }
 
-            delay(if (failuresWithoutFrames >= streamFallbackAfter) streamRetryMillis else backoff)
+            val streamingUnsupported = !everStreamed && failuresWithoutFrames >= streamFallbackAfter
+            delay(if (streamingUnsupported) streamRetryMillis else backoff)
         }
     }
 
@@ -710,6 +717,9 @@ private const val streamFallbackAfter = 2
 
 /** 兜底之后每隔这么久再试一次流（等对方升级 Agent）。 */
 private const val streamRetryMillis = 60_000L
+
+/** 这么久没收到帧就认为这条流已经死了（服务端 1 Hz 推，3 秒足够判死）。 */
+private const val streamIdleTimeoutMillis = 3_000L
 
 /** Idle 判定的心跳间隔。 */
 private const val idleTickMillis = 1_000L

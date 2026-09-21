@@ -6,7 +6,7 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 
 ## 项目状态
 
-当前处于 **Phase 5（PC Monitor 实时化）**：Phase 0–4 已交付，Phase 5 拆成三份计划，其中 **Phase 5A（Agent 指标端点）已完成**、5B/5C 待做（见 [路标](docs/superpowers/plans/2026-09-19-roadmap.md)）。仍有两项**需要你在真机上执行**的验收：Phase 3 的"对目标 PC 连续 10 次开机"（[Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) Task 5 Step 3）与 Phase 4A 的"Windows 上四种电源操作 + 服务自启"（[Phase 4A 计划](docs/superpowers/plans/2026-09-20-phase4a-pc-agent.md) Task A4 Step 3）。已完成：
+**Phase 5（PC Monitor 实时化）已全部完成**（5A 指标端点 / 5B 手机端实时化 / 5C 流式通道），Phase 0–4 也已交付（见 [路标](docs/superpowers/plans/2026-09-19-roadmap.md)）。仍有**需要你在真机上执行**的验收：Phase 3 的"对目标 PC 连续 10 次开机"（[Phase 3 计划](docs/superpowers/plans/2026-09-20-phase3-wol.md) Task 5 Step 3）、Phase 4A 的"Windows 上四种电源操作 + 服务自启"（[Phase 4A 计划](docs/superpowers/plans/2026-09-20-phase4a-pc-agent.md) Task A4 Step 3），以及 Phase 5A 的"读数与任务管理器一致"（[agent/README.md](agent/README.md) 的清单）。已完成：
 
 - Kotlin Multiplatform 工程骨架（`commonMain` 不依赖任何 Android API）
 - 领域模型与 PC 状态机（纯函数 + 单元测试）
@@ -26,6 +26,8 @@ Desktop Companion——把手机/平板变成桌面控制面板：远端唤醒�
 - PC Agent（C# / .NET 10）：`GET /api/v1/status`（免鉴权）、`POST /api/v1/pairing`（6 位一次性配对码换 Token）、`POST /api/v1/power/{sleep,shutdown,restart,lock}`（命令走参数数组，未知动作 404 且不执行）、`GET /api/v1/actions`（白名单）、全部受保护端点缺 Token 一律 401
 - 手机端接入 Agent：Keystore AES-GCM 存 Token（明文不落盘）、Device Setup 的 `Advanced / Agent` 配对区、每 5 秒探一次 `/api/v1/status` 判断"PC 是否开着"、三种电源动作走真实接口（未配对时给出可读提示）
 - **指标端点（Phase 5A）**：`GET /api/v1/system` 返回 spec §8 的全部指标（CPU 使用率/温度/频率/核心、GPU 使用率/温度/显存/风扇、内存、系统盘、主板与 SSD 温度、机箱风扇、上下行 Mbps、Uptime），字段名与单位见 [agent-api.md](docs/plans/agent-api.md)；取不到的传感器给 `null` 而不是 0；Windows 走 LibreHardwareMonitor 0.9.6，非 Windows 走 `--fake-metrics` 合成读数（契约一致，端到端可验）
+- **Monitor 实时化（Phase 5B）**：手机端每 2 秒取一次指标，Monitor 的身份卡/四张指标卡/温度风扇/网络/运行时长全部接真数据，60 点 Ring Buffer 喂 sparkline；**取不到的读数显示 `—`（不是 0）**，掉线 3 次后标注 `Last update …` + `No fresh metrics` 并给出原因，未配对时明确提示且不发请求
+- **流式通道（Phase 5C）**：`WS /ws/v1/metrics` 每秒推一帧（握手 Bearer 鉴权），手机端 1 Hz 收帧、**ACTIVE 1s / IDLE 5s** 自适应（60 秒无触摸转 IDLE），掉线指数退避重连（1→8 秒封顶）并在断流期间用 HTTP 轮询兜底；老 Agent（没有该端点）自动降级为 60 秒一探
 - GitHub Actions CI：单元测试 + Compose UI 测试 + Debug 组装
 
 计划与验收标准：

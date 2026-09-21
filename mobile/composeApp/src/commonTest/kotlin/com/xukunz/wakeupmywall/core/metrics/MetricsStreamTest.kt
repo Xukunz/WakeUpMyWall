@@ -1,5 +1,9 @@
 package com.xukunz.wakeupmywall.core.metrics
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -33,5 +37,39 @@ class MetricsStreamTest {
     fun `a broken frame is skipped instead of killing the stream`() {
         assertNull(parseMetricsFrame("{not json"))
         assertNull(parseMetricsFrame(""))
+    }
+
+    @Test
+    fun `the stream url swaps the scheme to ws and keeps host and port`() {
+        assertEquals("ws://127.0.0.1:9876/ws/v1/metrics", webSocketUrl("http://127.0.0.1:9876"))
+        assertEquals("wss://desk-pc.local:9876/ws/v1/metrics", webSocketUrl("https://desk-pc.local:9876/"))
+    }
+
+    @Test
+    fun `a stream that goes quiet is ended so the caller can reconnect`() = runTest {
+        val frames = flow {
+            emit("first")
+            emit("second")
+            delay(60_000)      // 之后再也不发帧：模拟"连接被接住但没有响应"
+            emit("never")
+        }
+
+        val received = frames.withIdleTimeout(idleTimeoutMillis = 3_000).toList()
+
+        assertEquals(listOf("first", "second"), received)
+    }
+
+    @Test
+    fun `a stream that keeps delivering frames is not cut off`() = runTest {
+        val frames = flow {
+            repeat(10) {
+                emit("frame-$it")
+                delay(500)      // 500 ms < 3 秒的闸门
+            }
+        }
+
+        val received = frames.withIdleTimeout(idleTimeoutMillis = 3_000).toList()
+
+        assertEquals(10, received.size)
     }
 }

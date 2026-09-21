@@ -54,6 +54,7 @@ Get-Content C:\ProgramData\WakeUpMyWall\agent.log -Tail 20
 | `GET /api/v1/actions` | Bearer | 白名单 `id → 显示名` |
 | `POST /api/v1/actions/{id}` | Bearer | 未知 id → 404，且不执行任何命令 |
 | `GET /api/v1/system` | Bearer | 实时指标；字段与单位见 [agent-api.md](../docs/plans/agent-api.md) 的「指标载荷」 |
+| `WS /ws/v1/metrics` | Bearer（握手） | 每秒推一帧指标，帧内容与 `/api/v1/system` 相同（Phase 5C） |
 
 ## 从源码构建
 

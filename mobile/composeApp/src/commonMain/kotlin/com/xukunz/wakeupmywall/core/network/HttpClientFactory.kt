@@ -5,6 +5,7 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -20,6 +21,8 @@ private val agentJson = Json {
 fun createAgentHttpClient(engine: HttpClientEngine? = null): HttpClient {
     val configure: HttpClientConfig<*>.() -> Unit = {
         install(ContentNegotiation) { json(agentJson) }
+        // 指标流（Phase 5C）走同一个客户端的 WebSocket：不装这个插件，`client.webSocket` 会直接抛。
+        install(WebSockets)
         install(HttpTimeout) {
             requestTimeoutMillis = 2_500
             connectTimeoutMillis = 2_000

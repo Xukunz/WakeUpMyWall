@@ -14,7 +14,7 @@
 | GET | `/api/v1/actions` | Bearer | `id → 显示名` 白名单。 |
 | POST | `/api/v1/actions/{id}` | Bearer | 只允许白名单内 id。 |
 | POST | `/api/v1/power/sleep` `/shutdown` `/restart` `/lock` | Bearer | 四个电源动作；命令走参数数组，绝不拼字符串。 |
-| WS | `/ws/v1/metrics` | Bearer | Phase 5。 |
+| WS | `/ws/v1/metrics` | Bearer（**握手时**校验） | Phase 5C 起可用：连上后按 1 秒推一帧，帧内容与 `GET /api/v1/system` **逐字相同**；间隔可用 `Agent:MetricsIntervalMs` 覆盖（默认 1000）。没有 Token 的握手直接 401，连接不会建立；用普通 HTTP 请求这个路径会得到 400。 |
 
 ## 状态码语义
 
