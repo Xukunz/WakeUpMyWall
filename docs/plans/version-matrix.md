@@ -57,6 +57,7 @@ BUILD SUCCESSFUL in 1m 8s
 | 发布流水线实测（2026-09-21，run 35555889158 全绿） | `.github/workflows/release.yml` | 推 tag `v0.2.0` 后自动产出三个产物：`WakeUpMyWall-Agent-Setup-0.2.0.exe`（37 MB，PE32 安装器）、`WakeUpMyWall-Agent-win-x64-v0.2.0.zip`（50 MB / 352 文件）、`install.ps1`；装完 tag `released-<tag>` 作为"这次发布成了"的可核对标记 |
 | Windows CI 才暴露的两个坑（2026-09-21） | ① Agent 契约测试此前只在 Linux 上跑过：Windows 上 `Program.cs` 会注册真实 `WindowsPowerController`，测试强转 `FakePowerController` 直接 `InvalidCastException`（6 条红）→ 现在测试用 `Agent:UseFakePower` / `Agent:UseFakeMetrics` 配置强制假实现，任何平台都验同一份契约；② `choco install innosetup` **不装翻译组件**（`Languages\` 下只有 `Default.isl`），引用 `compiler:Languages\ChineseSimplified.isl` 会编译失败 → 中文语言文件改为随仓库自带（`agent/installer/languages/ChineseSimplified.isl`） |
 | Agent 0.2.1：服务可诊断性（2026-09-21） | ① 自写极简 `FileLoggerProvider`（框架没有文件 provider）：日志落 `%ProgramData%\WakeUpMyWall\agent.log`，2 MB 滚动，写失败不影响运行；② `/api/v1/system` 读取失败时返回 **500 + `{"error": …}`**（此前是空白 500，手机端只能显示 "HTTP 500"），并记日志；③ 每次电源请求在日志里留痕（`power action sleep -> accepted`），用来区分"请求没到"与"到了但没生效" |
+| Agent 0.3.0：无窗口托盘 UI（2026-09-21） | ① `OutputType=WinExe` + `UseWindowsForms` + `EnableWindowsTargeting`（Linux 上交叉构建 WinForms 必需），托盘用 WinForms `NotifyIcon`（自写 `Shell_NotifyIcon` 要自己管消息窗口/图标句柄生命周期，风险更高）；② 托盘图标由 `tools/prepare_ui_assets.py` 从 `imgs/ui/icon_{bright,dark}.png` 转成多尺寸 .ico（托盘 16/20/24/32/40/48、exe 16…256），亮/暗跟随 `SystemUsesLightTheme`；③ 托盘跑在专用 STA 线程，**启动失败只记日志**，不影响接口；④ 服务模式（Session 0）自动跳过托盘。代价：自包含发布从 ~95 MB 涨到 ~150 MB（多带 WindowsDesktop 运行时），安装包相应变大 |
 
 ### AGP 9 与 KMP 的关键限制（实测）
 

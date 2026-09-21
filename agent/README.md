@@ -6,15 +6,30 @@
 
 ## 一键安装（Windows 10/11 x64，推荐）
 
-1. 从 [Releases](https://github.com/Xukunz/WakeUpMyWall/releases)（当前最新是 [`v0.2.0`](https://github.com/Xukunz/WakeUpMyWall/releases/tag/v0.2.0)）下载 **`WakeUpMyWall-Agent-Setup-<版本>.exe`**（自包含，机器上不需要 .NET 运行时）。
-2. 双击安装（会要管理员权限），安装程序会自动：
+1. 从 [Releases](https://github.com/Xukunz/WakeUpMyWall/releases)（当前最新是 [`v0.3.0`](https://github.com/Xukunz/WakeUpMyWall/releases/tag/v0.3.0)）下载 **`WakeUpMyWall-Agent-Setup-<版本>.exe`**（自包含，机器上不需要 .NET 运行时）。
+2. 双击安装（会要管理员权限）。安装时可以勾选：
 
-   - 铺文件到 `%ProgramFiles%\WakeUpMyWall`；
-   - 注册并启动 Windows 服务 `WakeUpMyWallAgent`（**开机自启**，无需登录）；
-   - 放行防火墙 TCP `9876`（仅专用/域网络）；
-   - **把配对码显示给你**（服务没有控制台，码取自 `%ProgramData%\WakeUpMyWall\pairing.txt`）。
+   | 选项 | 默认 | 说明 |
+   | --- | --- | --- |
+   | 创建桌面快捷方式 | 勾选 | 桌面放一个入口，随时手动启动 |
+   | 登录时自动启动（托盘） | 勾选 | 放进"启动"文件夹，登录后常驻托盘 |
+   | 安装为 Windows 服务 | 不勾选 | 后台服务（开机自启、**没有托盘图标**）；勾了它就不再放托盘自启，避免两者抢 9876 |
+
+   安装程序还会自动：铺文件到 `%ProgramFiles%\WakeUpMyWall`、放行防火墙 TCP `9876`（仅专用/域网络）、**把配对码弹窗显示给你**。
 
 3. 手机端：Device Setup → `Agent Host` 填这台 PC 的局域网 IP、`Agent Port` 9876 → Save → 在 Agent 区输入安装程序给的配对码 → Pair。
+
+### 运行方式：托盘（默认）
+
+Agent **没有窗口**（构建为 Windows GUI 程序，双击不会弹控制台黑框）。启动后它只做两件事：
+
+- 在右下角通知区域显示一个图标（跟随 Windows 亮/暗主题自动换图，素材见 `imgs/ui/icon_{bright,dark}.png`）；
+- **右键图标**弹出菜单：当前**配对码**（配对成功后显示"已配对 ✓"）与**退出**。
+
+首次启动会弹一次气泡提示，省得找不到图标。日志仍然写在 `%ProgramData%\WakeUpMyWall\agent.log`。
+
+> 服务模式跑在 Session 0，装不了托盘图标——所以"安装为服务"时没有托盘（那种场景要的是无人值守）。
+> 用 `--no-tray` 也可以在交互式运行时关掉托盘。
 
 想要别的安装方式：
 

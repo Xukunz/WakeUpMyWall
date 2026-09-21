@@ -31,6 +31,8 @@ REPO = Path(__file__).resolve().parent.parent
 UI_MASTERS = REPO / "imgs" / "ui"
 WALLPAPER_MASTERS = REPO / "imgs" / "wallpaper"
 OUT = REPO / "mobile" / "composeApp" / "src" / "commonMain" / "composeResources" / "drawable"
+# PC Agent 的图标资源（Windows 只能用 .ico）：exe/快捷方式一个，托盘亮/暗两个。
+AGENT_ASSETS = REPO / "agent" / "src" / "WakeUpMyWall.Agent" / "Assets"
 
 # 内容占正方形画布的比例：0.76 = 四周各留 12% 安全边距（imgs/ui/README.txt 的目标值）。
 ICON_CONTENT_RATIO = 0.76
@@ -42,6 +44,51 @@ ALPHA_FLOOR = 8
 
 def load_rgba(path: Path) -> Image.Image:
     return Image.open(path).convert("RGBA")
+
+
+def build_agent_icons(dry_run: bool) -> list[Path]:
+    """把 `imgs/ui/icon_{bright,dark}.png` 转成 Agent 用的 .ico。
+
+    为什么需要三个 .ico：
+      * `app.ico`       —— exe 自己的图标（快捷方式、任务栏、文件管理器都取它），多尺寸。
+      * `tray_bright.ico` / `tray_dark.ico` —— 托盘图标。Windows 任务栏有亮/暗两种主题，
+        亮色任务栏上要放暗色图（否则糊成一片），深色任务栏上放亮色图。
+
+    ICO 里塞多个尺寸是必须的：任务栏用 16/20/24，开始菜单/桌面用 32/48，大图标视图用 256。
+    只放一张再让系统缩放，托盘里会糊。
+    """
+    sources = {"bright": UI_MASTERS / "icon_bright.png", "dark": UI_MASTERS / "icon_dark.png"}
+    written: list[Path] = []
+
+    for variant, source in sources.items():
+        if not source.exists():
+            raise FileNotFoundError(f"缺少图标母版：{source}")
+
+    # exe / 快捷方式：亮色母版（在浅色和深色背景上都还能看），尺寸覆盖到 256。
+    written.append(
+        _write_ico(sources["bright"], AGENT_ASSETS / "app.ico", [16, 24, 32, 48, 64, 128, 256], dry_run)
+    )
+    written.append(
+        _write_ico(sources["bright"], AGENT_ASSETS / "tray_bright.ico", [16, 20, 24, 32, 40, 48], dry_run)
+    )
+    written.append(
+        _write_ico(sources["dark"], AGENT_ASSETS / "tray_dark.ico", [16, 20, 24, 32, 40, 48], dry_run)
+    )
+    return written
+
+
+def _write_ico(source: Path, target: Path, sizes: list[int], dry_run: bool) -> Path:
+    if dry_run:
+        print(f"[dry-run] {source.name} -> {target.relative_to(REPO)} sizes={sizes}")
+        return target
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    image = load_rgba(source)
+    # 母版是 1254×1254 的正方形整图，不需要裁边；直接按最大尺寸重采样再让 Pillow 生成各档。
+    largest = max(sizes)
+    image.resize((largest, largest), Image.LANCZOS).save(target, format="ICO", sizes=[(s, s) for s in sizes])
+    print(f"{source.name} -> {target.relative_to(REPO)} sizes={sizes}")
+    return target
 
 
 def clean_alpha(image: Image.Image) -> Image.Image:
@@ -213,6 +260,10 @@ def main() -> int:
             return 2
 
     written = build(args.dry_run)
+    # PC Agent 的 .ico（exe / 快捷方式 / 托盘亮暗两版）走同一条流水线，避免图标两处各改一次。
+    for icon_path in build_agent_icons(args.dry_run):
+        size = 0 if args.dry_run or not icon_path.exists() else icon_path.stat().st_size
+        written.append((icon_path, size))
     total = sum(size for _, size in written)
     verbose = args.dry_run or total > 0
     for path, size in written:

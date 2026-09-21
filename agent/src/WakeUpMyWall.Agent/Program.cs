@@ -6,6 +6,8 @@ using WakeUpMyWall.Agent.Power;
 using WakeUpMyWall.Agent.Logging;
 #if WINDOWS
 using WakeUpMyWall.Agent.Metrics.Windows;
+using WakeUpMyWall.Agent.Tray;
+using Microsoft.Extensions.Hosting.WindowsServices;
 #endif
 
 var builder = WebApplication.CreateBuilder(args);
@@ -99,6 +101,28 @@ else
 {
     app.Logger.LogWarning("配对码写不进 {File}：{Reason}", pairingCodeFile, pairingCodeError);
 }
+
+#if WINDOWS
+// 托盘：只有"用户双击/自启运行的交互式实例"才有意义。服务模式跑在 Session 0，装不了托盘图标，
+// 而且那种场景本来就该无人值守，所以直接跳过（想手动关掉用 `--no-tray`）。
+TrayIconHost? tray = null;
+if (!WindowsServiceHelpers.IsWindowsService() && !args.Contains("--no-tray"))
+{
+    var pairing = app.Services.GetRequiredService<PairingService>();
+    tray = TrayIconHost.Start(
+        menuLabel: () => pairing.CurrentCode is { } code
+            ? $"配对码：{code}（5 分钟有效）"
+            : pairing.IsPaired
+                ? "已配对 ✓（需要新码就重启本程序）"
+                : "配对码：（尚未生成）",
+        exit: () =>
+        {
+            app.Logger.LogInformation("托盘请求退出，正在停止 Agent");
+            app.Lifetime.StopApplication();
+        },
+        logger: app.Logger);
+}
+#endif
 
 app.Run();
 

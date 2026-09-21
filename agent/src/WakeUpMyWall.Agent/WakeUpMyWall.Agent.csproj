@@ -7,7 +7,7 @@
     -->
     <TargetFrameworks>net10.0;net10.0-windows</TargetFrameworks>
     <!-- 版本号是**发布产物名与 /api/v1/status 的对齐点**：改这里，Agent 自报的版本跟着变（见 StatusEndpoints）。 -->
-    <Version>0.2.1</Version>
+    <Version>0.3.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -20,9 +20,27 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
   </ItemGroup>
 
-  <!-- 没有 LibreHardwareMonitor 的目标上，Windows 专属的适配层不参与编译。 -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <!-- 允许在 Linux 上交叉构建 Windows 目标（WinForms 需要 Windows 桌面引用包）。 -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- WinExe：双击 exe 不该弹控制台黑框；托盘图标就是全部 UI。 -->
+    <OutputType>WinExe</OutputType>
+    <!-- 托盘图标（无窗口 UI）：WinForms 的 NotifyIcon 比手写 Shell_NotifyIcon 稳得多。 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- exe 自带图标，桌面/开始菜单快捷方式直接取它。 -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <!-- 托盘图标的亮/暗两版打进程序集：运行时不依赖安装目录里的文件。 -->
+    <EmbeddedResource Include="Assets\tray_bright.ico" />
+    <EmbeddedResource Include="Assets\tray_dark.ico" />
+  </ItemGroup>
+
+  <!-- 没有 LibreHardwareMonitor 与 WinForms 的目标上，Windows 专属的实现不参与编译。 -->
   <ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows'">
     <Compile Remove="Metrics/Windows/**/*.cs" />
+    <Compile Remove="Tray/TrayIconHost.cs" />
   </ItemGroup>
 
 </Project>

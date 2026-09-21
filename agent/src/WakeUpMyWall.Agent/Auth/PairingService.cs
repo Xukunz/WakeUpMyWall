@@ -17,6 +17,9 @@ public sealed class PairingService(ITokenStore store, TimeProvider clock)
 
     public bool IsPaired => store.HasToken;
 
+    /** 当前有效的配对码；配对成功后置空（一次性），托盘菜单靠它显示"配对码：123456"。 */
+    public string? CurrentCode => _code;
+
     public string CreateCode()
     {
         _code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
