@@ -31,6 +31,11 @@ import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
 import com.xukunz.wakeupmywall.core.agent.AgentTokenStore
 import com.xukunz.wakeupmywall.core.agent.InMemoryAgentTokenStore
 import com.xukunz.wakeupmywall.core.platform.PlatformBackHandler
+import com.xukunz.wakeupmywall.core.i18n.AppLanguage
+import com.xukunz.wakeupmywall.core.i18n.ChineseSimplifiedStrings
+import com.xukunz.wakeupmywall.core.i18n.EnglishStrings
+import com.xukunz.wakeupmywall.core.i18n.LocalStrings
+import androidx.compose.runtime.CompositionLocalProvider
 import com.xukunz.wakeupmywall.core.metrics.MetricRingBuffer
 import com.xukunz.wakeupmywall.core.metrics.ActivityClock
 import com.xukunz.wakeupmywall.core.metrics.KtorMetricsStream
@@ -491,6 +496,13 @@ fun App(
     }
 
     WakeUpMyWallTheme(accent = appearance.accent) {
+        // 语言切换只影响文案：所有用户可见字符串都从 LocalStrings 取（新增文案必须先加进表里）。
+        CompositionLocalProvider(
+            LocalStrings provides when (appearance.language) {
+                AppLanguage.English -> EnglishStrings
+                AppLanguage.ChineseSimplified -> ChineseSimplifiedStrings
+            },
+        ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -713,6 +725,7 @@ fun App(
             }
         }
     }
+        }
 }
 
 /** 二次确认弹窗里的动作名（与 spec §7.2 的 Power Rail 文案一致）。 */

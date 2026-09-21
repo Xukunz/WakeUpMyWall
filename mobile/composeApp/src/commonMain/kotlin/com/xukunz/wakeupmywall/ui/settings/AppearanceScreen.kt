@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
+import com.xukunz.wakeupmywall.core.i18n.LocalStrings
+import com.xukunz.wakeupmywall.core.i18n.AppLanguage
 import com.xukunz.wakeupmywall.core.theme.AppSizes
 import com.xukunz.wakeupmywall.core.theme.AppShapes
 import com.xukunz.wakeupmywall.core.theme.DarkSurface
@@ -58,6 +60,9 @@ data class AppearanceState(
     val transparency: Float,
     val fontScale: Float,
     val widgets: List<DashboardWidget>,
+    /** 界面语言（spec：多语言兼容，V1 提供英文与简体中文）。 */
+    val language: com.xukunz.wakeupmywall.core.i18n.AppLanguage =
+        com.xukunz.wakeupmywall.core.i18n.AppLanguage.English,
 )
 
 /** Appearance 的纯函数归约器：全部返回新状态，非法输入保持原值。 */
@@ -238,6 +243,7 @@ private fun ControlBar(
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             WallpaperSegment(state, onStateChange, Modifier.fillMaxWidth())
+            LanguageSegment(state, onStateChange, Modifier.fillMaxWidth())
             AccentSegment(state, onStateChange, Modifier.fillMaxWidth())
             StyleSegment(state, onStateChange, Modifier.fillMaxWidth())
             AppearanceSegment(state, onStateChange, Modifier.fillMaxWidth())
@@ -246,9 +252,46 @@ private fun ControlBar(
         // 权威规格 F 是"底部控制条四段"，四段并排；竖排堆叠会把 Live Preview 挤到看不见。
         Row(modifier = chrome, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
             WallpaperSegment(state, onStateChange, Modifier.weight(1f))
+            LanguageSegment(state, onStateChange, Modifier.weight(1f))
             AccentSegment(state, onStateChange, Modifier.weight(1f))
             StyleSegment(state, onStateChange, Modifier.weight(1f))
             AppearanceSegment(state, onStateChange, Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * 语言（V1：English / 简体中文）。和强调色一样是"立刻生效"的设置——切换后整个界面的文案换语言，
+ * 包括电源栏的状态词、Monitor 的卡片标题与设置导航。
+ */
+@Composable
+private fun LanguageSegment(
+    state: AppearanceState,
+    onStateChange: (AppearanceState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val strings = LocalStrings.current
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Text(
+            text = strings.language,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            AppLanguage.entries.forEach { language ->
+                val selected = state.language == language
+                Text(
+                    text = language.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .clip(AppShapes.button)
+                        .background(if (selected) MaterialTheme.colorScheme.primary else DarkSurface.card.copy(alpha = 0.5f))
+                        .clickable { onStateChange(state.copy(language = language)) }
+                        .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+                        .testTag("appearance:language-${language.code}"),
+                )
+            }
         }
     }
 }
