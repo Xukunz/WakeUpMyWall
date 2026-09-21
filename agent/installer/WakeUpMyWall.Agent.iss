@@ -37,7 +37,10 @@ MinVersion=10.0
 UninstallDisplayName={#MyAppName}
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; 自带中文语言文件：choco 装的 Inno Setup 不装翻译组件（Languages\ 目录里只有 Default.isl），
+; 引用 compiler:Languages\ChineseSimplified.isl 会在 CI 上直接编译失败（实测踩过）。
+Name: "chinesesimplified"; MessagesFile: "languages\ChineseSimplified.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 ; 自包含发布：机器上不需要预先装 .NET。
