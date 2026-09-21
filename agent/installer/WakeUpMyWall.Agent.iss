@@ -62,7 +62,7 @@ Filename: "{sys}\sc.exe"; Parameters: "delete {#ServiceName}"; Flags: runhidden 
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""{#FirewallRule}"""; Flags: runhidden waituntilterminated
 
 [Code]
-/** 选了服务模式就不再建"登录时托盘自启"：两者都会去占 9876，同时存在会互相抢端口。 */
+// 选了服务模式就不再建"登录时托盘自启"：两者都会去占 9876，同时存在会互相抢端口。
 function ServiceMode: Boolean;
 begin
   Result := WizardIsTaskSelected('serviceinstall');
