@@ -17,6 +17,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import com.xukunz.wakeupmywall.core.connectivity.ConnectionFailure
 import com.xukunz.wakeupmywall.core.connectivity.ConnectionReport
 import com.xukunz.wakeupmywall.core.connectivity.ConnectivityTester
@@ -25,6 +27,11 @@ import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
 import com.xukunz.wakeupmywall.core.agent.AgentTokenStore
 import com.xukunz.wakeupmywall.core.agent.InMemoryAgentTokenStore
 import com.xukunz.wakeupmywall.core.metrics.MetricRingBuffer
+import com.xukunz.wakeupmywall.core.metrics.ActivityClock
+import com.xukunz.wakeupmywall.core.metrics.KtorMetricsStream
+import com.xukunz.wakeupmywall.core.metrics.MetricsCadence
+import com.xukunz.wakeupmywall.core.metrics.MetricsGate
+import com.xukunz.wakeupmywall.core.metrics.MetricsStream
 import com.xukunz.wakeupmywall.core.network.AgentApi
 import com.xukunz.wakeupmywall.core.network.AgentMetrics
 import com.xukunz.wakeupmywall.core.network.ApiResult
@@ -73,6 +80,7 @@ import com.xukunz.wakeupmywall.ui.monitor.MetricKeys
 import com.xukunz.wakeupmywall.ui.powerrail.powerRailModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
 
 @Composable
 fun App(
@@ -104,6 +112,12 @@ fun App(
     metricsPollMillis: Long = 2_000,
     /** 测试注入用：直接给指标结果；默认 null = 真去问 `GET /api/v1/system`。 */
     metricsProbe: (suspend (PcDevice, String?) -> ApiResult<AgentMetrics>)? = null,
+    /** 指标流（`/ws/v1/metrics`）。**工厂而不是实例**：桌面 target 没有 Ktor 引擎。 */
+    metricsStreamFactory: () -> MetricsStream = { KtorMetricsStream(createAgentHttpClient()) },
+    /** spec §9 的节奏：ACTIVE 1 秒 / IDLE 5 秒。 */
+    cadence: MetricsCadence = MetricsCadence(),
+    /** 多久没交互算 Idle（spec §9 默认 60 秒）。 */
+    idleTimeoutMillis: Long = 60_000,
 ) {
     val workspace by navigator.current.collectAsState()
     var pcState by remember { mutableStateOf(initialPcState) }
@@ -144,6 +158,13 @@ fun App(
             .associateWith { MetricRingBuffer(capacity = 60) }
     }
     var metricHistory by remember(device?.id) { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
+    // 指标流（Phase 5C）：`streamLive` 为真时 HTTP 轮询让位；Idle 判定与帧门控都是纯类。
+    var streamLive by remember(device?.id) { mutableStateOf(false) }
+    var isIdle by remember { mutableStateOf(false) }
+    val monotonicStart = remember { TimeSource.Monotonic.markNow() }
+    val activityClock = remember(idleTimeoutMillis) { ActivityClock(idleTimeoutMillis) }
+    val metricsGate = remember(cadence) { MetricsGate(cadence) }
+    fun elapsedMillis(): Long = monotonicStart.elapsedNow().inWholeMilliseconds
     // Appearance 是全应用外观的唯一来源：壁纸、强调色、卡片风格都从这里流向真正渲染的界面。
     var appearance by remember {
         mutableStateOf(
@@ -303,6 +324,20 @@ fun App(
      * 此时 UI 才把读数退成 `—` 并标注 `Last update …`（不留一张看不出真假的旧数字）。
      * 没配对不发请求：载荷要 Bearer，盲发只会白拿 401。
      */
+    /** 一次采样落地的唯一入口：流式与轮询共用（两条路喂进去的东西必须一模一样）。 */
+    fun applyMetricsSample(metrics: AgentMetrics) {
+        val sample = LiveMetricsMapper.map(metrics)
+        liveMetrics = sample
+        metricsFailures = 0
+        metricsNote = null
+        sample.snapshot.cpuPercent?.let { metricBuffers.getValue(MetricKeys.Cpu).add(it) }
+        sample.snapshot.gpuPercent?.let { metricBuffers.getValue(MetricKeys.Gpu).add(it) }
+        sample.snapshot.ramPercent?.let { metricBuffers.getValue(MetricKeys.Ram).add(it) }
+        sample.snapshot.storagePercent?.let { metricBuffers.getValue(MetricKeys.Storage).add(it) }
+        sample.snapshot.downloadMbps?.let { metricBuffers.getValue(MetricKeys.Network).add(it) }
+        metricHistory = metricBuffers.mapValues { (_, buffer) -> buffer.values() }
+    }
+
     LaunchedEffect(device?.id, agentToken, metricsPollMillis, metricsProbe) {
         val target = device
         liveMetrics = null
@@ -310,16 +345,12 @@ fun App(
         metricsNote = null
         if (target == null) return@LaunchedEffect
 
-        fun pushSample(snapshot: MetricsSnapshot) {
-            snapshot.cpuPercent?.let { metricBuffers.getValue(MetricKeys.Cpu).add(it) }
-            snapshot.gpuPercent?.let { metricBuffers.getValue(MetricKeys.Gpu).add(it) }
-            snapshot.ramPercent?.let { metricBuffers.getValue(MetricKeys.Ram).add(it) }
-            snapshot.storagePercent?.let { metricBuffers.getValue(MetricKeys.Storage).add(it) }
-            snapshot.downloadMbps?.let { metricBuffers.getValue(MetricKeys.Network).add(it) }
-            metricHistory = metricBuffers.mapValues { (_, buffer) -> buffer.values() }
-        }
-
         while (true) {
+            // 流式通道活着的时候不采样：同一份数据不需要两条路同时拿。
+            if (streamLive) {
+                delay(metricsPollMillis)
+                continue
+            }
             val token = agentToken
             if (token == null) {
                 metricsFailures = metricsStaleAfter
@@ -335,13 +366,7 @@ fun App(
                         metricsFailures += 1
                         metricsNote = "Could not reach the Agent"
                     }
-                    is ApiResult.Success -> {
-                        val sample = LiveMetricsMapper.map(result.value)
-                        liveMetrics = sample
-                        metricsFailures = 0
-                        metricsNote = null
-                        pushSample(sample.snapshot)
-                    }
+                    is ApiResult.Success -> applyMetricsSample(result.value)
                     is ApiResult.Failure -> {
                         metricsFailures += 1
                         metricsNote = result.message
@@ -349,6 +374,48 @@ fun App(
                 }
             }
             delay(metricsPollMillis)
+        }
+    }
+
+    /** Idle 判定的心跳：每秒看一眼"最后一次触摸到现在多久了"（spec §9 默认 60 秒）。 */
+    LaunchedEffect(activityClock) {
+        while (true) {
+            isIdle = activityClock.isIdle(elapsedMillis())
+            delay(idleTickMillis)
+        }
+    }
+
+    /**
+     * 指标流（Phase 5C）：连上 `/ws/v1/metrics` 后按 1 Hz 收帧，按 [cadence] 决定哪些帧进 UI。
+     * 断开 → 指数退避重连（1/2/4/8 秒封顶）；**连续 [streamFallbackAfter] 次连不上**（老 Agent 没有这个
+     * 端点、或网络不通）就把 [streamLive] 放下，让 HTTP 轮询接手；60 秒后再试一次流，等对方升级。
+     */
+    LaunchedEffect(device?.id, agentToken, metricsStreamFactory, cadence) {
+        val target = device ?: return@LaunchedEffect
+        val token = agentToken ?: return@LaunchedEffect
+
+        var backoff = streamBackoffStartMillis
+        var failuresWithoutFrames = 0
+        while (true) {
+            var gotFrame = false
+            runCatching {
+                metricsStreamFactory().frames(baseUrl(target), token).collect { frame ->
+                    gotFrame = true
+                    streamLive = true
+                    if (metricsGate.accept(elapsedMillis(), isIdle)) applyMetricsSample(frame)
+                }
+            }
+            streamLive = false
+
+            if (gotFrame) {
+                failuresWithoutFrames = 0
+                backoff = streamBackoffStartMillis
+            } else {
+                failuresWithoutFrames += 1
+                backoff = (backoff * 2).coerceAtMost(streamBackoffMaxMillis)
+            }
+
+            delay(if (failuresWithoutFrames >= streamFallbackAfter) streamRetryMillis else backoff)
         }
     }
 
@@ -373,7 +440,19 @@ fun App(
     val shownHistory = if (hasDevice) metricHistory else mockMetricHistory(MockData.metrics)
 
     WakeUpMyWallTheme(accent = appearance.accent) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // 任何触摸都把 ActivityClock 打回 ACTIVE（Initial 阶段只看不吃，不影响滑动手势）。
+                .pointerInput(activityClock) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            activityClock.touch(elapsedMillis())
+                        }
+                    }
+                },
+        ) {
             WallpaperBackground(appearance.wallpaperId)
             // Surface 保持透明，只借用 Material3 的 contentColor，让壁纸透出来。
             // 壁纸铺满整屏（含刘海与手势条区域），但**交互内容**要躲开系统栏：
@@ -621,3 +700,16 @@ private val unavailableReasons = setOf(
  * 3 次 ≈ 6 秒（2 秒采样），能熬过一次抖动，又不会让用户对着过期数字发呆太久。
  */
 private const val metricsStaleAfter = 3
+
+/** 指标流的重连退避：1 → 2 → 4 → 8 秒封顶。 */
+private const val streamBackoffStartMillis = 1_000L
+private const val streamBackoffMaxMillis = 8_000L
+
+/** 连续这么多次"连上但一帧都没收到"就判定流式不可用，交给 HTTP 兜底。 */
+private const val streamFallbackAfter = 2
+
+/** 兜底之后每隔这么久再试一次流（等对方升级 Agent）。 */
+private const val streamRetryMillis = 60_000L
+
+/** Idle 判定的心跳间隔。 */
+private const val idleTickMillis = 1_000L
