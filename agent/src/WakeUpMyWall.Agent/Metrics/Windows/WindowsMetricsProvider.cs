@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Net.NetworkInformation;
 using LibreHardwareMonitor.Hardware;
 using Microsoft.Win32;
 
@@ -25,18 +26,31 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
 
     public WindowsMetricsProvider() => _computer.Open();
 
+    private readonly NetworkRateSampler _networkRates = new();
+
     public SystemMetricsPayload Read()
     {
         var now = DateTimeOffset.UtcNow;
         var readings = new List<SensorReading>();
-        var gpuTaken = false;
+        var primaryGpu = PickPrimaryGpu();
 
         foreach (var hardware in _computer.Hardware)
         {
-            var target = MapHardware(hardware.HardwareType, ref gpuTaken);
+            var target = MapHardware(hardware, primaryGpu);
             if (target is null) continue;
 
             Collect(hardware, target, readings);
+        }
+
+        // 网速来自系统自带的累计计数（LHM 的吞吐传感器在服务/驱动受限时恒为 0）。
+        var (download, upload) = _networkRates.Sample(ReadNetworkCounters(), Environment.TickCount64);
+        if (download is { } down)
+        {
+            readings.Add(new SensorReading(SensorHardware.Network, SensorKind.ThroughputBps, "Download Speed", down));
+        }
+        if (upload is { } up)
+        {
+            readings.Add(new SensorReading(SensorHardware.Network, SensorKind.ThroughputBps, "Upload Speed", up));
         }
 
         return MetricsMapper.Map(readings, ReadFacts(now), now);
@@ -61,11 +75,13 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
         foreach (var sub in hardware.SubHardware) Collect(sub, target, readings);
     }
 
-    /** GPU 只认第一块（多显卡时概念图上的读数也只有一个）；其余硬件按类型归类。 */
-    private static string? MapHardware(HardwareType type, ref bool gpuTaken) => type switch
+    /** 主显卡：多显卡机器（尤其带核显）按 [GpuSelection] 的规则挑，其余硬件按类型归类。 */
+    private static string? MapHardware(IHardware hardware, IHardware? primaryGpu) => hardware.HardwareType switch
     {
         HardwareType.Cpu => SensorHardware.Cpu,
-        HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel => gpuTaken ? null : Take(ref gpuTaken),
+        // 只认主显卡；其它显卡整块跳过（两张卡的读数混在一起没有意义）。
+        HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel =>
+            ReferenceEquals(hardware, primaryGpu) ? SensorHardware.Gpu : null,
         HardwareType.Memory => SensorHardware.Memory,
         HardwareType.Storage => SensorHardware.Storage,
         HardwareType.Motherboard or HardwareType.SuperIO => SensorHardware.Motherboard,
@@ -73,11 +89,24 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
         _ => null,
     };
 
-    private static string? Take(ref bool gpuTaken)
+    private IHardware? PickPrimaryGpu()
     {
-        gpuTaken = true;
-        return SensorHardware.Gpu;
+        var gpus = _computer.Hardware
+            .Where(h => h.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel)
+            .ToList();
+        if (gpus.Count == 0) return null;
+
+        var index = GpuSelection.PickPrimary(gpus.Select(g => (Vendor(g.HardwareType), g.Name)).ToList());
+        return index < 0 ? null : gpus[index];
     }
+
+    private static string Vendor(HardwareType type) => type switch
+    {
+        HardwareType.GpuNvidia => "nvidia",
+        HardwareType.GpuAmd => "amd",
+        HardwareType.GpuIntel => "intel",
+        _ => "other",
+    };
 
     private static string? MapSensor(SensorType type) => type switch
     {
@@ -115,8 +144,40 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
             VramTotalGb: ReadVramTotalGb(),
             StorageTotalGb: storageTotalGb,
             StorageFreeGb: storageFreeGb,
+            NominalClockMhz: ReadNominalClockMhz(),
             UptimeSeconds: Environment.TickCount64 / 1000,
             BootedAtUtc: now.AddSeconds(-Environment.TickCount64 / 1000.0).ToString("o"));
+    }
+
+    /** 所有"已连接且非回环"网卡的累计字节数之和。 */
+    private static NetworkCounters ReadNetworkCounters()
+    {
+        long received = 0;
+        long sent = 0;
+        foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (nic.OperationalStatus != OperationalStatus.Up) continue;
+            if (nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+            try
+            {
+                var statistics = nic.GetIPStatistics();
+                received += statistics.BytesReceived;
+                sent += statistics.BytesSent;
+            }
+            catch (NetworkInformationException)
+            {
+                // 单块网卡读不到就跳过，不影响其它网卡。
+            }
+        }
+        return new NetworkCounters(received, sent);
+    }
+
+    /** 注册表里的标称主频（MHz）。LHM 没有 MSR 权限时读不到实时频率，用它兜底。 */
+    private static double? ReadNominalClockMhz()
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+        return key?.GetValue("~MHz") is int mhz && mhz > 0 ? mhz : null;
     }
 
     /** 系统盘就是产品关心的那块：`C:\` 或者系统目录所在盘。 */

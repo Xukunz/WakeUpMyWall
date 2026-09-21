@@ -32,6 +32,9 @@ data class PairingResponse(val token: String)
 data class ActionEntry(val id: String, val name: String)
 
 @Serializable
+data class ActionRunResponse(val id: String, val executed: Boolean)
+
+@Serializable
 data class PowerResponse(val action: String, val accepted: Boolean)
 
 /**
@@ -142,6 +145,10 @@ class AgentApi(private val client: HttpClient) {
 
     suspend fun actions(baseUrl: String, token: String?): ApiResult<List<ActionEntry>> =
         call { client.get("$baseUrl/api/v1/actions") { bearer(token) } }
+
+    /** 执行白名单动作（spec §5）：id 未知由 Agent 回 404；启动失败回 500 + 原因。 */
+    suspend fun runAction(baseUrl: String, token: String?, id: String): ApiResult<ActionRunResponse> =
+        call { client.post("$baseUrl/api/v1/actions/$id") { bearer(token) } }
 
     suspend fun power(baseUrl: String, token: String?, action: PowerAction): ApiResult<PowerResponse> =
         call { client.post("$baseUrl/api/v1/power/${action.path}") { bearer(token) } }

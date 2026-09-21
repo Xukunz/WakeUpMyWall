@@ -23,8 +23,13 @@ public static class MetricsMapper
         var motherboard = Hardware(readings, SensorHardware.Motherboard);
         var network = Hardware(readings, SensorHardware.Network);
 
+        // 值为 0 的测量类传感器一律当"读不到"：没有 0 ℃ 的 CPU、也没有 0 MHz 的主频。
+        // 这在没有管理员权限（LHM 装不了内核驱动）的机器上是常态——此时退回注册表的标称主频，
+        // 而不是给用户看一个假的 0 GHz。
         var coreClocks = cpu
-            .Where(r => r.Sensor == SensorKind.ClockMhz && r.Name.StartsWith("CPU Core #", StringComparison.Ordinal))
+            .Where(r => r.Sensor == SensorKind.ClockMhz
+                        && r.Value > 0
+                        && r.Name.StartsWith("CPU Core #", StringComparison.Ordinal))
             .ToList();
 
         var memoryUsedGb = Value(memory, SensorKind.DataGb, "Memory Used");
@@ -50,18 +55,20 @@ public static class MetricsMapper
             Cpu: new CpuMetricsPayload(
                 Name: facts.CpuName,
                 UsagePercent: Round(Value(cpu, SensorKind.Load, "CPU Total"), 1),
-                ClockGhz: coreClocks.Count == 0 ? null : Round(coreClocks.Average(r => r.Value) / 1000.0, 1),
+                ClockGhz: coreClocks.Count > 0
+                    ? Round(coreClocks.Average(r => r.Value) / 1000.0, 1)
+                    : Round(facts.NominalClockMhz / 1000.0, 1),
                 Cores: coreClocks.Count == 0 ? null : coreClocks.Select(r => r.Name).Distinct().Count(),
                 Threads: Environment.ProcessorCount,
-                TempC: Round(
+                TempC: Round(Positive(
                     Value(cpu, SensorKind.Temperature, "CPU Package")
-                    ?? Value(cpu, SensorKind.Temperature, "Core #1"),
+                    ?? Value(cpu, SensorKind.Temperature, "Core #1")),
                     1),
-                FanRpm: Rpm(Last(CpuFans(motherboard, cpu)))),
+                FanRpm: Rpm(Positive(Last(CpuFans(motherboard, cpu))))),
             Gpu: new GpuMetricsPayload(
                 Name: facts.GpuName,
                 UsagePercent: Round(Value(gpu, SensorKind.Load, "GPU Core"), 1),
-                TempC: Round(Value(gpu, SensorKind.Temperature, "GPU Core"), 1),
+                TempC: Round(Positive(Value(gpu, SensorKind.Temperature, "GPU Core")), 1),
                 VramUsedGb: Round(
                     Value(gpu, SensorKind.DataGb, "D3D Dedicated Memory Used")
                     ?? Value(gpu, SensorKind.DataGb, "GPU Memory Used"),
@@ -77,10 +84,10 @@ public static class MetricsMapper
                 UsedTb: Round(storageUsedGb / 1024.0, 1),
                 TotalTb: Round(storageTotalGb / 1024.0, 1),
                 FreeGb: Round(storageFreeGb, 1),
-                TempC: Round(Value(storage, SensorKind.Temperature, "Temperature"), 1)),
+                TempC: Round(Positive(Value(storage, SensorKind.Temperature, "Temperature")), 1)),
             Thermal: new ThermalMetricsPayload(
-                MotherboardTempC: Round(Value(motherboard, SensorKind.Temperature, "Temperature #1"), 1),
-                CaseFanRpm: Rpm(CaseFans(motherboard))),
+                MotherboardTempC: Round(Positive(Value(motherboard, SensorKind.Temperature, "Temperature #1")), 1),
+                CaseFanRpm: Rpm(Positive(CaseFans(motherboard)))),
             Network: new NetworkMetricsPayload(
                 DownloadMbps: Round(ToMbps(Value(network, SensorKind.ThroughputBps, "Download Speed")), 1),
                 UploadMbps: Round(ToMbps(Value(network, SensorKind.ThroughputBps, "Upload Speed")), 1)),
@@ -125,4 +132,7 @@ public static class MetricsMapper
         value is null ? null : Math.Round(value.Value, digits);
 
     private static int? Rpm(double? value) => value is null ? null : (int)Math.Round(value.Value);
+
+    /** 0 值的温度/转速等于"读不到"（没有 0 ℃ 的 CPU）；用 0 冒充会被当成真实读数。 */
+    private static double? Positive(double? value) => value is > 0 ? value : null;
 }

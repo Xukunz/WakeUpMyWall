@@ -124,6 +124,8 @@ class AgentIntegrationTest {
         }
 
         onNodeWithTag("powerrail:sleep").performClick()
+        // 电源动作一律先过二次确认（点错就真的关机/重启）。
+        onNodeWithTag("dialog:power-confirm").performClick()
 
         waitUntil(timeoutMillis = 5_000) { calls.contains("/api/v1/power/sleep") }
         expectState("Sleeping…")
@@ -147,6 +149,7 @@ class AgentIntegrationTest {
         }
 
         onNodeWithTag("powerrail:sleep").performClick()
+        onNodeWithTag("dialog:power-confirm").performClick()
 
         waitUntilExactlyOneExists(hasTestTag("powerrail:wake-note"), timeoutMillis = 5_000)
         onNodeWithTag("powerrail:wake-note", useUnmergedTree = true)
@@ -170,6 +173,7 @@ class AgentIntegrationTest {
         }
 
         onNodeWithTag("powerrail:shutdown").performClick()
+        onNodeWithTag("dialog:power-confirm").performClick()
 
         waitUntilExactlyOneExists(hasTestTag("powerrail:wake-note"), timeoutMillis = 5_000)
         onNodeWithTag("powerrail:wake-note", useUnmergedTree = true)

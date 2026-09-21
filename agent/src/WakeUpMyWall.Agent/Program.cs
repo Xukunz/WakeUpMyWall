@@ -35,6 +35,7 @@ builder.Services.AddSingleton<ITokenStore>(services => new FileTokenStore(
     services.GetRequiredService<IConfiguration>()["Agent:TokenFile"] ?? AgentPaths.DefaultTokenFile));
 builder.Services.AddSingleton<PairingService>();
 builder.Services.AddSingleton<BearerAuthFilter>();
+builder.Services.AddSingleton<IAppLauncher, ShellAppLauncher>();
 builder.Services.AddSingleton<ActionRegistry>();
 
 // 电源动作只有 Windows 能真做；其它平台（CI / 开发机 / 冒烟）用 --fake-power，

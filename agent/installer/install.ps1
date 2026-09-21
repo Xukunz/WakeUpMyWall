@@ -77,10 +77,9 @@ if ($DesktopShortcut) {
     Write-Host "  桌面快捷方式已创建"
 }
 if ($TrayAutostart -and -not $Service) {
-    $startup = [Environment]::GetFolderPath('Startup')
-    $link = $shell.CreateShortcut((Join-Path $startup 'WakeUpMyWall Agent.lnk'))
-    $link.TargetPath = $exe; $link.Save()
-    Write-Host "  已加入登录启动（托盘模式）"
+    # 计划任务（最高权限）而不是"启动"文件夹快捷方式：LHM 要内核驱动才能读温度/风扇/频率。
+    & schtasks.exe /Create /TN "WakeUpMyWall Agent" /TR "`"$exe`"" /SC ONLOGON /RL HIGHEST /F | Out-Null
+    Write-Host "  已创建登录自启计划任务（最高权限，托盘模式）"
 }
 
 Write-Host "== 4/6 启动方式" -ForegroundColor Cyan
@@ -111,6 +110,6 @@ if ($Service) {
     Write-Host '退出：sc.exe stop WakeUpMyWallAgent（再 sc.exe start 会换新配对码）'
 } else {
     Write-Host '托盘图标在右下角通知区域：右键 → 查看配对码 / 退出'
-    Write-Host '（想让它开机自启但这次没加进启动项：把桌面快捷方式拖进 shell:startup）'
+    if (-not $TrayAutostart) { Write-Host '（本次没有创建登录自启计划任务；要到开机自启用 -TrayAutostart）' }
 }
 Write-Host "日志：$env:ProgramData\WakeUpMyWall\agent.log"

@@ -18,6 +18,7 @@ public class MetricsMapperTests
         VramTotalGb: 12,
         StorageTotalGb: 2048,
         StorageFreeGb: 102,
+        NominalClockMhz: null,
         UptimeSeconds: 289440,
         BootedAtUtc: "2025-04-18T12:00:00Z");
 

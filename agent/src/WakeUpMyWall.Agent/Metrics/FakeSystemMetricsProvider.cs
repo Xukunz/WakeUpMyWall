@@ -55,6 +55,7 @@ public sealed class FakeSystemMetricsProvider(TimeProvider clock) : ISystemMetri
             VramTotalGb: 12,
             StorageTotalGb: 2048,
             StorageFreeGb: 102,
+            NominalClockMhz: 4200,
             UptimeSeconds: (long)(now - BootedAt).TotalSeconds,
             BootedAtUtc: BootedAt.ToString("o"));
 

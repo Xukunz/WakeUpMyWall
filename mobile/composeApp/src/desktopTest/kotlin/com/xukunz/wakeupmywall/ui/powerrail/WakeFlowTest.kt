@@ -147,6 +147,7 @@ class WakeFlowTest {
         setContent { App() }
 
         onNodeWithTag("powerrail:sleep").performClick()
+        onNodeWithTag("dialog:power-confirm").performClick()
 
         onNodeWithTag("powerrail:wake-note", useUnmergedTree = true)
             .assertTextEquals("Pair the phone in Device Setup first (Agent section)")

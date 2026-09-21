@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import com.xukunz.wakeupmywall.core.theme.AppSizes
 import kotlin.math.cos
+import kotlin.math.PI
 import kotlin.math.sin
 
 /**
@@ -35,6 +36,7 @@ enum class AppIconKind {
 
     /** 进入下一层的 `>`。 */
     ChevronRight,
+    ChevronLeft,
 
     /** 新增（加号）。 */
     Plus,
@@ -100,6 +102,7 @@ fun AppIcon(
         when (kind) {
             AppIconKind.Gear -> drawGear(tint, u, stroke)
             AppIconKind.ChevronRight -> drawPolyline(tint, stroke, 9f to 6f, 15f to 12f, 9f to 18f)
+            AppIconKind.ChevronLeft -> drawPolyline(tint, stroke, 15f to 6f, 9f to 12f, 15f to 18f)
             AppIconKind.Plus -> {
                 drawPolyline(tint, stroke, 12f to 5f, 12f to 19f)
                 drawPolyline(tint, stroke, 5f to 12f, 19f to 12f)
@@ -173,28 +176,33 @@ private fun DrawScope.drawPolyline(color: Color, stroke: Stroke, vararg points: 
     drawPath(path, color = color, style = stroke)
 }
 
+/**
+ * 齿轮（设置）：**圆角齿**的经典造型 —— 8 个圆乎乎的凸齿 + 中心空心圆，全描边不填充。
+ * 早期版本画的是"圆 + 8 根直齿"，看起来像太阳/尖刺，与设计稿不符（用户实测指出）。
+ *
+ * 做法：沿极坐标采样半径 `r(θ) = 内径 + (外径 - 内径) * smoothstep(cos(8θ))`，
+ * 连成闭合路径再描边；smoothstep 保证齿是圆角而不是尖角。
+ */
 private fun DrawScope.drawGear(tint: Color, u: Float, stroke: Stroke) {
-    drawCircle(tint, radius = 6.2f * u, center = center, style = stroke)
-    drawCircle(tint, radius = 2.4f * u, center = center, style = stroke)
-    repeat(8) { index ->
-        val angle = index * 45f
-        val radians = Math.toRadians(angle.toDouble())
-        val inner = 7.4f
-        val outer = 9.6f
-        drawLine(
-            color = tint,
-            start = Offset(
-                center.x + (cos(radians) * inner * u).toFloat(),
-                center.y + (sin(radians) * inner * u).toFloat(),
-            ),
-            end = Offset(
-                center.x + (cos(radians) * outer * u).toFloat(),
-                center.y + (sin(radians) * outer * u).toFloat(),
-            ),
-            strokeWidth = stroke.width,
-            cap = StrokeCap.Round,
-        )
+    val teeth = 8
+    val inner = 7.0f
+    val outer = 9.6f
+    val steps = 240
+    val path = Path()
+
+    for (step in 0..steps) {
+        val angle = (step.toFloat() / steps) * 2f * PI.toFloat()
+        val lobe = (cos(teeth * angle) + 1f) / 2f          // 0..1
+        val smooth = lobe * lobe * (3f - 2f * lobe)        // smoothstep：圆角齿
+        val radius = (inner + (outer - inner) * smooth) * u
+        val x = center.x + cos(angle) * radius
+        val y = center.y + sin(angle) * radius
+        if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
     }
+    path.close()
+    drawPath(path, color = tint, style = stroke)
+    // 中心空心圆（描边），与设计稿一致的"圆环 + 齿轮"。
+    drawCircle(tint, radius = 3.2f * u, center = center, style = stroke)
 }
 
 private fun DrawScope.drawLocationPin(tint: Color, u: Float, stroke: Stroke) {

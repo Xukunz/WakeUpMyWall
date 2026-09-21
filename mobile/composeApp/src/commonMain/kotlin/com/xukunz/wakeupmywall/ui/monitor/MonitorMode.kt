@@ -88,6 +88,8 @@ fun MonitorMode(
     isStale: Boolean = false,
     /** 失败原因（可读文案）；null = 不渲染。 */
     metricsNote: String? = null,
+    /** Quick Actions 的点击回调（Phase 5.5）：带上动作 id（`browser` / `steam` / `spotify` / `discord`）。 */
+    onQuickAction: ((String) -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("monitor")) {
         // maxWidth 只能在 BoxWithConstraints 作用域直接读，进入 Column 的 content lambda 后就不是这个 receiver 了。
@@ -109,7 +111,7 @@ fun MonitorMode(
                         identity, deviceId, status, style, onOpenDevice, capturedLabel, isStale, metricsNote,
                         Modifier.fillMaxWidth(),
                     )
-                    QuickActionsCard(style, Modifier.fillMaxWidth())
+                    QuickActionsCard(style, onQuickAction, Modifier.fillMaxWidth())
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
@@ -117,7 +119,7 @@ fun MonitorMode(
                         identity, deviceId, status, style, onOpenDevice, capturedLabel, isStale, metricsNote,
                         Modifier.weight(1.4f),
                     )
-                    QuickActionsCard(style, Modifier.weight(1f))
+                    QuickActionsCard(style, onQuickAction, Modifier.weight(1f))
                 }
             }
 
@@ -240,6 +242,23 @@ private fun DeviceIdentityCard(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // 左上角返回：进 PC 卡片后用户第一反应是"返回"，而不是去找卡片右上的 `>`。
+                    if (onOpen != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(AppSizes.iconLarge)
+                                .clip(AppShapes.button)
+                                .clickable(onClick = onOpen)
+                                .testTag("monitor:back"),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AppIcon(
+                                kind = AppIconKind.ChevronLeft,
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                size = AppSizes.iconMedium,
+                            )
+                        }
+                    }
                     Box(
                         Modifier
                             .size(AppSizes.statusDot)
@@ -349,7 +368,11 @@ private fun DeviceIdentityCard(
  * 用 [AppIconKind.AppTile] 表示"某个应用"，语义靠下方文字承担。
  */
 @Composable
-private fun QuickActionsCard(style: WidgetStyle, modifier: Modifier = Modifier) {
+private fun QuickActionsCard(
+    style: WidgetStyle,
+    onAction: ((String) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     WidgetSurface(style = style, modifier = modifier.testTag("monitor:quick-actions")) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -369,7 +392,14 @@ private fun QuickActionsCard(style: WidgetStyle, modifier: Modifier = Modifier) 
         ) {
             quickActions.forEach { action ->
                 Column(
-                    modifier = Modifier.weight(1f).testTag("action:$action"),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("action:$action")
+                        // Phase 5.5：点一下就真的在 PC 上打开对应程序（Agent 白名单里只有这四个 id）。
+                        .then(
+                            if (onAction == null) Modifier
+                            else Modifier.clickable { onAction(action.lowercase()) },
+                        ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {

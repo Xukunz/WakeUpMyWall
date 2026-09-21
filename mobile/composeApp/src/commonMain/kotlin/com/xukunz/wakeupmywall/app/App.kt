@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -19,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import com.xukunz.wakeupmywall.core.connectivity.ConnectionFailure
 import com.xukunz.wakeupmywall.core.connectivity.ConnectionReport
 import com.xukunz.wakeupmywall.core.connectivity.ConnectivityTester
@@ -26,6 +30,7 @@ import com.xukunz.wakeupmywall.core.connectivity.TcpProbe
 import com.xukunz.wakeupmywall.core.connectivity.UnsupportedTcpProbe
 import com.xukunz.wakeupmywall.core.agent.AgentTokenStore
 import com.xukunz.wakeupmywall.core.agent.InMemoryAgentTokenStore
+import com.xukunz.wakeupmywall.core.platform.PlatformBackHandler
 import com.xukunz.wakeupmywall.core.metrics.MetricRingBuffer
 import com.xukunz.wakeupmywall.core.metrics.ActivityClock
 import com.xukunz.wakeupmywall.core.metrics.KtorMetricsStream
@@ -151,6 +156,8 @@ fun App(
     var pairingNote by remember { mutableStateOf<String?>(null) }
     // 指标采样的状态：最近一次成功的采样、连续失败次数、失败原因。
     var liveMetrics by remember { mutableStateOf<LiveMetrics?>(null) }
+    // 电源动作的二次确认：Sleep/Shutdown/Restart 都是"点错就出事"的操作，必须先确认。
+    var pendingPowerAction by remember { mutableStateOf<Pair<PowerAction, PcEvent>?>(null) }
     var metricsFailures by remember { mutableStateOf(0) }
     var metricsNote by remember { mutableStateOf<String?>(null) }
     // 换设备就换一组 60 点环形缓冲（曲线是"这台机器"的，不该跨设备混）。
@@ -233,6 +240,32 @@ fun App(
             when (val result = runCatching { agentApi.power(baseUrl(target), token, action) }.getOrNull()) {
                 null -> wakeNote = "Could not reach the Agent"
                 is ApiResult.Success -> pcState = PcStateMachine.reduce(pcState, event, target)
+                is ApiResult.Failure -> wakeNote = result.message
+            }
+        }
+    }
+
+    /**
+     * Quick Actions（Phase 5.5）：在 PC 上真的打开对应程序。Agent 只认白名单里的四个 id，
+     * 未知 id 回 404、启动失败回 500 + 原因 —— 两种失败都在 rail 上给出可读提示（"点了没反应"是最糟的体验）。
+     */
+    fun runQuickAction(action: String) {
+        val target = device
+        scope.launch {
+            wakeNote = null
+            if (target == null) {
+                wakeNote = "Add a device first"
+                return@launch
+            }
+            val token = agentToken
+            if (token == null) {
+                wakeNote = "Pair the phone in Device Setup first (Agent section)"
+                return@launch
+            }
+
+            when (val result = runCatching { agentApi.runAction(baseUrl(target), token, action) }.getOrNull()) {
+                null -> wakeNote = "Could not reach the Agent"
+                is ApiResult.Success -> wakeNote = "${action.replaceFirstChar { it.uppercase() }} launched on ${target.name}"
                 is ApiResult.Failure -> wakeNote = result.message
             }
         }
@@ -446,6 +479,17 @@ fun App(
     val shownIdentity = if (hasDevice) live?.identity else MockData.hardware
     val shownHistory = if (hasDevice) metricHistory else mockMetricHistory(MockData.metrics)
 
+    // 系统返回：Settings → Dashboard；Monitor → Dashboard；StandBy → Monitor。已经在家且没别的可退时不拦。
+    PlatformBackHandler(
+        enabled = workspace != Workspace.Dashboard || homeMode != HomeMode.Dashboard,
+    ) {
+        if (workspace == Workspace.Settings) {
+            navigator.goTo(Workspace.Dashboard)
+        } else {
+            homeModeController.onSwipeRight()
+        }
+    }
+
     WakeUpMyWallTheme(accent = appearance.accent) {
         Box(
             modifier = Modifier
@@ -489,9 +533,9 @@ fun App(
                                 }
                                 // 睡眠/关机/重启由 PC 上的 Agent 执行；成功后只进瞬态，
                                 // 真正的结果交给存在性轮询（Agent 掉线 = 真的关机/睡眠了）。
-                                RailEvent.Sleep -> runPowerAction(PowerAction.SLEEP, PcEvent.SleepRequested)
-                                RailEvent.Shutdown -> runPowerAction(PowerAction.SHUTDOWN, PcEvent.ShutdownRequested)
-                                RailEvent.Restart -> runPowerAction(PowerAction.RESTART, PcEvent.RestartRequested)
+                                RailEvent.Sleep -> pendingPowerAction = PowerAction.SLEEP to PcEvent.SleepRequested
+                                RailEvent.Shutdown -> pendingPowerAction = PowerAction.SHUTDOWN to PcEvent.ShutdownRequested
+                                RailEvent.Restart -> pendingPowerAction = PowerAction.RESTART to PcEvent.RestartRequested
                             }
                         },
                     ) {
@@ -516,6 +560,7 @@ fun App(
                             capturedLabel = live?.capturedAtLabel,
                             metricsStale = metricsStale,
                             metricsNote = metricsNote,
+                            onQuickAction = ::runQuickAction,
                         )
                     }
                     Workspace.Settings -> AppShell(
@@ -531,9 +576,9 @@ fun App(
                                         scope.launch { wakeNote = wakeSequence.wake(device).toNote() }
                                     }
                                 }
-                                RailEvent.Sleep -> runPowerAction(PowerAction.SLEEP, PcEvent.SleepRequested)
-                                RailEvent.Shutdown -> runPowerAction(PowerAction.SHUTDOWN, PcEvent.ShutdownRequested)
-                                RailEvent.Restart -> runPowerAction(PowerAction.RESTART, PcEvent.RestartRequested)
+                                RailEvent.Sleep -> pendingPowerAction = PowerAction.SLEEP to PcEvent.SleepRequested
+                                RailEvent.Shutdown -> pendingPowerAction = PowerAction.SHUTDOWN to PcEvent.ShutdownRequested
+                                RailEvent.Restart -> pendingPowerAction = PowerAction.RESTART to PcEvent.RestartRequested
                             }
                         },
                     ) {
@@ -642,8 +687,40 @@ fun App(
                     }
                 }
             }
+            // 电源动作的二次确认弹窗（点错就关机/重启，代价太大）。
+            pendingPowerAction?.let { (action, event) ->
+                AlertDialog(
+                    onDismissRequest = { pendingPowerAction = null },
+                    modifier = Modifier.testTag("dialog:power"),
+                    title = { Text("${action.title()} ${device?.name ?: "the PC"}?") },
+                    text = { Text("This sends a ${action.title().lowercase()} command to the PC right away.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                pendingPowerAction = null
+                                runPowerAction(action, event)
+                            },
+                            modifier = Modifier.testTag("dialog:power-confirm"),
+                        ) { Text(action.title()) }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { pendingPowerAction = null },
+                            modifier = Modifier.testTag("dialog:power-cancel"),
+                        ) { Text("Cancel") }
+                    },
+                )
+            }
         }
     }
+}
+
+/** 二次确认弹窗里的动作名（与 spec §7.2 的 Power Rail 文案一致）。 */
+private fun PowerAction.title(): String = when (this) {
+    PowerAction.SLEEP -> "Sleep"
+    PowerAction.SHUTDOWN -> "Shut down"
+    PowerAction.RESTART -> "Restart"
+    PowerAction.LOCK -> "Lock"
 }
 
 /**

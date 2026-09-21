@@ -69,5 +69,7 @@ public sealed record MachineFacts(
     double? VramTotalGb,
     double? StorageTotalGb,
     double? StorageFreeGb,
+    /** 处理器标称主频（MHz）：LHM 读不到实时频率时的兜底，来源是注册表 `~MHz`。 */
+    double? NominalClockMhz,
     long UptimeSeconds,
     string BootedAtUtc);

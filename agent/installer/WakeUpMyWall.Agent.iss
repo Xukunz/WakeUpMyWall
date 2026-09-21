@@ -54,7 +54,6 @@ Name: "serviceinstall"; Description: "安装为 Windows 服务（开机自启，
 [Icons]
 ; exe 自带图标（csproj 的 ApplicationIcon），快捷方式直接取它。
 Name: "{autodesktop}\WakeUpMyWall Agent"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Comment: "局域网唤醒 / 电源控制 / 指标"
-Name: "{userstartup}\WakeUpMyWall Agent"; Filename: "{app}\{#MyAppExeName}"; Tasks: trayautostart; Check: not ServiceMode
 
 [UninstallRun]
 Filename: "{sys}\sc.exe"; Parameters: "stop {#ServiceName}"; Flags: runhidden waituntilterminated
@@ -78,7 +77,7 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  Sc, Netsh, ExePath, PairingFile, Hint, FirewallRule, How: String;
+  Sc, Netsh, SchTasks, ExePath, PairingFile, Hint, FirewallRule, How: String;
   Pairing: AnsiString;
   ExitCode: Integer;
 begin
@@ -87,6 +86,7 @@ begin
 
   Sc := ExpandConstant('{sys}\sc.exe');
   Netsh := ExpandConstant('{sys}\netsh.exe');
+  SchTasks := ExpandConstant('{sys}\schtasks.exe');
   ExePath := ExpandConstant('{app}\{#MyAppExeName}');
   FirewallRule := 'advfirewall firewall add rule name="{#FirewallRule}" dir=in action=allow protocol=TCP localport={#AgentPort} profile=private,domain';
 
@@ -108,6 +108,13 @@ begin
     How := '以托盘方式启动（右下角通知区域，右键图标可看配对码或退出）';
     // 立即跑一次（下次登录由启动项拉起）；ewNoWait：不阻塞安装程序。
     Exec(ExePath, '', '', SW_SHOWNORMAL, ewNoWait, ExitCode);
+  end;
+
+  if (not ServiceMode) and WizardIsTaskSelected('trayautostart') then
+  begin
+    // 用**计划任务**（最高权限）而不是"启动"文件夹里的快捷方式：
+    // LibreHardwareMonitor 要装内核驱动才能读温度/风扇/频率，普通权限下这些传感器全是 0 或缺失。
+    RunTool(SchTasks, '/Create /TN "WakeUpMyWall Agent" /TR "\"' + ExePath + '\"" /SC ONLOGON /RL HIGHEST /F');
   end;
 
   // Agent 把配对码写到 %ProgramData%\WakeUpMyWall\pairing.txt，等它起来再读。

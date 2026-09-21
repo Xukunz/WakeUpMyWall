@@ -10,8 +10,16 @@ public static class ActionEndpoints
             Results.Ok(registry.All.Select(pair => new { id = pair.Key, name = pair.Value })));
 
         group.MapPost("/api/v1/actions/{id}", (string id, ActionRegistry registry) =>
-            registry.TryExecute(id)
-                ? Results.Ok(new { id, executed = true })
-                : Results.NotFound(new { error = "unknown action" }));
+        {
+            var result = registry.Execute(id);
+            return result switch
+            {
+                { Known: false } => Results.NotFound(new { error = "unknown action" }),
+                { Executed: true } => Results.Ok(new { id, executed = true }),
+                _ => Results.Json(
+                    new { error = result.Error ?? "could not execute action" },
+                    statusCode: StatusCodes.Status500InternalServerError),
+            };
+        });
     }
 }
