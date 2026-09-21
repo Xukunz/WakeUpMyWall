@@ -263,9 +263,9 @@ Expected: BUILD SUCCESSFUL，新增 4 条测试通过
 **Files:**
 - Modify: 本计划、`README.md`、`docs/plans/version-matrix.md`（若出现新的实测结论）、`docs/superpowers/plans/2026-09-19-roadmap.md`
 
-- [ ] **Step 1: 本机起 Agent（`--fake-metrics`）+ 模拟器 `adb reverse`**
-- [ ] **Step 2: 模拟器上走一遍真实链路**（配对 → Monitor 显示 Agent 的数字 → 停 Agent → 卡片变 `—` 且状态行标注 → 重启 Agent → 数字回来），每步截图存 `docs/plans/screenshots/phase5b-*.png`
-- [ ] **Step 3: 记录验收表并提交** `docs: record the phase 5b acceptance run`
+- [x] **Step 1: 本机起 Agent（`--fake-metrics`）+ 模拟器 `adb reverse`**
+- [x] **Step 2: 模拟器上走一遍真实链路**（配对 → Monitor 显示 Agent 的数字 → 停 Agent → 卡片变 `—` 且状态行标注 → 重启 Agent → 数字回来），每步截图存 `docs/plans/screenshots/phase5b-*.png`
+- [x] **Step 3: 记录验收表并提交** `docs: record the phase 5b acceptance run`
 
 ---
 
@@ -286,7 +286,42 @@ Expected: BUILD SUCCESSFUL，新增 4 条测试通过
 
 ## 4. 验收实录
 
-（Task B4 完成后填写。）
+**运行环境：** 模拟器 `wall`（emulator-5554，2560×1600）+ 本机 Linux Agent（`--fake-metrics --fake-power`，默认 token 文件）+ `adb reverse tcp:9876 tcp:9876`，2026-09-20 21:11 EDT。
+
+### 4.1 测试与构建
+
+| 步骤 | 命令 | 实测结果 |
+| --- | --- | --- |
+| B1 RED | `./gradlew :composeApp:testDebugUnitTest --tests "*AgentApiMetricsTest*"` | 编译失败：`Unresolved reference 'system'` |
+| B1 GREEN | 同上（全量） | BUILD SUCCESSFUL，`AgentApiMetricsTest` 4/4 |
+| B2+B3 | `./gradlew :composeApp:testDebugUnitTest :composeApp:desktopTest` | 单元 + UI 合计 `435 passed / 0 failed` |
+| B2+B3 组装 | `./gradlew :composeApp:assembleDebug` | BUILD SUCCESSFUL（APK 45.9 MB） |
+| 映射测试 | `LiveMetricsMapperTest` | 5 条：显示精度、缺项保持 null、短名、时间标签、时间戳解析失败不丢原文 |
+| 采样集成测试 | `MetricsIntegrationTest` | 4 条：真实读数上屏 / 3 次失败退成 `—` + 标注 / 恢复后读数回来 / 未配对不发请求 |
+| Monitor 展示测试 | `MonitorMetricsTest` | 4 条：`—` 全项、`Updated …`、`Last update …` + `No fresh metrics`、失败原因 |
+
+### 4.2 端到端（模拟器 + 本机 Agent）
+
+| 步骤 | 操作 | 实测结果 |
+| --- | --- | --- |
+| 1 | 装上本次构建的 APK（45.9 MB），冷启动 | Dashboard 的摘要卡变成真数据：`Last seen 21:11:09`、CPU 19%、Temp 39℃、RAM 34%、↓10.2 ↑2.9 Mbps —— 与 Mock 的 12%/42℃/38%/12.4/3.1 明显不同，说明是 Agent 给的数 |
+| 2 | 左滑进 Monitor | 身份卡变成 Agent 报的机器：`xukunz-M8` / `Linux (fake metrics)` / `Fake Ryzen 7 7700X` / `Fake GeForce RTX 4070 Ti`，右上 `Last seen 21:11:15`、下面 `Updated 21:11:15`；四张指标卡 14% / 5% / 34% / 95%，温度 41/43/37/41℃，风扇 980/1,200/870 RPM，网络 ↓11.2 ↑4 Mbps，Uptime `3d 6h 0m` + `Since Sep 17, 2026`，Recent Activity 显示 `—`（spec §8 的 P2，未编假数据） |
+| 3 | 停掉 Agent，等 10 秒 | 读数全部退成 `—`（环心、温度、风扇、网络、Uptime、Activity），身份卡改写成 `Last update 21:11:27`、`No fresh metrics`，并给出真实原因 `unexpected end of stream on http://127.0.0.1:9876/…`；rail 同时按 Phase 4B 的规则落到 `Ready to wake` |
+| 4 | 重启 Agent（同一 token 文件），等 10 秒 | 读数自动回来：`Updated 21:11:59`，GPU 11% / 34℃、RAM 39%、网络 ↓15.5 ↑2.9 Mbps（数值在动，证明是重新采样而不是缓存），rail 回到 `Online` |
+
+证据帧：
+
+- [phase5b-dashboard-live.png](../../plans/screenshots/phase5b-dashboard-live.png)（Dashboard 摘要卡真数据）
+- [phase5b-monitor-live.png](../../plans/screenshots/phase5b-monitor-live.png)（Monitor 真指标）
+- [phase5b-monitor-stale.png](../../plans/screenshots/phase5b-monitor-stale.png)（掉线：全 `—` + `Last update` + 原因）
+- [phase5b-monitor-recovered.png](../../plans/screenshots/phase5b-monitor-recovered.png)（恢复）
+
+### 4.3 明确没验到的部分（不掩盖）
+
+- **"与 PC 任务管理器读数一致（CPU ±3% / 温度 ±2℃）"没有验**：本机是 Linux + 合成读数，验的是"显示的就是 Agent 给的数"。
+  真机对照要与 Phase 5A 的 Windows 自验清单一起做（[agent/README.md](../../../agent/README.md)）。
+- 60 秒曲线在模拟器上只跑了几十秒，环只填了几个点（截图里的 sparkline 是这几秒的记录）；Ring Buffer 本身有单元测试（Phase 1）。
+- Recent Activity 仍是 `—`（Phase 5A/5B 都不做，spec §8 列为 P2）。
 
 ---
 
