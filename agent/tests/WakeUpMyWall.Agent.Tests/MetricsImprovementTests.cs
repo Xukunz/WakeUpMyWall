@@ -52,6 +52,19 @@ public class MetricsImprovementTests
     }
 
     [Fact]
+    public void Without_clock_sensors_the_core_count_comes_from_the_provider()
+    {
+        // 非管理员时 LHM 连时钟传感器都没有：核心数改由 WMI 提供（否则卡片只剩 `— cores`）。
+        var payload = MetricsMapper.Map(
+            [],
+            Facts with { PhysicalCores = 8 },
+            DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(8, payload.Cpu.Cores);
+        Assert.Equal(Environment.ProcessorCount, payload.Cpu.Threads);
+    }
+
+    [Fact]
     public void Zero_valued_temperatures_and_fans_are_reported_as_unknown()
     {
         var payload = MetricsMapper.Map(
@@ -86,7 +99,7 @@ public class MetricsImprovementTests
         CpuName: "AMD Ryzen 7 7700X", CpuShortName: "Ryzen 7 7700X",
         GpuName: "NVIDIA GeForce RTX 4070 Ti", GpuShortName: "RTX 4070 Ti",
         RamModule: "32 GB", StorageModule: "NVMe 2 TB",
-        VramTotalGb: 12, StorageTotalGb: 2048, StorageFreeGb: 102, SystemDiskMount: "C:\\", Disks: [new DiskFact("NVMe 2 TB", "C:\\", 2048, 102)], NominalClockMhz: null,
+        VramTotalGb: 12, StorageTotalGb: 2048, StorageFreeGb: 102, SystemDiskMount: "C:\\", Disks: [new DiskFact("NVMe 2 TB", "C:\\", 2048, 102)], NominalClockMhz: null, PhysicalCores: null,
         UptimeSeconds: 100, BootedAtUtc: "2025-04-18T12:00:00Z");
 }
 

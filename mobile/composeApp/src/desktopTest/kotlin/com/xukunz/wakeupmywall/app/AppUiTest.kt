@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.swipeLeft
@@ -45,20 +46,27 @@ class AppUiTest {
     }
 
     @Test
-    fun `swiping left twice walks from dashboard to standby and back again`() = runComposeUiTest {
+    fun `swiping walks between dashboard and standby while the monitor is click only`() = runComposeUiTest {
         setContent { App() }
 
-        // Task 13 要求三形态可达：Dashboard → Monitor → StandBy，右滑逐级退回。
-        onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
-        onNodeWithTag("monitor:identity").assertIsDisplayed()
-
+        // 滑动只在 Dashboard ⇄ StandBy；**硬件页（Monitor）不是主页之一**，
+        // 它只能从 PC 摘要卡进入、用返回退出（否则它会抢走卡片里的横向手势）。
         onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
         onNodeWithTag("standby:clock", useUnmergedTree = true).assertIsDisplayed()
 
         onNodeWithTag("home:surface").performTouchInput { swipeRight() }
+        onNodeWithTag("dashboard:greeting").assertIsDisplayed()
+
+        // 进入硬件页：点 PC 摘要卡。
+        onNodeWithTag("dashboard:pc-summary").performClick()
         onNodeWithTag("monitor:identity").assertIsDisplayed()
 
-        onNodeWithTag("home:surface").performTouchInput { swipeRight() }
+        // 硬件页上滑动不再切页。
+        onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
+        onNodeWithTag("monitor:identity").assertIsDisplayed()
+
+        // 左上角返回回到 Dashboard。
+        onNodeWithTag("monitor:back").performClick()
         onNodeWithTag("dashboard:greeting").assertIsDisplayed()
     }
 

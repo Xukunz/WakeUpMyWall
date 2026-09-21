@@ -78,7 +78,7 @@ class HomeSurfaceTest {
     }
 
     @Test
-    fun `swiping left requests monitor and swiping right requests dashboard`() = runComposeUiTest {
+    fun `swiping left requests standby and swiping right requests dashboard`() = runComposeUiTest {
         var mode = HomeMode.Dashboard
         setContent {
             WakeUpMyWallTheme {
@@ -94,8 +94,9 @@ class HomeSurfaceTest {
             }
         }
 
+        // 硬件页不是主页之一：左滑从 Dashboard 直接去 StandBy（Monitor 只能点 PC 卡片进）。
         onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
-        assertEquals(HomeMode.Monitor, mode)
+        assertEquals(HomeMode.StandBy, mode)
 
         onNodeWithTag("home:surface").performTouchInput { swipeRight() }
         assertEquals(HomeMode.Dashboard, mode)
@@ -121,7 +122,7 @@ class HomeSurfaceTest {
     }
 
     @Test
-    fun `swiping left from monitor walks on to standby and back`() = runComposeUiTest {
+    fun `the monitor is not a swipe page so its own gestures stay free`() = runComposeUiTest {
         var mode by mutableStateOf(HomeMode.Monitor)
         setContent {
             WakeUpMyWallTheme {
@@ -137,9 +138,10 @@ class HomeSurfaceTest {
             }
         }
 
-        // 三形态是"左滑前进、右滑后退、到边界停住"：Monitor 之下还有 StandBy，而不是直接回 Dashboard。
+        // Monitor 不接横向手势：这里的拖动是留给卡片自己的（例如存储卡的翻页），
+        // 所以左右滑都不应该改变形态。
         onNodeWithTag("home:surface").performTouchInput { swipeLeft() }
-        assertEquals(HomeMode.StandBy, mode)
+        assertEquals(HomeMode.Monitor, mode)
 
         onNodeWithTag("home:surface").performTouchInput { swipeRight() }
         assertEquals(HomeMode.Monitor, mode)

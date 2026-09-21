@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +53,7 @@ import com.xukunz.wakeupmywall.ui.dashboard.widgets.QuoteCard
 import com.xukunz.wakeupmywall.ui.icons.AppIcon
 import com.xukunz.wakeupmywall.ui.icons.AppIconKind
 import kotlin.math.sin
+import kotlinx.coroutines.launch
 
 object MetricKeys {
     const val Cpu = "cpu"
@@ -495,6 +497,7 @@ private fun StorageCard(
         )
     }
     val pagerState = rememberPagerState(pageCount = { pages.size })
+    val pagerScope = rememberCoroutineScope()
 
     WidgetSurface(style = style, modifier = modifier.testTag("metric:storage")) {
         Row(
@@ -523,6 +526,17 @@ private fun StorageCard(
                             color = MetricColors.storage,
                             modifier = Modifier.testTag("metric:storage-page"),
                         )
+                    }
+                }
+            }
+            // 显式的左右按钮：手势在某些系统/外层容器里可能被抢，按钮永远可用。
+            if (pages.size > 1) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    StoragePageButton("\u25c0", "metric:storage-prev", pagerState.currentPage > 0) {
+                        pagerScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                    }
+                    StoragePageButton("\u25b6", "metric:storage-next", pagerState.currentPage < pages.size - 1) {
+                        pagerScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                     }
                 }
             }
@@ -590,6 +604,27 @@ private fun StorageCard(
             }
         }
     }
+}
+
+/** 存储卡片的翻页按钮（上一块 / 下一块盘）。 */
+@Composable
+private fun StoragePageButton(
+    label: String,
+    tag: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = if (enabled) MetricColors.storage else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .clip(AppShapes.badge)
+            .background(DarkSurface.card.copy(alpha = 0.5f))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+            .testTag(tag),
+    )
 }
 
 /** 磁盘容量：GB 保留一位小数，整数不拖 `.0`。 */

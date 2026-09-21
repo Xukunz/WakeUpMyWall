@@ -149,6 +149,7 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
             SystemDiskMount: driveRoot,
             Disks: disks,
             NominalClockMhz: ReadNominalClockMhz(),
+            PhysicalCores: ReadPhysicalCores(),
             UptimeSeconds: Environment.TickCount64 / 1000,
             BootedAtUtc: now.AddSeconds(-Environment.TickCount64 / 1000.0).ToString("o"));
     }
@@ -182,6 +183,41 @@ public sealed class WindowsMetricsProvider : ISystemMetricsProvider, IDisposable
     {
         using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
         return key?.GetValue("~MHz") is int mhz && mhz > 0 ? mhz : null;
+    }
+
+    private static int? cachedPhysicalCores;
+
+    /**
+     * 物理核心数（WMI）。为什么单独读：LHM 的核心数来自"每核心时钟传感器"，需要 MSR 权限；
+     * 非管理员时那些传感器根本不存在，卡片就只剩 `— cores`（用户实测）。
+     * 只查一次并缓存；查不到返回 null——宁可显示 `—`，也不编一个数字。
+     */
+    private static int? ReadPhysicalCores()
+    {
+        if (cachedPhysicalCores is { } cached) return cached;
+
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "SELECT NumberOfCores FROM Win32_Processor");
+            var total = 0;
+            foreach (var item in searcher.Get())
+            {
+                total += Convert.ToInt32(item["NumberOfCores"] ?? 0);
+            }
+            if (total > 0)
+            {
+                cachedPhysicalCores = total;
+                return total;
+            }
+        }
+        catch (Exception exception) when (exception is System.Management.ManagementException
+                                          or UnauthorizedAccessException
+                                          or InvalidCastException)
+        {
+            // WMI 不可用（少数精简系统）：返回 null，卡片显示 `—`。
+        }
+        return null;
     }
 
     /** 系统盘就是产品关心的那块：`C:\` 或者系统目录所在盘。 */

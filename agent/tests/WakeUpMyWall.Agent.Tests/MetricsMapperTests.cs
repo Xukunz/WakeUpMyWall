@@ -21,6 +21,7 @@ public class MetricsMapperTests
         SystemDiskMount: "C:\\",
         Disks: [new DiskFact("NVMe 2 TB", "C:\\", 2048, 102)],
         NominalClockMhz: null,
+        PhysicalCores: null,
         UptimeSeconds: 289440,
         BootedAtUtc: "2025-04-18T12:00:00Z");
 

@@ -64,6 +64,7 @@ public sealed class FakeSystemMetricsProvider(TimeProvider clock) : ISystemMetri
                 new DiskFact("Archive 8 TB", "E:\\", 8192, 5120),
             ],
             NominalClockMhz: 4200,
+            PhysicalCores: 8,
             UptimeSeconds: (long)(now - BootedAt).TotalSeconds,
             BootedAtUtc: BootedAt.ToString("o"));
 

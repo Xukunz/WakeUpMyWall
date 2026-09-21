@@ -81,6 +81,8 @@ public sealed record MachineFacts(
     IReadOnlyList<DiskFact> Disks,
     /** 处理器标称主频（MHz）：LHM 读不到实时频率时的兜底，来源是注册表 `~MHz`。 */
     double? NominalClockMhz,
+    /** 物理核心数（WMI `Win32_Processor.NumberOfCores`）：LHM 的核心数要 MSR 权限，没有时用这个兜底。 */
+    int? PhysicalCores,
     long UptimeSeconds,
     string BootedAtUtc);
 

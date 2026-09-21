@@ -58,7 +58,10 @@ public static class MetricsMapper
                 ClockGhz: coreClocks.Count > 0
                     ? Round(coreClocks.Average(r => r.Value) / 1000.0, 1)
                     : Round(facts.NominalClockMhz / 1000.0, 1),
-                Cores: coreClocks.Count == 0 ? null : coreClocks.Select(r => r.Name).Distinct().Count(),
+                // 优先用传感器数出来的核心数（有 MSR 权限时最准）；否则用提供者给的物理核心数（WMI）。
+                Cores: coreClocks.Count == 0
+                    ? facts.PhysicalCores
+                    : coreClocks.Select(r => r.Name).Distinct().Count(),
                 Threads: Environment.ProcessorCount,
                 TempC: Round(Positive(
                     Value(cpu, SensorKind.Temperature, "CPU Package")

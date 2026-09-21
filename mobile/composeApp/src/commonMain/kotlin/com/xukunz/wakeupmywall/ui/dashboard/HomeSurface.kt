@@ -88,13 +88,17 @@ fun HomeSurface(
     Box(
         modifier = modifier
             .fillMaxSize()
-            // mode 必须进 key：否则手势回调会一直捕获进入时的那个形态，第二次左滑就还在原地。
+            // 滑动只在 Dashboard ⇄ StandBy 之间生效。
+            // **硬件页（Monitor）刻意不接手势**：它是"点 PC 卡片进入、用返回退出"的详情页，
+            // 而不是主页之一；更重要的是，这里挂手势会把横向拖动全吃掉，里面的 Storage 翻页
+            // 与卡片手势就永远收不到（用户实测：存储卡片滑不动、还会把硬件页切走）。
             .pointerInput(mode, threshold) {
+                if (mode == HomeMode.Monitor) return@pointerInput
                 var travelled = 0f
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (travelled <= -threshold) onModeChange(mode.forward())
-                        if (travelled >= threshold) onModeChange(mode.backward())
+                        if (travelled <= -threshold) onModeChange(HomeMode.StandBy)
+                        if (travelled >= threshold) onModeChange(HomeMode.Dashboard)
                         travelled = 0f
                     },
                     onDragCancel = { travelled = 0f },
