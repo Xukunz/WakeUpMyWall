@@ -1,6 +1,7 @@
 using WakeUpMyWall.Agent.Api;
 using WakeUpMyWall.Agent.Auth;
 using WakeUpMyWall.Agent.Actions;
+using WakeUpMyWall.Agent.Metrics;
 using WakeUpMyWall.Agent.Power;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,17 +28,18 @@ var useFakePower = args.Contains("--fake-power") || !OperatingSystem.IsWindows()
 if (useFakePower) builder.Services.AddSingleton<IPowerController, FakePowerController>();
 else builder.Services.AddSingleton<IPowerController, WindowsPowerController>();
 
+// 指标来源：非 Windows 目标上不会带 LibreHardwareMonitor（它只提供 win-* 运行时资产），
+// 因此这些平台照实喂合成读数（`--fake-metrics` 也能在 Windows 上强制造假），
+// 让端点契约（JSON 形状 + Bearer 鉴权）在 Linux/CI 上也能端到端验证。
+builder.Services.AddSingleton<ISystemMetricsProvider>(new FakeSystemMetricsProvider(TimeProvider.System));
+
 var app = builder.Build();
 
 app.MapStatusEndpoints();
 
 /** 受保护端点（power / actions / system）都挂在这一组上。 */
 var protectedEndpoints = app.MapGroup("").AddEndpointFilter<BearerAuthFilter>();
-// 指标端点属于 Phase 5（LibreHardwareMonitor）：现在如实回 501，而不是给假数据。
-protectedEndpoints.MapGet("/api/v1/system", () =>
-    Results.Json(
-        new { error = "metrics land in Phase 5 (LibreHardwareMonitor)" },
-        statusCode: StatusCodes.Status501NotImplemented));
+protectedEndpoints.MapSystemEndpoints();
 protectedEndpoints.MapPowerEndpoints();
 protectedEndpoints.MapActionEndpoints();
 

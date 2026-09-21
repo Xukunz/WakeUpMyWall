@@ -44,8 +44,8 @@ public class AuthTests
         var authorized = app.CreateClient();
         authorized.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // 过滤器放行后处理器才跑：Phase 4 的 /system 如实回 501（不是 401，也不是 200 假数据）
-        Assert.Equal(HttpStatusCode.NotImplemented, (await authorized.GetAsync("/api/v1/system")).StatusCode);
+        // 过滤器放行后处理器才跑：带正确 Token 的 /system 回 200（Phase 5A 起是真指标，不再是 501 占位）
+        Assert.Equal(HttpStatusCode.OK, (await authorized.GetAsync("/api/v1/system")).StatusCode);
         // 配对成功后 /status 会如实说已经配过对
         var status = await (await app.CreateClient().GetAsync("/api/v1/status")).Content.ReadFromJsonAsync<StatusPayload>();
         Assert.True(status!.Paired);
