@@ -134,7 +134,7 @@ fun `pairing failure surfaces the reason instead of throwing`() = runTest {
 **Files:**
 - Modify: 本计划（勾选 + 验收实录）、`docs/plans/version-matrix.md`、`README.md`
 
-- [ ] **Step 1: 本机起 Agent（`--fake-power`）并用 `adb reverse` 接到模拟器**
+- [x] **Step 1: 本机起 Agent（`--fake-power`）并用 `adb reverse` 接到模拟器**
 
 ```bash
 export PATH="$HOME/.dotnet-local:$PATH" DOTNET_ROOT="$HOME/.dotnet-local"
@@ -144,7 +144,7 @@ ADB=/home/xukunz/.local/toolchain/android-sdk/platform-tools/adb
 grep -o '配对码：[0-9]\{6\}' /tmp/agent-e2e.log | tail -1
 ```
 
-- [ ] **Step 2: 模拟器上走一遍真实链路**
+- [x] **Step 2: 模拟器上走一遍真实链路**
   1. Settings → Device Setup 填 Agent Host `127.0.0.1`、Agent Port `9876`、Save；
   2. 在 Agent 区输入日志里的配对码 → Pair → 状态变 `Paired`；
   3. 回主页：rail 应变 `Online`（存在性轮询打到本机 Agent）；
@@ -152,7 +152,7 @@ grep -o '配对码：[0-9]\{6\}' /tmp/agent-e2e.log | tail -1
   5. 关掉 Agent → 5 秒内 rail 变 `Ready to wake`；重启 Agent → 变回 `Online`。
   每一步截图存 `docs/plans/screenshots/phase4b-*.png`。
 
-- [ ] **Step 3: 记录验收表并提交** `docs: record the phase 4b acceptance run`
+- [x] **Step 3: 记录验收表并提交** `docs: record the phase 4b acceptance run`
 
 ---
 
@@ -170,3 +170,26 @@ grep -o '配对码：[0-9]\{6\}' /tmp/agent-e2e.log | tail -1
 1. **Spec 覆盖**：§5 鉴权（Bearer + 超时 2–3 s）→ B1/B4；§7.5 `Advanced / Agent` 区 → B2；§4 状态表（ONLINE / AGENT_UNAVAILABLE 的区别）→ B3；Token 进 Keystore（§5 安全条款）→ B2。**刻意不做**：锁屏按钮（设计变更）、指标（Phase 5）。
 2. **占位符扫描**：无 TBD。B1–B4 的代码在实现时按既有模式（`AgentApi.status` 的 try/catch、`DeviceSetupFormTest` 的 UI 测试写法）落地，测试意图与断言值已写死。
 3. **类型一致性**：`PowerAction` → `AgentApi.power` → `ApiResult<PowerResponse>`；`AgentTokenStore`（read/write/clear）→ `App` 接线 → `AgentSection` 回调；状态事件沿用 Phase 3/4A 已定的 `PcEvent.AgentResponded / AgentLost`。
+
+---
+
+## 4. 验收实录（2026-09-20，模拟器 + 本机 Linux Agent）
+
+本机跑 `agent/src/WakeUpMyWall.Agent`（`--fake-power`，日志到 `/tmp/agent-e2e.log`），用 `adb reverse tcp:9876 tcp:9876` 接到 wall AVD；设备列表直接写成"一台带 MAC + agentHost=127.0.0.1 的 `Desk PC`"（绕开 uiautomator 键盘导致的窗口位移，见下）。
+
+| 步骤 | 操作 | 实测结果 |
+| --- | --- | --- |
+| 1 | 冷启动 | 存在性轮询打到本机 Agent，rail 变 `Online` —— "PC 是否开机"可检测 |
+| 2 | Device Setup → Agent 区输入配对码 `266227` → Pair | UI 变 `Paired · token stored in Keystore`（出现 `Unpair`），Agent `paired:true`，App 的 `files/datastore/settings.preferences_pb` 里出现 `agent-token:desk-pc` 密文（Token 没进设备模型序列化） |
+| 3 | 点 rail 的 Sleep | Agent 日志 `power action sleep accepted (fake — not executed)` —— 带 Token 的 `POST /api/v1/power/sleep` 真到了服务端 |
+| 4 | 停掉 Agent | 5 秒内 rail 变 `Ready to wake`（可唤醒设备 + Agent 不可达） |
+| 5 | 重启 Agent | rail 自动回到 `Online`（重启后 Token 仍在，Agent `paired:true`） |
+
+证据帧：[phase4b-paired.png](../../plans/screenshots/phase4b-paired.png)、[phase4b-ready-to-wake.png](../../plans/screenshots/phase4b-ready-to-wake.png)、[phase4b-online.png](../../plans/screenshots/phase4b-online.png)。
+
+两条执行备注（都记下来免得下次再踩）：
+
+- **模拟器文本框聚焦会把 App 窗口压到 ~800px 高**（`adjustResize` + 被禁用的输入法），uiautomator 的 bounds 跟着变、坐标全错。绕法：焦点导航（`input keyevent 61` TAB + `66` ENTER）点按钮，或在设备直写 DataStore 避免 UI 录入。真机 + 真实输入法不受影响。
+- `--fake-power` 下 Sleep 之后 Agent 不会真的下线，所以 rail 在 5 秒轮询内就会从 `Sleeping…` 回 `Online`——这是正确行为（假的没睡着）；真实 Windows 上睡眠后 Agent 掉线，才会停在 `Ready to wake`。
+
+**仍待用户执行**：真实 Windows PC 上的四种电源操作 + 服务自启（Phase 4A 计划 Task A4 Step 3 的清单）；模拟器只能证明"命令真的发出去了、状态流转正确"。

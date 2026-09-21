@@ -4,7 +4,7 @@ namespace WakeUpMyWall.Agent.Power;
  * CI 与非 Windows 开发机使用（也用于本机的端到端冒烟）：记录调用但**不执行任何外部命令**，
  * 所以测试里可以断言"确实走到了控制器"，而不会真的把机器关掉。
  */
-public sealed class FakePowerController : IPowerController
+public sealed class FakePowerController(ILogger<FakePowerController> logger) : IPowerController
 {
     private readonly List<string> _calls = [];
     private string? _nextFailure;
@@ -33,6 +33,7 @@ public sealed class FakePowerController : IPowerController
     private Task<PowerResult> Record(string action)
     {
         lock (_calls) _calls.Add(action);
+        logger.LogInformation("power action {Action} accepted (fake — not executed)", action);
 
         if (_nextFailure is { } failure)
         {
