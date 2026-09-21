@@ -3,6 +3,9 @@ using WakeUpMyWall.Agent.Auth;
 using WakeUpMyWall.Agent.Actions;
 using WakeUpMyWall.Agent.Metrics;
 using WakeUpMyWall.Agent.Power;
+#if WINDOWS
+using WakeUpMyWall.Agent.Metrics.Windows;
+#endif
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,10 +31,17 @@ var useFakePower = args.Contains("--fake-power") || !OperatingSystem.IsWindows()
 if (useFakePower) builder.Services.AddSingleton<IPowerController, FakePowerController>();
 else builder.Services.AddSingleton<IPowerController, WindowsPowerController>();
 
-// 指标来源：非 Windows 目标上不会带 LibreHardwareMonitor（它只提供 win-* 运行时资产），
-// 因此这些平台照实喂合成读数（`--fake-metrics` 也能在 Windows 上强制造假），
-// 让端点契约（JSON 形状 + Bearer 鉴权）在 Linux/CI 上也能端到端验证。
+// 指标来源：Windows 上有 LibreHardwareMonitor 的真实读数；其它目标（CI / 开发机）不会带这个包
+// （它只提供 win-* 运行时资产），照实喂合成读数。`--fake-metrics` 在 Windows 上也能强制造假，
+// 这样端点契约（JSON 形状 + Bearer 鉴权）在任何平台上都能端到端验证。
+#if WINDOWS
+var useFakeMetrics = args.Contains("--fake-metrics");
+builder.Services.AddSingleton<ISystemMetricsProvider>(services => useFakeMetrics
+    ? new FakeSystemMetricsProvider(services.GetRequiredService<TimeProvider>())
+    : new WindowsMetricsProvider());
+#else
 builder.Services.AddSingleton<ISystemMetricsProvider>(new FakeSystemMetricsProvider(TimeProvider.System));
+#endif
 
 var app = builder.Build();
 
