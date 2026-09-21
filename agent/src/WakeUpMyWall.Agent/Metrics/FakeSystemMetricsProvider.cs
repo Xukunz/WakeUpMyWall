@@ -44,7 +44,8 @@ public sealed class FakeSystemMetricsProvider(TimeProvider clock) : ISystemMetri
 
         var facts = new MachineFacts(
             Hostname: Environment.MachineName,
-            Os: "Linux (fake metrics)",
+            // 假数据也要如实说明自己在哪个平台：Windows 上跑 --fake-metrics 时不能自称 Linux。
+            Os: OperatingSystem.IsWindows() ? "Windows (fake metrics)" : "Linux (fake metrics)",
             CpuName: "Fake Ryzen 7 7700X 8-Core Processor",
             CpuShortName: "Ryzen 7 7700X",
             GpuName: "Fake GeForce RTX 4070 Ti",

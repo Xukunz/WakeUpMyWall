@@ -33,7 +33,11 @@ builder.Services.AddSingleton<ActionRegistry>();
 
 // 电源动作只有 Windows 能真做；其它平台（CI / 开发机 / 冒烟）用 --fake-power，
 // 只记录不执行，避免把开发机真的关掉。
-var useFakePower = args.Contains("--fake-power") || !OperatingSystem.IsWindows();
+// `Agent:UseFakePower` 是给契约测试用的开关：测试要在**任何平台**上都拿到假控制器
+// （否则在 Windows runner 上测试会拿到真实控制器，然后一强转就崩 —— CI 实测踩过）。
+var useFakePower = args.Contains("--fake-power")
+    || !OperatingSystem.IsWindows()
+    || builder.Configuration.GetValue("Agent:UseFakePower", false);
 if (useFakePower) builder.Services.AddSingleton<IPowerController, FakePowerController>();
 else builder.Services.AddSingleton<IPowerController, WindowsPowerController>();
 
@@ -41,7 +45,8 @@ else builder.Services.AddSingleton<IPowerController, WindowsPowerController>();
 // （它只提供 win-* 运行时资产），照实喂合成读数。`--fake-metrics` 在 Windows 上也能强制造假，
 // 这样端点契约（JSON 形状 + Bearer 鉴权）在任何平台上都能端到端验证。
 #if WINDOWS
-var useFakeMetrics = args.Contains("--fake-metrics");
+var useFakeMetrics = args.Contains("--fake-metrics")
+    || builder.Configuration.GetValue("Agent:UseFakeMetrics", false);
 builder.Services.AddSingleton<ISystemMetricsProvider>(services => useFakeMetrics
     ? new FakeSystemMetricsProvider(services.GetRequiredService<TimeProvider>())
     : new WindowsMetricsProvider());

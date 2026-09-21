@@ -28,6 +28,10 @@ public sealed class TestApp : WebApplicationFactory<Program>
     {
         builder.UseSetting("Agent:TokenFile", _tokenFile);
         builder.UseSetting("Agent:PairingCodeFile", _pairingCodeFile);
+        // 契约测试永远用假控制器/假指标：不然在 Windows runner 上会拿到真实控制器与 LibreHardwareMonitor，
+        // 测试要么强转失败，要么去开硬件驱动（CI 实测踩过）。
+        builder.UseSetting("Agent:UseFakePower", "true");
+        builder.UseSetting("Agent:UseFakeMetrics", "true");
         if (_metricsIntervalMillis is not null)
         {
             builder.UseSetting("Agent:MetricsIntervalMs", _metricsIntervalMillis.Value.ToString());
