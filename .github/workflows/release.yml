@@ -37,13 +37,14 @@ jobs:
       - name: 打包便携版 zip
         shell: pwsh
         run: |
-          $tag = if ('${{ github.ref_name }}') { '${{ github.ref_name }}' } else { "v${{ github.event.inputs.version }}" }
+          # tag 触发时用 tag 名；手动 dispatch 时 github.ref_name 是分支名，必须用输入里的版本号。
+          $tag = if ('${{ github.event.inputs.version }}') { "v${{ github.event.inputs.version }}" } else { '${{ github.ref_name }}' }
           Compress-Archive -Path publish/win-x64/* -DestinationPath "WakeUpMyWall-Agent-win-x64-$tag.zip"
 
       - name: 版本号对齐检查（tag、zip 名与 Agent 自报版本）
         shell: pwsh
         run: |
-          $version = if ('${{ github.ref_name }}') { '${{ github.ref_name }}'.TrimStart('v') } else { '${{ github.event.inputs.version }}' }
+          $version = if ('${{ github.event.inputs.version }}') { '${{ github.event.inputs.version }}' } else { '${{ github.ref_name }}'.TrimStart('v') }
           $reported = (Get-Item publish/win-x64/WakeUpMyWall.Agent.dll).VersionInfo.ProductVersion
           Write-Host "tag=$version / 程序集=$reported"
           if ($reported -notlike "$version*") {
@@ -53,7 +54,7 @@ jobs:
       - name: 编译一键安装包（Inno Setup）
         shell: pwsh
         run: |
-          $version = if ('${{ github.ref_name }}') { '${{ github.ref_name }}'.TrimStart('v') } else { '${{ github.event.inputs.version }}' }
+          $version = if ('${{ github.event.inputs.version }}') { '${{ github.event.inputs.version }}' } else { '${{ github.ref_name }}'.TrimStart('v') }
           choco install innosetup --no-progress -y
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "agent/installer/WakeUpMyWall.Agent.iss" "/DMyAppVersion=$version"
 
